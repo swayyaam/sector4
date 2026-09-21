@@ -16,6 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import pandas as pd  # noqa: E402
 
+from entities import year_blocks  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "processed"
 
@@ -113,15 +115,7 @@ def main() -> int:
     # ---- identity breaks: one constructorId used by unrelated entities
     breaks = []
     for cid, g in yrs:
-        ys = sorted(set(g))
-        blocks, cur = [], [ys[0]]
-        for a, b in zip(ys, ys[1:]):
-            if b - a <= 4:
-                cur.append(b)
-            else:
-                blocks.append(cur)
-                cur = [b]
-        blocks.append(cur)
+        blocks = year_blocks(sorted(set(g)))
         if len(blocks) > 1:
             ref = c.loc[c["constructorId"] == cid, "constructorRef"].iloc[0]
             breaks.append({"constructorId": cid, "constructorRef": ref,

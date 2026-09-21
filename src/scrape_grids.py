@@ -6,10 +6,16 @@ starting-grid page carries it as a free-text note ("X required to start from
 pit lane after ..."), so we parse the grid table and the note together.
 
 Decision rule, deliberately conservative:
-  * a driver named in a sentence mentioning "pit lane"  -> True
+  * a driver named in a sentence mentioning "pit lane"  -> True  (attribution: "sentence")
   * page parsed, grid found, no pit-lane sentence       -> False for everyone
-  * page missing, unparseable, or a pit-lane sentence we
-    cannot attribute to a specific driver               -> None (left null)
+  * a pit-lane sentence naming nobody                   -> None, UNLESS the case
+    appears in VERIFIED_NOTE_SUBJECT below, where a second source confirms who
+    it refers to (attribution: "note_subject_verified")
+  * page missing or unparseable                         -> None (left null)
+
+Attributing an unnamed sentence to the note's only named driver would be an
+inference, so it is never done on its own: each such case must be confirmed
+against an independent source and listed explicitly.
 
 Raw HTML is cached under data/raw/f1_grids/ so reruns cost nothing.
 """
@@ -45,6 +51,15 @@ RACES: dict[int, list[tuple[int, int, str]]] = {
            (8, 1288, "austria"), (9, 1289, "great-britain"), (10, 1290, "belgium"),
            (11, 1291, "hungary"), (12, 1292, "netherlands"), (13, 1293, "italy"),
            (14, 1294, "spain")],
+}
+
+# Pit-lane sentences that name nobody, where a second source establishes who is
+# meant. Keyed (year, round, driver code) -> the confirming source.
+VERIFIED_NOTE_SUBJECT = {
+    (2026, 4, "HAD"): (
+        "https://www.formula1.com/en/latest/article/"
+        "hadjar-disqualified-from-miami-grand-prix-qualifying.6ANxlH2BpIvVgSPfzkW3RL"
+    ),
 }
 
 ROW_RE = re.compile(r"(?<!\d)(\d{1,2})\s+(\d{1,2})\s+([A-Za-zÀ-ÿ'’\-\.]+(?:\s+[A-Za-zÀ-ÿ'’\-\.]+)*?)\s+([A-Z]{3})\s+")
@@ -112,11 +127,8 @@ def main() -> int:
                 print(f"  {year} R{rnd:<2} {slug:<22} PARSE FAILED ({len(grid)} rows)")
                 continue
             pit: dict[str, bool] = {}
+            attribution: dict[str, str] = {}
             unattributed = []
-            # Drivers named anywhere in the note block. Used only as a fallback
-            # when a pit-lane sentence carries no name of its own, e.g. Miami
-            # 2026: "Hadjar granted permission to race after being disqualified
-            # from Qualifying. Required to start from the pit lane after ..."
             named_in_note = [g["code"] for g in grid
                              if re.search(rf"\b{re.escape(g['name'].split()[-1])}\b", note, re.I)]
             for s in sentences:
@@ -125,17 +137,29 @@ def main() -> int:
                 if hit:
                     for c in hit:
                         pit[c] = True
-                elif len(named_in_note) == 1:
-                    pit[named_in_note[0]] = True
-                    print(f"      (attributed an unnamed pit-lane sentence to {named_in_note[0]}, "
-                          f"the only driver named in the note)")
+                        attribution[c] = "sentence"
+                    continue
+                # Sentence names nobody. Only accept it when a second source
+                # has confirmed the subject; otherwise leave the race null.
+                cand = named_in_note[0] if len(named_in_note) == 1 else None
+                key = (year, rnd, cand) if cand else None
+                if key in VERIFIED_NOTE_SUBJECT:
+                    pit[cand] = True
+                    attribution[cand] = "note_subject_verified"
+                    print(f"      (unnamed pit-lane sentence -> {cand}; confirmed by "
+                          f"{VERIFIED_NOTE_SUBJECT[key]})")
                 else:
                     unattributed.append(s)
             for g in grid:
-                val = pit.get(g["code"], None if unattributed else False)
+                code = g["code"]
+                val = pit.get(code, None if unattributed else False)
+                src = VERIFIED_NOTE_SUBJECT.get((year, rnd, code))
                 rows.append({"year": year, "round": rnd, "f1_race_id": rid, "slug": slug,
-                             "grid": g["grid"], "code": g["code"], "name": g["name"],
-                             "pit_lane_start": val})
+                             "grid": g["grid"], "code": code, "name": g["name"],
+                             "pit_lane_start": val,
+                             "attribution": attribution.get(code, "none" if val is False else "unresolved"),
+                             "evidence_source": src or
+                             f"https://www.formula1.com/en/results/{year}/races/{rid}/{slug}/starting-grid"})
             flag = f"  PIT LANE: {sorted(pit)}" if pit else ""
             if unattributed:
                 flag += f"  UNATTRIBUTED: {unattributed}"
@@ -147,7 +171,8 @@ def main() -> int:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["year", "round", "f1_race_id", "slug", "grid", "code",
-                                          "name", "pit_lane_start"])
+                                          "name", "pit_lane_start", "attribution",
+                                          "evidence_source"])
         w.writeheader()
         w.writerows(rows)
     print(f"\nwrote {len(rows)} grid rows -> {OUT}")

@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pandas as pd  # noqa: E402
 
 from corrections import CORRECTION_KEYS, apply_corrections, load_corrections  # noqa: E402
+from entities import assign as assign_entity, constructor_blocks, team_entity_map  # noqa: E402
 from eras import era_for  # noqa: E402
 from load import PRIMARY_KEYS, TABLES, load_all  # noqa: E402
 from transform import COLUMNS  # noqa: E402
@@ -227,6 +228,29 @@ def main() -> int:
         m = cs["raceId"].isin(r2007) & (cs["constructorId"] == int(mcl.iloc[0]))
         cs.loc[m, "championship_points"] = 0.0
         log.info("  championship_points: zeroed %d rows for 2007 McLaren (spygate exclusion)", int(m.sum()))
+
+    # ------------------------------------------------------- team_entity_id
+    # constructorId is not a stable team identity (Aston Martin's covers both
+    # 1959-60 and 2021-26). team_entity_id splits it at every identity break;
+    # constructorId itself is untouched.
+    ENTITY_TABLES = ["results", "qualifying", "sprint_results",
+                     "constructor_results", "constructor_standings"]
+    blocks = constructor_blocks([merged[t] for t in ENTITY_TABLES], races)
+    emap = team_entity_map(blocks)
+    for t in ENTITY_TABLES:
+        merged[t]["team_entity_id"] = assign_entity(merged[t], races, emap)
+        miss = int(merged[t]["team_entity_id"].isna().sum())
+        if miss:
+            log.warning("  %s: %d rows without a team_entity_id", t, miss)
+    split = {cid: bl for cid, bl in blocks.items() if len(bl) > 1}
+    log.info("  team_entity_id: %d entities across %d constructorIds "
+             "(%d constructorIds split at an identity break)",
+             len({v for v in emap.values()}), len(blocks), len(split))
+    pd.DataFrame(
+        [{"constructorId": cid, "team_entity_id": f"{cid}-{b[0]}",
+          "first_year": b[0], "last_year": b[-1], "n_seasons": len(b)}
+         for cid, bl in sorted(blocks.items()) for b in bl]
+    ).to_csv(OUT / "team_entities.csv", index=False)
 
     # ------------------------------------------------------- driver_seasons
     r = merged["results"].merge(races[["raceId", "year"]], on="raceId")

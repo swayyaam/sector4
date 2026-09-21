@@ -234,6 +234,54 @@ def main() -> int:
     check("Sanity", "pit_lane_start is null only for jolpica rows",
           bool(results.loc[results["pit_lane_start"].isna(), "source"].eq("jolpica").all()))
 
+    # ------------------------------------------------------- team entities
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from entities import GAP_YEARS, year_blocks  # noqa: E402
+
+    ENTITY_TABLES = ["results", "qualifying", "sprint_results",
+                     "constructor_results", "constructor_standings"]
+    ryy = races.set_index("raceId")["year"]
+    ent_years: dict[str, set[int]] = {}
+    ent_cids: dict[str, set[int]] = {}
+    for t in ENTITY_TABLES:
+        df = load(t)
+        check("Team entities", f"{t}: every row has a team_entity_id",
+              bool(df["team_entity_id"].notna().all()),
+              f"{int(df['team_entity_id'].isna().sum())} null")
+        sub = df.dropna(subset=["team_entity_id"])
+        for eid, cid, y in zip(sub["team_entity_id"], sub["constructorId"], sub["raceId"].map(ryy)):
+            if pd.notna(y):
+                ent_years.setdefault(eid, set()).add(int(y))
+                ent_cids.setdefault(eid, set()).add(int(cid))
+
+    multi = {e: c for e, c in ent_cids.items() if len(c) > 1}
+    check("Team entities", "each team_entity_id maps to exactly one constructorId",
+          not multi, str(dict(list(multi.items())[:5])))
+
+    spanning = {e: sorted(ys) for e, ys in ent_years.items()
+                if len(year_blocks(sorted(ys))) > 1}
+    check("Team entities",
+          f"no team_entity_id spans an identity break (>{GAP_YEARS} idle seasons)",
+          not spanning, str({k: v for k, v in list(spanning.items())[:3]}))
+
+    breaks_path = DATA / "constructor_identity_breaks.csv"
+    if breaks_path.exists():
+        br = pd.read_csv(breaks_path)
+        per_cid: dict[int, set[str]] = {}
+        for eid, cids in ent_cids.items():
+            per_cid.setdefault(next(iter(cids)), set()).add(eid)
+        unsplit = [int(c) for c in br["constructorId"] if len(per_cid.get(int(c), set())) < 2]
+        check("Team entities", "every constructorId with an identity break yields >1 entity",
+              not unsplit, f"not split: {unsplit}")
+        # the headline case
+        am = br[br["constructorRef"] == "aston_martin"]
+        if len(am):
+            cid = int(am.iloc[0]["constructorId"])
+            got = sorted(per_cid.get(cid, set()))
+            check("Team entities",
+                  "Aston Martin 1959-60 and 2021-26 are separate entities",
+                  len(got) == 2, f"entities={got}")
+
     # -------------------------------------------------------------- report
     print("=" * 96)
     print("VALIDATION — merged dataset 1950 to latest race")
