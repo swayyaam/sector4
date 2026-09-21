@@ -24,7 +24,7 @@ colors:
   on-action: "#ffffff"
   on-dark: "#ffffff"
   on-dark-soft: "#a8acb3"
-  positive: "#00875a"
+  positive: "#00794f"
   positive-on-dark: "#3ddc97"
   negative: "#b3121f"
   negative-on-dark: "#ff6b78"
@@ -159,10 +159,12 @@ Type pairs **Inter** for display with **Inter** for body, navigation and caption
 ### Outcome semantics
 For whether a prediction was borne out. Never for magnitude, never as a fill.
 
-- **Positive** (`{colors.positive}` — #00875a, 4.55:1 on white) · **Positive On Dark** (`{colors.positive-on-dark}` — #3ddc97, 11.14:1).
+- **Positive** (`{colors.positive}` — #00794f, 5.46:1 on white) · **Positive On Dark** (`{colors.positive-on-dark}` — #3ddc97, 11.14:1).
 - **Negative** (`{colors.negative}` — #b3121f, 6.95:1 on white) · **Negative On Dark** (`{colors.negative-on-dark}` — #ff6b78, 7.15:1).
 
 Each is split by band deliberately: a green readable on white is not readable on near-black, and the reverse. Always paired with a word or icon, never colour alone.
+
+Both are verified against **every surface they can appear on**, not just the canvas. A "hit" or "miss" label sits inside a table row, so it must still clear AA when that row is hovered to `{colors.surface-soft}` and when it sits inside a `{component.badge-pill}` on `{colors.surface-strong}`. Checking against white alone is not sufficient.
 
 ### Caution
 - **Caution** (`{colors.caution}` — #8a5a00) on **Caution Surface** (`{colors.caution-surface}` — #fdf6e3). Reserved for the preview banner and data-quality warnings. Never an action colour.
@@ -369,7 +371,7 @@ Touch targets: primary pill 44px, hero pill 56px, table row 56px (48px mobile), 
 
 ## Accessibility
 
-Contrast is a constraint on the tokens, not a later check. Every pairing below was measured:
+Contrast is a constraint on the tokens, not a later check. Every pairing below was measured, and text colours are checked against **every surface they can sit on** — not only the canvas, because row hover and badges change the background beneath them:
 
 | Pairing | Ratio | Meets |
 |---|---|---|
@@ -378,8 +380,12 @@ Contrast is a constraint on the tokens, not a later check. Every pairing below w
 | `{colors.action-on-dark}` on surface-dark | 8.56:1 | AA, AAA |
 | `{colors.body}` on canvas | 6.21:1 | AA, AAA |
 | `{colors.muted}` on canvas | 4.64:1 | AA |
-| `{colors.positive}` on canvas | 4.55:1 | AA |
+| `{colors.positive}` on canvas | 5.46:1 | AA |
+| `{colors.positive}` on surface-soft | 5.09:1 | AA |
+| `{colors.positive}` on surface-strong | 4.78:1 | AA |
 | `{colors.negative}` on canvas | 6.95:1 | AA, AAA |
+| `{colors.negative}` on surface-soft | 6.48:1 | AA, AAA |
+| `{colors.negative}` on surface-strong | 6.08:1 | AA, AAA |
 | `{colors.positive-on-dark}` on surface-dark | 11.14:1 | AA, AAA |
 | `{colors.negative-on-dark}` on surface-dark | 7.15:1 | AA, AAA |
 | `{colors.on-dark-soft}` on surface-dark | 8.64:1 | AA, AAA |
