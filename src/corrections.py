@@ -20,7 +20,29 @@ log = logging.getLogger("corrections")
 ROOT = Path(__file__).resolve().parents[1]
 CORRECTIONS_CSV = ROOT / "data" / "corrections" / "corrections.csv"
 
-REQUIRED = ["table", "primary_key", "column", "old_value", "new_value", "reason", "evidence_source"]
+REQUIRED = ["table", "primary_key", "column", "old_value", "new_value", "reason",
+            "evidence_type", "evidence_source"]
+
+# Corrections are keyed on *natural* keys, not surrogate ids: surrogate ids are
+# reassigned when Jolpica rows are merged in, so a correction keyed on one would
+# silently drift onto a different row.
+CORRECTION_KEYS = {
+    "results": ["raceId", "driverId"],
+    "sprint_results": ["raceId", "driverId"],
+    "qualifying": ["raceId", "driverId"],
+    "pit_stops": ["raceId", "driverId", "stop"],
+    "lap_times": ["raceId", "driverId", "lap"],
+    "drivers": ["driverId"],
+    "constructors": ["constructorId"],
+    "circuits": ["circuitId"],
+    "races": ["raceId"],
+    "driver_standings": ["raceId", "driverId"],
+    "constructor_standings": ["raceId", "constructorId"],
+    "constructor_results": ["raceId", "constructorId"],
+}
+# "official" = checked against formula1.com or an FIA classification document.
+# "internal" = proven by the data itself, with the argument recorded in `reason`.
+VALID_EVIDENCE = {"official", "internal"}
 
 
 def load_corrections(path: Path = CORRECTIONS_CSV) -> pd.DataFrame:
@@ -33,7 +55,18 @@ def load_corrections(path: Path = CORRECTIONS_CSV) -> pd.DataFrame:
     blank = df[df["evidence_source"].str.strip() == ""]
     if len(blank):
         raise ValueError(f"{len(blank)} correction(s) have no evidence_source; every correction must cite one")
+    bad = sorted(set(df["evidence_type"]) - VALID_EVIDENCE)
+    if bad:
+        raise ValueError(f"unknown evidence_type(s) {bad}; must be one of {sorted(VALID_EVIDENCE)}")
     return df
+
+
+def _same(a: str, b: str) -> bool:
+    """Equal as numbers if both are numeric, otherwise byte-identical."""
+    try:
+        return float(a) == float(b)
+    except (TypeError, ValueError):
+        return a == b
 
 
 def apply_corrections(tables: dict[str, pd.DataFrame], corrections: pd.DataFrame,
@@ -60,8 +93,12 @@ def apply_corrections(tables: dict[str, pd.DataFrame], corrections: pd.DataFrame
         col = c["column"]
         current = df.loc[mask, col].iloc[0]
         current_s = "" if pd.isna(current) else str(current)
-        expected = str(c["old_value"]).strip()
-        if expected not in ("", "*") and current_s != expected:
+        # Numbers compare numerically so that 1 matches a float column's 1.0.
+        # Everything else compares exactly, not stripped: a correction may
+        # legitimately target a whitespace bug (Kaggle stores "Argentinian "
+        # with a trailing space), which stripping would make unaddressable.
+        expected = str(c["old_value"])
+        if expected not in ("", "*") and not _same(current_s, expected):
             raise ValueError(
                 f"refusing correction for {table}.{col} key={c['primary_key']}: "
                 f"expected old_value={expected!r} but found {current_s!r}. "
@@ -76,5 +113,6 @@ def apply_corrections(tables: dict[str, pd.DataFrame], corrections: pd.DataFrame
                  current_s, new_raw, c["reason"])
         applied.append({"table": table, "primary_key": c["primary_key"], "column": col,
                         "old": current_s, "new": new_raw, "reason": c["reason"],
+                        "evidence_type": c["evidence_type"],
                         "evidence_source": c["evidence_source"]})
     return tables, applied

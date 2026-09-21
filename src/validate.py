@@ -1,4 +1,10 @@
-"""Part 3 validation: structure, completeness, standings recomputation, ground truth."""
+"""Validation of ./data/processed/ — structure, completeness, standings, ground truth.
+
+Every historical quirk established in Part 1 is encoded here as an *expectation*
+with its reason. A check passes when reality matches the documented expectation
+and fails when it does not, so a failure always means something genuinely
+unexplained rather than a known era difference.
+"""
 from __future__ import annotations
 
 import json
@@ -10,13 +16,33 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import pandas as pd  # noqa: E402
 
-from load import load_table  # noqa: E402
-
 ROOT = Path(__file__).resolve().parents[1]
-JOL = ROOT / "data" / "processed" / "jolpica"
+DATA = ROOT / "data" / "processed"
 GT = ROOT / "data" / "ground_truth" / "official_standings.json"
 
 RESULTS: list[tuple[str, str, bool, str]] = []
+
+# ---- documented expectations (all established in Part 1) --------------------
+SHARED_DRIVE_LAST_YEAR = 1964      # two drivers could share a car until 1964
+DROPPED_SCORES_LAST_YEAR = 1990    # "best N results count" ended after 1990
+BEST_CAR_ONLY_LAST_YEAR = 1979     # only the leading car scored for the team
+COVERAGE = {"results": 1950, "driver_standings": 1950, "constructor_standings": 1958,
+            "qualifying": 1994, "lap_times": 1996, "pit_stops": 2011}
+QUALI_PARTIAL_UNTIL = 2002         # Ergast qualifying coverage is patchy until 2003
+# Constructor championship penalties: season -> (constructorRef, expected delta)
+CONSTRUCTOR_PENALTIES = {2007: ("mclaren", "excluded, placed last"),
+                         2018: ("force_india", "59 pts forfeited on re-entry"),
+                         2020: ("racing_point", "15 pt deduction")}
+PITSTOPS_KNOWN_ABSENT = {1063}     # 2021 Belgian GP: 2 laps behind the safety car, no stops
+# 1978 Italian GP: Harald Ertl is entered twice under two constructorIds, both
+# DNQ. A genuine duplicate, reviewed and left as-is (see DATA_REPORT issue 4).
+DUPLICATE_DRIVER_OK = {540}
+# Races whose starter count is legitimately outside the normal band.
+STARTER_COUNT_OK = {
+    79: "2005 US GP: 14 cars withdrew after the formation lap (Michelin tyre boycott), 6 started",
+    800: "1954 Indianapolis 500: shared drives mean 55 driver-entries for 33 cars",
+    809: "1953 Indianapolis 500: shared drives mean 47 driver-entries for 33 cars",
+}
 
 
 def check(group: str, name: str, ok: bool, detail: str = "") -> bool:
@@ -24,40 +50,48 @@ def check(group: str, name: str, ok: bool, detail: str = "") -> bool:
     return ok
 
 
-def norm_name(s: str) -> str:
-    """Compare driver names without accents or case."""
+def norm(s: str) -> str:
     s = unicodedata.normalize("NFKD", str(s))
     return "".join(c for c in s if not unicodedata.combining(c)).lower().strip()
 
 
-def load_jol(t: str) -> pd.DataFrame:
-    return pd.read_csv(JOL / f"{t}.csv", keep_default_na=False, na_values=[r"\N", ""])
+def load(t: str) -> pd.DataFrame:
+    return pd.read_csv(DATA / f"{t}.csv", keep_default_na=False, na_values=[r"\N", ""],
+                       low_memory=False)
 
 
 def main() -> int:
     pd.set_option("display.width", 200)
-    races = load_jol("races")
-    results = load_jol("results")
-    sprint = load_jol("sprint_results")
-    quali = load_jol("qualifying")
-    ds = load_jol("driver_standings")
-    cs = load_jol("constructor_standings")
-    pits = load_jol("pit_stops")
-    laps = load_jol("lap_times")
-    drivers = load_jol("drivers").set_index("driverId")
-    cons = load_jol("constructors").set_index("constructorId")
+    print(f"validating: {DATA}\n")
+    races, results, sprint = load("races"), load("results"), load("sprint_results")
+    quali, ds, cs = load("qualifying"), load("driver_standings"), load("constructor_standings")
+    pits, laps = load("pit_stops"), load("lap_times")
+    drivers, cons = load("drivers").set_index("driverId"), load("constructors").set_index("constructorId")
+    ry = races.set_index("raceId")["year"]
+    rids = set(races["raceId"])
 
-    # ---------------------------------------------------------- structural
-    check("Structural", "races: no duplicate raceId", races["raceId"].is_unique)
-    check("Structural", "races: no duplicate (year, round)", not races.duplicated(["year", "round"]).any())
-    gaps = []
-    for y, g in races.groupby("year"):
-        r = sorted(g["round"])
-        if r != list(range(1, len(r) + 1)):
-            gaps.append((int(y), r))
-    check("Structural", "races: round numbers contiguous from 1", not gaps, str(gaps))
-    check("Structural", "results: (raceId, driverId) unique",
-          not results.duplicated(["raceId", "driverId"]).any())
+    # ------------------------------------------------------------ structural
+    check("Structural", "races: raceId unique", races["raceId"].is_unique)
+    # Surrogate ids restart at 1 on the Jolpica side and must be reassigned on
+    # merge; this catches a regression there.
+    for t, pk in [("results", "resultId"), ("sprint_results", "resultId"),
+                  ("qualifying", "qualifyId"), ("driver_standings", "driverStandingsId"),
+                  ("constructor_standings", "constructorStandingsId"),
+                  ("constructor_results", "constructorResultsId")]:
+        d = load(t)
+        n = int(d[pk].duplicated().sum())
+        check("Structural", f"{t}.{pk} unique after merge", not n, f"{n} duplicate ids")
+    check("Structural", "races: (year, round) unique", not races.duplicated(["year", "round"]).any())
+    gaps = [(int(y), sorted(g["round"])) for y, g in races.groupby("year")
+            if sorted(g["round"]) != list(range(1, len(g) + 1))]
+    check("Structural", "races: rounds contiguous from 1 in every season", not gaps, str(gaps))
+
+    dup = results[results.duplicated(["raceId", "driverId"], keep=False)]
+    dup = dup[~dup["raceId"].isin(DUPLICATE_DRIVER_OK)]
+    late = sorted({int(ry[r]) for r in dup["raceId"]} - set(range(1950, SHARED_DRIVE_LAST_YEAR + 1)))
+    check("Structural",
+          f"results: (raceId, driverId) duplicates confined to shared drives (<= {SHARED_DRIVE_LAST_YEAR})",
+          not late, f"unexpected duplicate years {late}")
     check("Structural", "qualifying: (raceId, driverId) unique",
           not quali.duplicated(["raceId", "driverId"]).any())
     check("Structural", "pit_stops: (raceId, driverId, stop) unique",
@@ -66,128 +100,152 @@ def main() -> int:
         check("Structural", "lap_times: (raceId, driverId, lap) unique",
               not laps.duplicated(["raceId", "driverId", "lap"]).any())
 
-    rids = set(races["raceId"])
     for t, df in [("results", results), ("sprint_results", sprint), ("qualifying", quali),
-                  ("driver_standings", ds), ("constructor_standings", cs), ("pit_stops", pits),
-                  ("lap_times", laps)]:
-        if not len(df):
-            continue
-        orphan = set(df["raceId"]) - rids
-        check("Structural", f"{t}.raceId resolves", not orphan, str(sorted(orphan)[:5]))
-    for t, df, col, idx in [("results", results, "driverId", drivers.index),
-                            ("results", results, "constructorId", cons.index)]:
-        orphan = set(df[col]) - set(idx)
-        check("Structural", f"{t}.{col} resolves", not orphan, str(sorted(orphan)[:5]))
+                  ("driver_standings", ds), ("constructor_standings", cs),
+                  ("pit_stops", pits), ("lap_times", laps)]:
+        if len(df):
+            check("Structural", f"{t}.raceId resolves", not (set(df["raceId"]) - rids))
+    check("Structural", "results.driverId resolves", not (set(results["driverId"]) - set(drivers.index)))
+    check("Structural", "results.constructorId resolves",
+          not (set(results["constructorId"]) - set(cons.index)))
+    check("Structural", "results.statusId resolves",
+          not (set(results["statusId"]) - set(load("status")["statusId"])))
 
-    # positionOrder must be a dense rank (no shared drives in the modern era)
-    bad = [int(r) for r, g in results.groupby("raceId")
+    modern = races.loc[races["year"] > SHARED_DRIVE_LAST_YEAR, "raceId"]
+    bad = [int(r) for r, g in results[results["raceId"].isin(set(modern))].groupby("raceId")
            if sorted(g["positionOrder"]) != list(range(1, len(g) + 1))]
-    check("Structural", "results.positionOrder dense 1..N per race", not bad, str(bad[:5]))
-    # Jolpica's qualifying position rank
+    check("Structural", f"results.positionOrder dense 1..N (post-{SHARED_DRIVE_LAST_YEAR})", not bad, str(bad[:5]))
     badq = [int(r) for r, g in quali.groupby("raceId")
             if sorted(g["position"]) != list(range(1, len(g) + 1))]
     check("Structural", "qualifying.position dense 1..N per race", not badq,
-          f"broken in raceIds {badq}")
+          f"raceIds {badq} — Jolpica ships duplicate/non-dense positions here")
 
-    # -------------------------------------------------------- completeness
-    for t, df, label in [(results, results, "results"), (quali, quali, "qualifying"),
-                         (ds, ds, "driver_standings"), (cs, cs, "constructor_standings")]:
-        missing = sorted(rids - set(df["raceId"]))
-        check("Completeness", f"every race has {label}", not missing, f"missing raceIds {missing[:8]}")
-    missing_p = sorted(rids - set(pits["raceId"]))
-    check("Completeness", "every race has pit_stops", not missing_p, f"missing {missing_p[:8]}")
-    if len(laps):
-        missing_l = sorted(rids - set(laps["raceId"]))
-        check("Completeness", "every race has lap_times", not missing_l, f"missing {missing_l[:8]}")
-    else:
-        check("Completeness", "every race has lap_times", False, "lap_times not fetched yet")
+    # ---------------------------------------------------------- completeness
+    for t, df in [("results", results), ("qualifying", quali), ("driver_standings", ds),
+                  ("constructor_standings", cs), ("pit_stops", pits), ("lap_times", laps)]:
+        if not len(df):
+            check("Completeness", f"{t}: present for every race in its coverage era", False, "table empty")
+            continue
+        era = {r for r in rids if ry[r] >= COVERAGE[t]}
+        if t == "qualifying":
+            era = {r for r in era if ry[r] > QUALI_PARTIAL_UNTIL}
+        if t == "pit_stops":
+            era -= PITSTOPS_KNOWN_ABSENT
+        missing = sorted(era - set(df["raceId"]))
+        suffix = {"qualifying": f" (2003+; {QUALI_PARTIAL_UNTIL} and earlier are partial in Ergast)",
+                  "pit_stops": " (2021 Belgian GP excluded: 2 laps behind the safety car)"}.get(t, "")
+        check("Completeness", f"{t}: present for every race in its coverage era{suffix}",
+              not missing, f"missing {len(missing)} raceIds, first: {missing[:6]}")
 
-    # ------------------------------------------------ standings recompute
-    per = pd.concat([
-        results.groupby(["raceId", "driverId"], as_index=False)["points"].sum(),
-        sprint.groupby(["raceId", "driverId"], as_index=False)["points"].sum(),
-    ]).groupby(["raceId", "driverId"], as_index=False)["points"].sum()
-    per = per.merge(races[["raceId", "year", "round"]], on="raceId")
+    # -------------------------------------------------- standings recompute
+    per = pd.concat([results.groupby(["raceId", "driverId"], as_index=False)["points"].sum(),
+                     sprint.groupby(["raceId", "driverId"], as_index=False)["points"].sum()]) \
+        .groupby(["raceId", "driverId"], as_index=False)["points"].sum() \
+        .merge(races[["raceId", "year", "round"]], on="raceId")
+    modern_bad, dropped_ok = [], []
     for year, g in per.groupby("year"):
-        calc = g.groupby("driverId")["points"].sum()
         last = races[races["year"] == year].sort_values("round").iloc[-1]["raceId"]
         off = ds[ds["raceId"] == last].set_index("driverId")["points"]
-        both = calc.reindex(off.index).fillna(0)
-        bad = (both - off).abs() > 1e-9
-        check("Recompute", f"{int(year)} driver standings == sum(results+sprint)", not bad.any(),
-              f"{int(bad.sum())} drivers differ")
+        calc = g.groupby("driverId")["points"].sum().reindex(off.index).fillna(0)
+        d = (calc - off).round(6)
+        if year > DROPPED_SCORES_LAST_YEAR:
+            if (d.abs() > 1e-9).any():
+                modern_bad.append(int(year))
+        elif (d < -1e-9).any():
+            # Dropped scores can only make the official total LOWER than the raw sum.
+            dropped_ok.append(int(year))
+    check("Recompute", f"driver standings reproduce exactly for {DROPPED_SCORES_LAST_YEAR + 1}+",
+          not modern_bad, f"years {modern_bad}")
+    check("Recompute",
+          f"pre-{DROPPED_SCORES_LAST_YEAR + 1} gaps only ever reduce the total (dropped scores)",
+          not dropped_ok, f"years where official EXCEEDS the raw sum: {dropped_ok}")
 
-    perc = pd.concat([
-        results.groupby(["raceId", "constructorId"], as_index=False)["points"].sum(),
-        sprint.groupby(["raceId", "constructorId"], as_index=False)["points"].sum(),
-    ]).groupby(["raceId", "constructorId"], as_index=False)["points"].sum()
-    perc = perc.merge(races[["raceId", "year", "round"]], on="raceId")
+    perc = pd.concat([results.groupby(["raceId", "constructorId"], as_index=False)["points"].sum(),
+                      sprint.groupby(["raceId", "constructorId"], as_index=False)["points"].sum()]) \
+        .groupby(["raceId", "constructorId"], as_index=False)["points"].sum() \
+        .merge(races[["raceId", "year"]], on="raceId")
+    ref = cons["constructorRef"]
+    unexplained = []
     for year, g in perc.groupby("year"):
-        calc = g.groupby("constructorId")["points"].sum()
+        if year <= BEST_CAR_ONLY_LAST_YEAR:
+            continue
         last = races[races["year"] == year].sort_values("round").iloc[-1]["raceId"]
         off = cs[cs["raceId"] == last].set_index("constructorId")["points"]
-        both = calc.reindex(off.index).fillna(0)
-        bad = (both - off).abs() > 1e-9
-        check("Recompute", f"{int(year)} constructor standings == sum(results+sprint)", not bad.any(),
-              f"{int(bad.sum())} teams differ")
+        calc = g.groupby("constructorId")["points"].sum().reindex(off.index).fillna(0)
+        d = (calc - off).round(6)
+        for cid in d[d.abs() > 1e-9].index:
+            penalty = CONSTRUCTOR_PENALTIES.get(int(year))
+            if penalty and ref.get(cid) == penalty[0]:
+                continue     # documented championship penalty
+            unexplained.append((int(year), ref.get(cid), float(d[cid])))
+    check("Recompute",
+          f"constructor standings reproduce for {BEST_CAR_ONLY_LAST_YEAR + 1}+ apart from documented penalties",
+          not unexplained, str(unexplained[:6]))
+    for y, (cref, why) in CONSTRUCTOR_PENALTIES.items():
+        if y == 2007:
+            cid = ref[ref == cref].index[0]
+            last = races[races["year"] == y].sort_values("round").iloc[-1]["raceId"]
+            row = cs[(cs["raceId"] == last) & (cs["constructorId"] == cid)]
+            ok = len(row) == 1 and float(row.iloc[0]["championship_points"]) == 0.0
+            check("Recompute", f"{y} {cref}: championship_points is 0 ({why})", ok)
 
-    # ---------------------------------------------------------- ground truth
+    # ----------------------------------------------------------- ground truth
     gt = json.loads(GT.read_text())
     for year in ("2024", "2025", "2026"):
-        if year not in gt:
-            continue
         last = races[races["year"] == int(year)].sort_values("round").iloc[-1]["raceId"]
-        got = ds[ds["raceId"] == last].copy()
-        got["name"] = got["driverId"].map(lambda i: f"{drivers.loc[i, 'forename']} {drivers.loc[i, 'surname']}")
-        # Match on surname: sources style given names differently
-        # ("Andrea Kimi Antonelli" vs "Kimi Antonelli", "Perez" vs "Pérez").
-        mine = {}
+        got = ds[ds["raceId"] == last]
+        mine: dict[str, float] = {}
         for _, r in got.iterrows():
-            mine[norm_name(r["name"])] = float(r["points"])
-            mine[norm_name(drivers.loc[r["driverId"], "surname"])] = float(r["points"])
-        diffs = []
-        for n, p in gt[year]["drivers"]:
-            got_pts = mine.get(norm_name(n))
-            if got_pts is None:
-                got_pts = mine.get(norm_name(n.split()[-1]))
-            if got_pts != float(p):
-                diffs.append((n, p, got_pts))
-        check("Ground truth", f"{year} drivers match formula1.com", not diffs, str(diffs[:6]))
-
-        gotc = cs[cs["raceId"] == last].copy()
-        gotc["name"] = gotc["constructorId"].map(lambda i: cons.loc[i, "name"])
-        minec = {norm_name(r["name"]): float(r["points"]) for _, r in gotc.iterrows()}
-        # team names differ in styling between sources; compare the multiset of points
+            d = drivers.loc[r["driverId"]]
+            mine[norm(f"{d['forename']} {d['surname']}")] = float(r["points"])
+            mine[norm(d["surname"])] = float(r["points"])
+        diffs = [(n, p, mine.get(norm(n), mine.get(norm(n.split()[-1]))))
+                 for n, p in gt[year]["drivers"]
+                 if mine.get(norm(n), mine.get(norm(n.split()[-1]))) != float(p)]
+        check("Ground truth", f"{year} driver points match formula1.com", not diffs, str(diffs[:5]))
+        gotc = cs[cs["raceId"] == last]
         want = sorted(float(p) for _, p in gt[year]["constructors"])
-        have = sorted(minec.values())
-        check("Ground truth", f"{year} constructor point totals match formula1.com", want == have,
-              f"official={want} ours={have}" if want != have else "")
+        have = sorted(float(r["points"]) for _, r in gotc.iterrows())
+        check("Ground truth", f"{year} constructor points match formula1.com", want == have,
+              f"official={want} ours={have}")
 
-    # --------------------------------------------------------------- sanity
-    ent = results.groupby("raceId").size()
-    check("Sanity", "every race has 18-24 entrants", bool(((ent >= 18) & (ent <= 24)).all()),
-          str(ent[(ent < 18) | (ent > 24)].to_dict()))
-    per_season = races.groupby("year").size()
-    check("Sanity", "season race counts plausible",
-          bool(((per_season >= 10) & (per_season <= 30)).all()), str(per_season.to_dict()))
+    # ----------------------------------------------------------------- sanity
+    # Count starters, not entries: in the pre-qualifying era (to 1992) a race
+    # could take 39 entries for 26 places, and the rest are DNQ/DNPQ ('F') or
+    # withdrawn ('W') rather than participants.
+    started = results[~results["positionText"].isin(["F", "W"])]
+    ent = started.groupby("raceId").size().drop(labels=list(STARTER_COUNT_OK), errors="ignore")
+    yr = pd.Series({r: int(ry[r]) for r in ent.index})
+    mod = ent[yr >= 1990]
+    check("Sanity", "1990+ starters per race within 14..28 (documented outliers excluded)", bool(mod.between(14, 28).all()),
+          str(mod[~mod.between(14, 28)].to_dict()))
+    check("Sanity", "historical starters per race within 5..40 (documented outliers excluded)", bool(ent.between(5, 40).all()),
+          str(ent[~ent.between(5, 40)].to_dict()))
+    allent = results.groupby("raceId").size()
+    check("Sanity", "total entries per race within 5..60 (includes DNQ)",
+          bool(allent.between(5, 60).all()), str(allent[~allent.between(5, 60)].to_dict()))
+    rc = races.groupby("year").size()
+    check("Sanity", "season race counts within 6..25", bool(rc.between(6, 25).all()), str(rc[~rc.between(6, 25)].to_dict()))
+    check("Sanity", "2026 partial season has 14 rounds so far", int(rc.get(2026, 0)) == 14, str(rc.get(2026)))
     check("Sanity", "no negative points", bool((results["points"] >= 0).all()))
-    grid_ok = results["grid"].between(0, 26).all()
-    check("Sanity", "grid within 0..26", bool(grid_ok))
+    check("Sanity", "grid within 0..40", bool(results["grid"].between(0, 40).all()),
+          str(results.loc[~results["grid"].between(0, 40), "grid"].unique()[:8]))
+    check("Sanity", "every row carries a source", bool(results["source"].isin(["kaggle", "jolpica"]).all()))
+    check("Sanity", "pit_lane_start is null only for jolpica rows",
+          bool(results.loc[results["pit_lane_start"].isna(), "source"].eq("jolpica").all()))
 
-    # ------------------------------------------------------------- report
+    # -------------------------------------------------------------- report
     print("=" * 96)
-    print("VALIDATION — Jolpica-derived tables (2024-2026)")
+    print("VALIDATION — merged dataset 1950 to latest race")
     print("=" * 96)
-    cur = None
-    npass = nfail = 0
+    cur, npass, nfail = None, 0, 0
     for group, name, ok, detail in RESULTS:
         if group != cur:
             print(f"\n{group}")
             cur = group
-        mark = "PASS" if ok else "FAIL"
         npass += ok
         nfail += not ok
-        print(f"  [{mark}] {name}" + (f"  — {detail}" if detail and not ok else ""))
+        print(f"  [{'PASS' if ok else 'FAIL'}] {name}" + (f"\n         -> {detail}" if detail and not ok else ""))
     print("\n" + "=" * 96)
     print(f"{npass} passed, {nfail} failed")
     return 0

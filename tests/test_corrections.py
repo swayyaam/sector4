@@ -26,7 +26,8 @@ def _tables():
 def _corr(**over):
     base = {"table": "results", "primary_key": "2", "column": "milliseconds",
             "old_value": "4797566.0", "new_value": "4797040",
-            "reason": "test", "evidence_source": "FIA classification doc"}
+            "reason": "test", "evidence_type": "official",
+            "evidence_source": "FIA classification doc"}
     base.update(over)
     return pd.DataFrame([base])
 
@@ -72,6 +73,36 @@ class TestApplyCorrections:
         t, _ = apply_corrections(_tables(), _corr(new_value=r"\N"), PK)
         assert pd.isna(t["results"].loc[1, "milliseconds"])
 
+    def test_integer_old_value_matches_a_float_column(self):
+        """A float column renders 1 as '1.0'; the guard must not trip on that."""
+        tables = {"results": pd.DataFrame({"resultId": [1], "fastestLap": [1.0]})}
+        c = _corr(table="results", primary_key="1", column="fastestLap",
+                  old_value="1", new_value="35")
+        t, _ = apply_corrections(tables, c, {"results": ["resultId"]})
+        assert float(t["results"].loc[0, "fastestLap"]) == 35.0
+
+    def test_numeric_mismatch_is_still_refused(self):
+        tables = {"results": pd.DataFrame({"resultId": [1], "fastestLap": [2.0]})}
+        c = _corr(table="results", primary_key="1", column="fastestLap",
+                  old_value="1", new_value="35")
+        with pytest.raises(ValueError, match="stale or targets the wrong row"):
+            apply_corrections(tables, c, {"results": ["resultId"]})
+
+    def test_can_target_a_whitespace_bug(self):
+        """old_value is compared exactly, so a trailing space is addressable."""
+        tables = {"drivers": pd.DataFrame({"driverId": [861], "nationality": ["Argentinian "]})}
+        c = _corr(table="drivers", primary_key="861", column="nationality",
+                  old_value="Argentinian ", new_value="Argentine")
+        t, _ = apply_corrections(tables, c, {"drivers": ["driverId"]})
+        assert t["drivers"].loc[0, "nationality"] == "Argentine"
+
+    def test_whitespace_mismatch_is_still_refused(self):
+        tables = {"drivers": pd.DataFrame({"driverId": [861], "nationality": ["Argentinian "]})}
+        c = _corr(table="drivers", primary_key="861", column="nationality",
+                  old_value="Argentinian", new_value="Argentine")   # no trailing space
+        with pytest.raises(ValueError, match="stale or targets the wrong row"):
+            apply_corrections(tables, c, {"drivers": ["driverId"]})
+
     def test_empty_corrections_is_a_no_op(self):
         before = _tables()["results"].copy()
         t, log = apply_corrections(_tables(), pd.DataFrame(columns=list(_corr().columns)), PK)
@@ -85,8 +116,8 @@ class TestLoadCorrections:
 
     def test_rejects_a_correction_with_no_evidence(self, tmp_path):
         p = tmp_path / "c.csv"
-        p.write_text("table,primary_key,column,old_value,new_value,reason,evidence_source\n"
-                     "results,1,points,10,25,because,\n")
+        p.write_text("table,primary_key,column,old_value,new_value,reason,evidence_type,evidence_source\n"
+                     "results,1,points,10,25,because,official,\n")
         with pytest.raises(ValueError, match="evidence_source"):
             load_corrections(p)
 
@@ -97,7 +128,15 @@ class TestLoadCorrections:
             load_corrections(p)
 
     def test_the_real_corrections_file_is_valid(self):
-        load_corrections()   # raises if malformed
+        df = load_corrections()   # raises if malformed
+        assert len(df) > 0, "expected the reviewed corrections to be present"
+
+    def test_rejects_an_unknown_evidence_type(self, tmp_path):
+        p = tmp_path / "c.csv"
+        p.write_text("table,primary_key,column,old_value,new_value,reason,evidence_type,evidence_source\n"
+                     "results,1,points,10,25,because,vibes,somewhere\n")
+        with pytest.raises(ValueError, match="unknown evidence_type"):
+            load_corrections(p)
 
 
 class TestEras:
