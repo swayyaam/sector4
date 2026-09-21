@@ -474,3 +474,76 @@ Post-race columns that must never be inputs for the same race: `results.points`,
 | **Jolpica bulk CSV dumps** | The same data as the API, in bulk | No new content. | Useful as an integrity check on the API path, but the free tier lags 14 days so it cannot cover the latest race. |
 
 Worth noting for 2026 specifically: the regulation reset means pre-2026 car performance is a weak prior. Practice and tyre data from FastF1 would matter *more* than usual for 2026 races, because within-season signal has to carry weight that historical form normally would.
+
+---
+
+# Known era boundaries — artefacts a model must not read as signal
+
+Every item here is a change in **how the data was recorded**, not in what happened on track. A model that treats any of them as a feature will learn the provenance of its training set. All were verified against the data, not assumed.
+
+## Hard cliffs at the Kaggle → Jolpica boundary
+
+| # | Artefact | Boundary | Evidence | Consequence |
+|---|---|---|---|---|
+| 1 | **Retirement cause disappears** | 2025 | Distinct `statusId` per season: 29 (2022), 24 (2023), **19 (2024) → 5 (2025) → 4 (2026)** | Jolpica collapses every retirement to `Retired`, every lapped finisher to `Lapped`. "Engine", "Collision", "Gearbox", "+1 Lap" etc. simply stop existing. Any retirement-cause feature must be restricted to ≤2024, and a model must not conclude that cars stopped failing in specific ways. |
+| 2 | **`fastestLapSpeed` disappears** | 2025 | Non-null: 426/440 (2023), **447/479 (2024) → 0/479 (2025) → 0/308 (2026)** | Jolpica publishes no `AverageSpeed`. The column is null for every 2025+ row. Never invented. |
+| 3 | **`circuits.alt` missing for new circuits** | 2026 | Exactly one null: `madring` (circuitId 81) | Jolpica's `Location` has no altitude field. Only affects Madrid. |
+| 4 | **`positionText = "N"` ends** | 2024 | Jolpica docs: *"N is no longer a possible value, R is used instead"* | The Not-classified/Retired distinction exists only through 2024. From 2025 both appear as `R`. For consistency the three 2024 sprint rows that needed it were also encoded `R` rather than `N`. |
+| 5 | **`time`/`milliseconds` coverage** | — | Kaggle populates them only for lead-lap classified finishers (7,678 of 7,680 non-null); Jolpica populates them for lapped and retired drivers too | Deliberately **neutralised**: the raw columns are held to Kaggle's rule on both sides, and every known elapsed time is carried in the derived `elapsed_ms` instead. So this boundary does *not* exist in the merged output — but `elapsed_ms` coverage itself is richer from 2024 on. |
+| 6 | **`pit_lane_start` provenance** | 2025 | Kaggle encodes it as `grid = 0`; Jolpica reports the grid slot and cannot express it | Filled for 2025+ from 39 official starting-grid pages (30 True, 778 False, 0 null). The *fact* is uniform; the *source* is not. Note the raw `grid` column consequently reads 0 for a Kaggle-era pit-lane start and the real slot for a 2025+ one — use `grid_slot` and `pit_lane_start` for anything comparative. |
+
+## Genuine rule changes (real, but era-bound)
+
+| # | Change | Years | Evidence from the data |
+|---|---|---|---|
+| 7 | **Fastest-lap bonus point** | 2019–2024 only | Point values 26/19/16/13/11/9 appear in 2019–2024 and vanish in 2025–26, which show a clean 25/18/15/12/10/8/6/4/2/1 |
+| 8 | **Sprint races** | 2021– | 6 per season in 2024–26; sprint points changed format in 2022 |
+| 9 | **Half points** | 1975, 1984, 1991, 2009, 2021 | Fractional values (0.5, 7.5, 12.5 in 2021) |
+| 10 | **Dropped scores ("best N")** | 1950–1990 | 50 driver-seasons where the raw sum exceeds the official total, never the reverse. 1988 = best 11 of 16, 1950 = best 4 of 7, 1979 = split-season |
+| 11 | **Constructors: best car only** | 1950–1979 | 477 team-races where `constructor_results` ≠ sum of that team's `results` points; **zero** from 1980 |
+| 12 | **Shared drives** | 1950–1964 | 228 rows share a `(raceId, positionOrder)`; `(raceId, driverId)` is not unique |
+| 13 | **2026 regulation reset** | 2026 | New power units, active aero, Audi and Cadillac enter. Carried as `regs_era = 2026_reset` |
+
+## Coverage start dates (absence ≠ zero)
+
+| Table | First season | Caveat |
+|---|---|---|
+| `results`, `driver_standings` | 1950 | — |
+| `constructor_standings` | 1958 | The Constructors' Championship began in 1958 |
+| `qualifying` | 1994 | **Patchy until 2002** — 83 races in 1994–2002 have no qualifying rows at all. Complete from 2003 |
+| `lap_times` | 1996 | — |
+| `pit_stops` | 2011 | 2021 Belgian GP legitimately has none (2 laps behind the safety car) |
+| `sprint_results` | 2021 | — |
+
+## Identity traps
+
+| # | Trap | Detail |
+|---|---|---|
+| 14 | **One `constructorId`, unrelated teams** | 21 constructorIds cover entities separated by long gaps. The dangerous ones for modern work: **`aston_martin` (1959–60 vs 2021–26, 61-year gap)** and **`mercedes` (1954–55 vs 2010–26, 55 years)** — both officially unrelated to their modern namesakes. Also `alfa` (four separate stints), `renault` (1977–85 works team vs the 2002–11 ex-Benetton Enstone team — different entities), `honda` (1964–68 vs the 2006–08 ex-BAR team). Listed in `constructor_identity_breaks.csv`. **No IDs were merged.** |
+| 15 | **One team, several `constructorId`s** | The reverse: continuous teams split across IDs as they rebrand. Recorded in `team_lineage.csv` (33 successions: 16 takeovers, 12 rebrands, 5 new entries), each verified and sourced. Sauber → Audi is a rebrand of the *same legal entity*; Racing Point → Aston Martin is a rebrand of a team descending from Jordan. |
+| 16 | **`drivers.number` is not per-season** | It means *most recent permanent number*. Jolpica's `permanentNumber` is applied retroactively — Norris reads `1` even on 2024 rows, when he actually ran `4`. Use `results.number` for the season-accurate car number, or the `driver_seasons` table. |
+| 17 | **Pit stop numbering convention** | Ergast counts a red-flag pit-lane hold as a stop; formula1.com does not. Raw `stop` keeps the Ergast convention (consistent with all 11,371 historical rows); `official_stop_number` gives the official count with holds excluded, and `counts_as_official_stop` marks which is which. Verified: Stroll's lap-48 stop at Monaco 2024 is official stop **2**, matching the official page. Any stop-count feature should use the official version. |
+| 18 | **`championship_points` means final credit** | For 2007 McLaren it is **0 for all 17 rounds**, reflecting their exclusion from the championship. It is not a running total — rounds 1–10 read 0 even though McLaren held points at the time. This also removes, by construction, the temporary rounds 11–13 deduction artefact that Ergast records and then reverts. Raw `points` is untouched. |
+
+## Decisions taken on the 2024 overlap
+
+Kaggle is the base for 1950–2024; **130 reviewed corrections** (83 `official`, 47 `internal`) move individual cells to Jolpica where the evidence says Jolpica is right. Raw CSVs are never edited.
+
+| Conflict | Resolution | Evidence |
+|---|---|---|
+| 2024 Belgian GP race times | **Jolpica** | Official: Hamilton 1:19:57.566, Piastri +0.647, Leclerc +8.023 |
+| Russell's DSQ encoding, same race | **Kaggle** (`D`, null position) | Jolpica classified him P20 despite its own status saying Disqualified |
+| Monaco pit `stop`/`lap` transposed | **Jolpica** | Official confirms lap 48, duration 28.211; Kaggle had `stop > lap`, impossible |
+| Saudi 4-decimal times | **Jolpica** | Kaggle's `milliseconds` was 5.8 s adrift |
+| `fastestLap` = lap 1 (Bahrain, Saudi) | **Jolpica** | Official: Norris lap 35, Piastri lap 39 |
+| Monaco `rank` all zero | **Jolpica** | Official ranks match Jolpica exactly (Sainz 5, Leclerc 6, Norris 10, Piastri 11) |
+| Saudi fastest lap, Sargeant ↔ Tsunoda | **Jolpica** | Official: Sargeant lap 49 / 1:33.026 / rank 15; Tsunoda lap 44 / 1:33.523 / rank 18 |
+| Singapore Q1, Tsunoda | **Jolpica** | Official 1:30.716; Kaggle 1:30.710 |
+| São Paulo Q2 times | **Kaggle** | Jolpica had put the **Q3** times in the Q2 column |
+| Qualifying positions (4 races) | **Kaggle**, plus one official fix | Jolpica ships duplicate/non-dense positions. 2025 Imola corrected to Bearman P19 |
+| São Paulo grid, Hülkenberg | **Jolpica (18)** | Official starting grid |
+| Sprint retirement encoding | **`R`** | Official lists all three as NC/DNF; Kaggle had given them numeric positions while its own status said Retired |
+| `statusId`, `fastestLapSpeed`, missing quali times | **Kaggle** | Jolpica is strictly less granular |
+| `time`/`milliseconds` for lapped and retired drivers | **Neither** — moved to `elapsed_ms` | Would otherwise change what the raw columns mean |
+
+**Unresolved conflicts: 0.**
