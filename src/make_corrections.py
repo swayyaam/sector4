@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import pandas as pd  # noqa: E402
 
-from load import load_table  # noqa: E402
+from load import RAW_KAGGLE, load_table  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 JOL = ROOT / "data" / "processed" / "jolpica"
@@ -213,6 +213,43 @@ def main() -> int:
             "Official starting grid for the 2024 Sao Paulo GP lists Hulkenberg P18; Kaggle has 17. "
             "The only pit-lane start that weekend was Sainz.",
             "official", f"{F1}/1249/brazil/starting-grid")
+
+    # 13) Disqualified drivers recorded with laps = 0 although they completed
+    # most of the race. formula1.com shows no lap count for a DSQ, but the
+    # lap_times table settles it directly. Filled ONLY where that driver's lap
+    # sequence is complete (1..N with no gaps); otherwise left alone and flagged.
+    lt_parts = []
+    for src_path in (RAW_KAGGLE / "lap_times.csv", JOL / "lap_times.csv"):
+        if src_path.exists():
+            lt_parts.append(pd.read_csv(src_path, keep_default_na=False, na_values=[r"\N", ""]))
+    if lt_parts:
+        lt = pd.concat(lt_parts, ignore_index=True)
+        # 2024 appears in both sources; dedupe so a row is corrected once.
+        allres = pd.concat([k, j], ignore_index=True).drop_duplicates(["raceId", "driverId"])
+        dsq = allres[(allres["positionText"] == "D") & (allres["laps"] == 0)]
+        winner_laps = k[k["positionText"] == "1"].set_index("raceId")["laps"].to_dict()
+        winner_laps.update(j[j["positionText"] == "1"].set_index("raceId")["laps"].to_dict())
+        for _, r in dsq.iterrows():
+            rid, did = int(r["raceId"]), int(r["driverId"])
+            laps = sorted(lt.loc[(lt["raceId"] == rid) & (lt["driverId"] == did), "lap"].astype(int))
+            if not laps:
+                print(f"    DSQ laps=0 at raceId={rid} driverId={did}: no lap_times rows - left as-is")
+                continue
+            complete = laps == list(range(1, len(laps) + 1))
+            if not complete:
+                print(f"    DSQ laps=0 at raceId={rid} driverId={did}: lap sequence has gaps "
+                      f"({len(laps)} rows, max {max(laps)}) - left as-is and flagged")
+                continue
+            wl = winner_laps.get(rid)
+            if wl is not None and len(laps) > int(wl):
+                print(f"    DSQ laps=0 at raceId={rid} driverId={did}: lap_times has {len(laps)} "
+                      f"laps but the winner did {int(wl)} - implausible, left as-is")
+                continue
+            add("results", f"{rid}|{did}", "laps", "0", str(len(laps)),
+                f"Disqualified driver recorded with laps=0. The lap_times table has a complete "
+                f"sequence of {len(laps)} laps (1..{len(laps)}, no gaps) for this driver, so the "
+                f"real figure is {len(laps)}. formula1.com shows no lap count for a DSQ.",
+                "internal", "derived: lap_times count, contiguous sequence verified")
 
     df = pd.DataFrame(rows, columns=["table", "primary_key", "column", "old_value", "new_value",
                                      "reason", "evidence_type", "evidence_source"])
