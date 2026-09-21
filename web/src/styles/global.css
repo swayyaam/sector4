@@ -1,0 +1,195 @@
+@import "./tokens.css";
+
+/*
+ * Fonts are declared with explicit metric overrides so the fallback occupies
+ * the same space as the webfont. Without them, swapping from the system font
+ * reflows the page and shows up as layout shift.
+ */
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/inter-var.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 107%;
+  ascent-override: 90%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 102%;
+  ascent-override: 92%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--colour-canvas);
+  color: var(--colour-body);
+  font-family:
+    Inter,
+    -apple-system,
+    system-ui,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--colour-ink);
+  font-weight: 400;
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2.5rem, 7vw, 5rem);
+  line-height: 1;
+  letter-spacing: -0.025em;
+}
+h2 {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  line-height: 1.11;
+  letter-spacing: -0.014em;
+}
+h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.33;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--colour-action);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/*
+ * A link sitting inside a run of text must be distinguishable from that text by
+ * something other than colour: the action purple is only 1.28:1 against muted
+ * body copy, so colour alone fails WCAG 1.4.1. Standalone links — nav items,
+ * buttons, the links that are the whole line — are unambiguous by position and
+ * keep the clean look.
+ */
+p a,
+li a,
+dd a,
+figcaption a,
+td a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--colour-action);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* Every number is mono with aligned figures, per DESIGN.md. */
+.num {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+.prose {
+  max-width: 720px;
+}
+
+.band {
+  padding: var(--space-xxl) 0;
+}
+@media (min-width: 1024px) {
+  .band {
+    padding: var(--space-section) 0;
+  }
+}
+
+.band-dark {
+  background: var(--colour-surface-dark);
+  color: var(--colour-on-dark-soft);
+}
+.band-dark h1,
+.band-dark h2,
+.band-dark h3 {
+  color: var(--colour-on-dark);
+}
+.band-dark a {
+  color: var(--colour-action-on-dark);
+}
+
+.band-soft {
+  background: var(--colour-surface-soft);
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--colour-muted);
+  margin: 0 0 var(--space-sm);
+}
+.band-dark .eyebrow {
+  color: var(--colour-on-dark-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

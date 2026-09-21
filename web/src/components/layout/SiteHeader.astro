@@ -1,0 +1,70 @@
+---
+const { path } = Astro.props as { path: string };
+const links = [
+  { href: "/track-record/", label: "Track record" },
+  { href: "/methodology/", label: "Methodology" },
+];
+---
+
+<header>
+  <div class="wrap bar">
+    <a href="/" class="brand" aria-label="Sector 4 home">
+      <span class="mark" aria-hidden="true"></span>Sector 4
+    </a>
+    <nav aria-label="Main">
+      {
+        links.map((l) => (
+          <a href={l.href} class:list={["link", { on: path.startsWith(l.href) }]}>
+            {l.label}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</header>
+
+<style>
+  header {
+    border-bottom: 1px solid var(--colour-hairline);
+  }
+  .bar {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-lg);
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    color: var(--colour-ink);
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .brand:hover {
+    text-decoration: none;
+  }
+  .mark {
+    width: 10px;
+    height: 20px;
+    border-radius: var(--radius-xs);
+    background: var(--colour-action);
+  }
+  nav {
+    display: flex;
+    gap: var(--space-lg);
+  }
+  .link {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--colour-body);
+  }
+  .link:hover {
+    color: var(--colour-ink);
+    text-decoration: none;
+  }
+  .link.on {
+    color: var(--colour-action);
+  }
+</style>

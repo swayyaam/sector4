@@ -1,0 +1,84 @@
+---
+/**
+ * Circuit outline, inlined as SVG so it inherits token colours and costs no
+ * extra request. Geometry from the MIT-licensed f1-circuits dataset; credited
+ * here and on /credits/.
+ */
+import type { Circuit } from "../../lib/schema";
+interface Props {
+  circuit: Circuit;
+}
+const { circuit } = Astro.props;
+---
+
+<figure class="card">
+  {
+    circuit.track_path ? (
+      <svg
+        viewBox={circuit.track_view_box ?? "0 0 1000 1000"}
+        class="map"
+        role="img"
+        aria-label={`Outline of ${circuit.name}`}
+      >
+        <path d={circuit.track_path} />
+      </svg>
+    ) : (
+      <div class="none" role="img" aria-label="No circuit outline available">
+        <span>No outline</span>
+      </div>
+    )
+  }
+  <figcaption>
+    <h3>{circuit.name}</h3>
+    <p class="loc">{circuit.locality}, {circuit.country}</p>
+    <p class="credit">
+      Outline: <a href="https://github.com/bacinger/f1-circuits">f1-circuits</a> by Tomislav
+      Bacinger, MIT
+    </p>
+  </figcaption>
+</figure>
+
+<style>
+  .card {
+    margin: 0;
+    border: 1px solid var(--colour-hairline);
+    border-radius: var(--radius-xl);
+    padding: var(--space-xl);
+  }
+  .map {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    max-height: 260px;
+  }
+  .map path {
+    fill: none;
+    stroke: var(--colour-ink);
+    stroke-width: 14;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+  .none {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    max-height: 260px;
+    background: var(--colour-surface-strong);
+    border-radius: var(--radius-lg);
+    color: var(--colour-muted);
+    font-size: 13px;
+  }
+  figcaption {
+    margin-top: var(--space-base);
+  }
+  .loc {
+    font-size: 14px;
+    color: var(--colour-body);
+  }
+  .credit {
+    font-size: 13px;
+    color: var(--colour-muted);
+    margin-top: var(--space-xs);
+  }
+</style>

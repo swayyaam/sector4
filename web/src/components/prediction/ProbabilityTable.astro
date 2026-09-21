@@ -1,0 +1,159 @@
+---
+/**
+ * Full-field probability table.
+ *
+ * No zebra striping — it fights the team markers. Numbers are mono and
+ * right-aligned; names carry a team marker plus the team's short name so the
+ * colour is never doing the work alone.
+ */
+import ProbabilityBar from "./ProbabilityBar.astro";
+import TeamMarker from "./TeamMarker.astro";
+import { driverName, percent, position } from "../../lib/format";
+import type { Driver, DriverPrediction, Team } from "../../lib/schema";
+
+interface Props {
+  rows: DriverPrediction[];
+  drivers: Map<number, Driver>;
+  teams: Map<string, Team>;
+  caption: string;
+}
+const { rows, drivers, teams, caption } = Astro.props;
+const maxWin = Math.max(...rows.map((r) => r.p_win));
+---
+
+<table>
+  <caption class="sr-only">{caption}</caption>
+  <thead>
+    <tr>
+      <th scope="col" class="pos">#</th>
+      <th scope="col">Driver</th>
+      <th scope="col" class="n">Win</th>
+      <th scope="col" class="bar">Relative</th>
+      <th scope="col" class="n">Podium</th>
+      <th scope="col" class="n">Top 10</th>
+      <th scope="col" class="n">DNF</th>
+      <th scope="col" class="n">Exp. pos</th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      rows.map((r, i) => {
+        const d = drivers.get(r.driverId);
+        const t = teams.get(r.team_entity_id);
+        return (
+          <tr>
+            <td class="pos num">{i + 1}</td>
+            <th scope="row">
+              <span class="who">
+                {t && <TeamMarker colour={t.colour} name={t.name} />}
+                <span>
+                  <span class="name">{d ? driverName(d) : `Driver ${r.driverId}`}</span>
+                  <span class="team">{t?.short_name ?? "Unknown team"}</span>
+                </span>
+              </span>
+            </th>
+            <td class="n num" data-label="Win">{percent(r.p_win)}</td>
+            <td class="bar"><ProbabilityBar value={r.p_win} columnMax={maxWin} /></td>
+            <td class="n num" data-label="Podium">{percent(r.p_podium)}</td>
+            <td class="n num" data-label="Top 10">{percent(r.p_top10)}</td>
+            <td class="n num dim" data-label="DNF">{percent(r.p_dnf)}</td>
+            <td class="n num dim" data-label="Exp. pos">{position(r.expected_position)}</td>
+          </tr>
+        );
+      })
+    }
+  </tbody>
+</table>
+
+<style>
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th,
+  td {
+    padding: var(--space-base) var(--space-xs);
+    text-align: left;
+    font-weight: 400;
+  }
+  thead th {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--colour-muted);
+    border-bottom: 1px solid var(--colour-hairline);
+    padding-bottom: var(--space-xs);
+  }
+  tbody tr {
+    border-bottom: 1px solid var(--colour-hairline);
+  }
+  tbody tr:hover {
+    background: var(--colour-surface-soft);
+  }
+  .n {
+    text-align: right;
+  }
+  .pos {
+    width: 2.5rem;
+    color: var(--colour-muted);
+  }
+  .bar {
+    width: 22%;
+  }
+  .who {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+  .name {
+    display: block;
+    color: var(--colour-ink);
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .team {
+    display: block;
+    font-size: 13px;
+    color: var(--colour-muted);
+  }
+  .dim {
+    color: var(--colour-muted);
+  }
+
+  /* Below 640px the table becomes two-line blocks rather than scrolling. */
+  @media (max-width: 639px) {
+    thead,
+    .bar,
+    .pos {
+      display: none;
+    }
+    tbody tr {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-xxs) var(--space-sm);
+      padding: var(--space-sm) 0;
+    }
+    tbody th {
+      grid-column: 1 / -1;
+      padding: 0 0 var(--space-xs);
+    }
+    tbody td {
+      padding: 0;
+      text-align: left;
+      font-size: 13px;
+    }
+    /* Decorative: the <th> in thead still associates each cell with its column
+       for assistive technology, so this label exists only for sighted readers
+       who can no longer see the header row. */
+    tbody td::before {
+      content: attr(data-label) " ";
+      color: var(--colour-muted);
+    }
+    tbody td .num,
+    tbody td {
+      white-space: nowrap;
+    }
+  }
+</style>

@@ -1,0 +1,23 @@
+---
+/**
+ * Team identity mark. Colour is data, never chrome: a 4px bar, always beside a
+ * text label so colour is not the only channel.
+ */
+interface Props {
+  colour: string;
+  name: string;
+}
+const { colour, name } = Astro.props;
+---
+
+<span class="marker" style={`background:${colour}`} aria-hidden="true" data-team={name}></span>
+
+<style>
+  .marker {
+    display: inline-block;
+    width: 4px;
+    height: 24px;
+    border-radius: var(--radius-xs);
+    flex: none;
+  }
+</style>

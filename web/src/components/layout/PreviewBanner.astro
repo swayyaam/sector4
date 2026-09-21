@@ -1,0 +1,28 @@
+---
+/**
+ * Sample-data warning.
+ *
+ * Rendered by the layout from a single dataset flag, so it cannot be omitted
+ * from one page by forgetting to add it. Not dismissible, and it reserves its
+ * own height in normal flow so it causes no layout shift.
+ */
+---
+
+<div class="preview" role="status">
+  <div class="wrap">
+    <strong>Preview:</strong> sample data, not real predictions. Every probability on this site is
+    generated for layout purposes.
+  </div>
+</div>
+
+<style>
+  .preview {
+    background: var(--colour-caution-surface);
+    color: var(--colour-caution);
+    border-bottom: 1px solid var(--colour-hairline);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+    padding: 10px 0;
+  }
+</style>
