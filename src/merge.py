@@ -122,10 +122,62 @@ def main() -> int:
         known = slot.reindex(idx).to_numpy()
         fill = res["grid_slot"].isna() & pd.notna(known)
         res.loc[fill, "grid_slot"] = pd.Series(known, index=res.index)[fill]
+    # Official starting-grid pages settle the pit-lane fact for 2025+, where
+    # Jolpica reports only the slot. Scraped by src/scrape_grids.py.
+    plp = OUT / "pit_lane_starts.csv"
+    if plp.exists():
+        g = pd.read_csv(plp)
+        rmap = races.set_index(["year", "round"])["raceId"]
+        g["raceId"] = pd.MultiIndex.from_frame(g[["year", "round"]]).map(rmap)
+        code2id = (merged["drivers"].dropna(subset=["code"])
+                   .drop_duplicates("code", keep="last").set_index("code")["driverId"])
+        g["driverId"] = g["code"].map(code2id)
+        unmapped = g[g["driverId"].isna()]
+        if len(unmapped):
+            log.warning("  %d scraped grid rows could not be mapped to a driver: %s",
+                        len(unmapped), sorted(unmapped["code"].unique()))
+        g = g.dropna(subset=["raceId", "driverId"])
+        lookup = g.set_index([g["raceId"].astype(int), g["driverId"].astype(int)])["pit_lane_start"]
+        lookup = lookup[~lookup.index.duplicated()]
+        idx3 = pd.MultiIndex.from_frame(res[["raceId", "driverId"]])
+        vals = pd.Series(lookup.reindex(idx3).to_numpy(), index=res.index)
+        filled = vals.notna() & res["pit_lane_start"].isna()
+        res.loc[filled, "pit_lane_start"] = vals[filled].astype(bool)
+        log.info("  pit_lane_start: filled %d rows from official starting grids "
+                 "(%d marked as pit-lane starts)", int(filled.sum()),
+                 int((vals[filled] == True).sum()))  # noqa: E712
+
     n_null = int(res["pit_lane_start"].isna().sum())
     log.info("  pit_lane_start: %d True, %d False, %d NULL (undeterminable, 2025+)",
              int((res["pit_lane_start"] == True).sum()),  # noqa: E712
              int((res["pit_lane_start"] == False).sum()), n_null)  # noqa: E712
+
+    # ---- elapsed_ms, and keeping time/milliseconds on Kaggle's convention.
+    # Kaggle populates time/milliseconds only for lead-lap classified finishers
+    # (verified: 7,678 of 7,680 non-null times are lead-lap). Jolpica populates
+    # them for lapped and retired drivers too. Rather than let the columns change
+    # meaning at the source boundary, the raw columns are held to Kaggle's rule
+    # everywhere and every known elapsed time is carried in elapsed_ms.
+    wl = res[res["positionText"] == "1"].groupby("raceId")["laps"].max()
+    res["_wlaps"] = res["raceId"].map(wl)
+    lead_lap = (res["laps"] == res["_wlaps"]) & res["positionText"].astype(str).str.fullmatch(r"\d+")
+
+    res["elapsed_ms"] = pd.to_numeric(res["milliseconds"], errors="coerce")
+    jres_all = read_jol("results")
+    if len(jres_all):
+        em = jres_all.set_index(["raceId", "driverId"])["milliseconds"]
+        em = em[~em.index.duplicated()]
+        idx2 = pd.MultiIndex.from_frame(res[["raceId", "driverId"]])
+        res["elapsed_ms"] = res["elapsed_ms"].fillna(pd.Series(em.reindex(idx2).to_numpy(), index=res.index))
+
+    off_convention = (res["source"] == "jolpica") & ~lead_lap & res["milliseconds"].notna()
+    res.loc[off_convention, ["time", "milliseconds"]] = None
+    res.drop(columns=["_wlaps"], inplace=True)
+    log.info("  elapsed_ms: %d populated (%d more than raw milliseconds); "
+             "cleared time/milliseconds on %d non-lead-lap jolpica rows",
+             int(res["elapsed_ms"].notna().sum()),
+             int(res["elapsed_ms"].notna().sum() - res["milliseconds"].notna().sum()),
+             int(off_convention.sum()))
 
     # red-flag flags
     lt = merged["lap_times"]
@@ -134,6 +186,19 @@ def main() -> int:
         lt["red_flag_affected"] = lt["milliseconds"] >= RED_FLAG_LAP_RATIO * med
     ps = merged["pit_stops"]
     ps["red_flag_affected"] = ps["milliseconds"] >= RED_FLAG_STOP_MS
+    # Ergast counts a red-flag pit-lane hold as a stop; formula1.com does not.
+    # The raw `stop` index keeps the Ergast convention (consistent with all
+    # 11,371 historical rows); these two columns give the official reading.
+    ps["counts_as_official_stop"] = ~ps["red_flag_affected"]
+    ps.sort_values(["raceId", "driverId", "stop"], kind="stable", inplace=True)
+    real = ps[ps["counts_as_official_stop"]]
+    ps["official_stop_number"] = pd.Series(pd.NA, index=ps.index, dtype="Int64")
+    ps.loc[real.index, "official_stop_number"] = (
+        real.groupby(["raceId", "driverId"]).cumcount() + 1
+    ).astype("Int64")
+    merged["pit_stops"] = ps
+    log.info("  official_stop_number: %d real stops, %d red-flag holds excluded",
+             int(ps["counts_as_official_stop"].sum()), int((~ps["counts_as_official_stop"]).sum()))
 
     # lap_data_suspect: null where there is no lap data to judge against
     cnt = lt.groupby(["raceId", "driverId"]).size() if len(lt) else pd.Series(dtype=int)
@@ -173,37 +238,41 @@ def main() -> int:
     log.info("  driver_seasons           %7d rows (driverId, year, constructorId, number, races)", len(dsz))
 
     # --------------------------------------------------- unresolved conflicts
-    ksp = kag["sprint_results"]
-    jsp = read_jol("sprint_results")
-    if len(jsp):
-        ms = ksp.merge(jsp, on=["raceId", "driverId"], suffixes=("_k", "_j"))
-        d = ms[ms["positionText_k"].astype(str) != ms["positionText_j"].astype(str)]
-        for _, x in d.iterrows():
-            unresolved.append({
-                "table": "sprint_results", "raceId": int(x["raceId"]), "driverId": int(x["driverId"]),
-                "column": "positionText", "kaggle": x["positionText_k"], "jolpica": x["positionText_j"],
-                "official": "NC (not classified)",
-                "note": "formula1.com lists all three as NC/DNF. Kaggle's own taxonomy uses 'N' for "
-                        "Not classified; Jolpica dropped 'N' in favour of 'R'. Awaiting your choice.",
-            })
-    unresolved.append({
-        "table": "results", "raceId": 1141, "driverId": 807, "column": "grid",
-        "kaggle": 17, "jolpica": 18, "official": "unavailable",
-        "note": "Hulkenberg at Sao Paulo. Needs the FIA starting-grid sheet; fia.com is currently "
-                "serving a placeholder page so the document portal cannot be reached.",
-    })
-    pd.DataFrame(unresolved).to_csv(OUT / "unresolved_conflicts.csv", index=False)
+    # Recomputed *after* corrections, so anything a correction settled drops out
+    # and only genuinely open disagreements remain.
+    for tbl, key, cols in [("sprint_results", ["raceId", "driverId"], ["positionText", "position"]),
+                           ("results", ["raceId", "driverId"], ["grid"])]:
+        j = read_jol(tbl)
+        if not len(j):
+            continue
+        m2 = merged[tbl].merge(j, on=key, suffixes=("_m", "_j"))
+        m2 = m2[m2["raceId"].isin(set(races.loc[races["year"] == 2024, "raceId"]))]
+        for col in cols:
+            a, b = m2[f"{col}_m"], m2[f"{col}_j"]
+            neq = ~((a.astype(str) == b.astype(str)) | (a.isna() & b.isna()))
+            for _, x in m2[neq].iterrows():
+                # grid legitimately differs by convention: Kaggle codes a
+                # pit-lane start as 0, Jolpica reports the slot. Not a conflict.
+                plso = x.get("pit_lane_start_m", x.get("pit_lane_start"))
+                if col == "grid" and int(x[f"{col}_m"]) == 0 and bool(plso):
+                    continue
+                unresolved.append({"table": tbl, "raceId": int(x["raceId"]),
+                                   "driverId": int(x["driverId"]), "column": col,
+                                   "kaggle": x[f"{col}_m"], "jolpica": x[f"{col}_j"],
+                                   "official": "not checked",
+                                   "note": "open disagreement after corrections"})
+    pd.DataFrame(unresolved, columns=["table", "raceId", "driverId", "column", "kaggle",
+                                      "jolpica", "official", "note"]).to_csv(
+        OUT / "unresolved_conflicts.csv", index=False)
     log.info("  unresolved_conflicts     %7d rows", len(unresolved))
 
-    # flag them on the affected rows
     sp = merged["sprint_results"]
     sp["conflict_unresolved"] = False
-    for u in unresolved:
-        if u["table"] == "sprint_results":
-            sp.loc[(sp["raceId"] == u["raceId"]) & (sp["driverId"] == u["driverId"]),
-                   "conflict_unresolved"] = True
     res["conflict_unresolved"] = False
-    res.loc[(res["raceId"] == 1141) & (res["driverId"] == 807), "conflict_unresolved"] = True
+    for u in unresolved:
+        t = merged[u["table"]]
+        t.loc[(t["raceId"] == u["raceId"]) & (t["driverId"] == u["driverId"]),
+              "conflict_unresolved"] = True
 
     # surrogate keys must be unique after the merge
     for t, (pk, _) in SURROGATE.items():

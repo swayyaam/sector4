@@ -113,11 +113,17 @@ def main() -> int:
                     "Sargeant lap 49 / 1:33.026 / rank 15, Tsunoda lap 44 / 1:33.523 / rank 18.",
                     "official", SRC["saudi_fl"])
 
-    # 6) Jolpica supplies gap times Kaggle leaves null (adds data, contradicts nothing).
+    # 6) Jolpica supplies fastest-lap data Kaggle leaves null.
+    # NOTE: time/milliseconds are deliberately NOT backfilled here. Every one of
+    # those 281 cells is a lapped or classified-retired driver, and Kaggle
+    # populates those columns only for lead-lap finishers (verified: 7,678 of
+    # 7,680 non-null times are lead-lap). Filling them would change what the
+    # column means and invent an era boundary at 2024. Jolpica's elapsed times
+    # are carried in the derived elapsed_ms column instead.
     for _, r in m.iterrows():
         if r["raceId"] == 1134:
             continue   # already handled above
-        for col in ("time", "milliseconds", "fastestLap", "fastestLapTime"):
+        for col in ("fastestLap", "fastestLapTime"):
             a, b = fmtv(r[f"{col}_k"]), fmtv(r[f"{col}_j"])
             if a == "" and b != "":
                 add("results", f"{int(r['raceId'])}|{int(r['driverId'])}", col, "", b,
@@ -167,6 +173,34 @@ def main() -> int:
         "Jolpica gives Bearman and Lawson both P16 and leaves P19 empty. Official qualifying "
         "classification: Lawson 16, Hulkenberg 17, Ocon 18, Bearman 19, Tsunoda 20 (no time).",
         "official", "https://www.formula1.com/en/results/2025/races/1260/emilia-romagna/qualifying")
+
+    # 11) Sprint retirements: Kaggle assigns a numeric position while its own
+    # status says Retired -- contradicting how it encodes retirements in the
+    # main results table. Official lists all three as NC/DNF.
+    ksp = load_table("sprint_results")
+    for rid, did in [(1126, 840), (1126, 846), (1141, 807)]:
+        row = ksp[(ksp["raceId"] == rid) & (ksp["driverId"] == did)]
+        if len(row) != 1:
+            continue
+        r = row.iloc[0]
+        src = (f"{F1}/1234/miami/sprint-results" if rid == 1126
+               else f"{F1}/1249/brazil/sprint-results")
+        add("sprint_results", f"{rid}|{did}", "positionText", fmtv(r["positionText"]), "R",
+            "Kaggle gives a numeric position although its own status is Retired, and assigns "
+            "one to a driver who completed 0 laps. Official classification: NC / DNF. Encoded "
+            "as 'R' for consistency with 2025+, where Jolpica no longer emits 'N'.",
+            "official", src)
+        add("sprint_results", f"{rid}|{did}", "position", fmtv(r["position"]), "",
+            "Position is null whenever the driver is not in the official classification.",
+            "official", src)
+
+    # 12) Sao Paulo 2024 grid: the official starting grid puts Hulkenberg P18.
+    kg = k[(k["raceId"] == 1141) & (k["driverId"] == 807)]
+    if len(kg) == 1 and int(kg.iloc[0]["grid"]) != 18:
+        add("results", "1141|807", "grid", str(int(kg.iloc[0]["grid"])), "18",
+            "Official starting grid for the 2024 Sao Paulo GP lists Hulkenberg P18; Kaggle has 17. "
+            "The only pit-lane start that weekend was Sainz.",
+            "official", f"{F1}/1249/brazil/starting-grid")
 
     df = pd.DataFrame(rows, columns=["table", "primary_key", "column", "old_value", "new_value",
                                      "reason", "evidence_type", "evidence_source"])
