@@ -378,17 +378,19 @@ Contrast is a constraint on the tokens, not a later check. Every pairing below w
 | `{colors.action}` on canvas | 7.10:1 | AA, AAA |
 | on-action on `{colors.action}` | 7.10:1 | AA, AAA |
 | `{colors.action-on-dark}` on surface-dark | 8.56:1 | AA, AAA |
-| `{colors.body}` on canvas | 6.21:1 | AA, AAA |
+| `{colors.body}` on canvas | 6.21:1 | AA |
 | `{colors.muted}` on canvas | 4.64:1 | AA |
 | `{colors.positive}` on canvas | 5.46:1 | AA |
 | `{colors.positive}` on surface-soft | 5.09:1 | AA |
 | `{colors.positive}` on surface-strong | 4.78:1 | AA |
-| `{colors.negative}` on canvas | 6.95:1 | AA, AAA |
-| `{colors.negative}` on surface-soft | 6.48:1 | AA, AAA |
-| `{colors.negative}` on surface-strong | 6.08:1 | AA, AAA |
+| `{colors.negative}` on canvas | 6.95:1 | AA |
+| `{colors.negative}` on surface-soft | 6.48:1 | AA |
+| `{colors.negative}` on surface-strong | 6.08:1 | AA |
 | `{colors.positive-on-dark}` on surface-dark | 11.14:1 | AA, AAA |
 | `{colors.negative-on-dark}` on surface-dark | 7.15:1 | AA, AAA |
 | `{colors.on-dark-soft}` on surface-dark | 8.64:1 | AA, AAA |
+
+AAA in this table means AAA for normal-size text (7:1). Several pairings sit between 4.5 and 7 and are therefore AA: they clear AAA only at large sizes, and the table does not claim that.
 
 Also required: one `h1` per page with correct heading order; every interactive element keyboard-operable; `:focus-visible` rings never suppressed; charts carry a text alternative; team colour never the sole carrier of meaning; `prefers-reduced-motion` respected.
 

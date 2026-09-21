@@ -1,0 +1,87 @@
+/*
+ * Design tokens. The single source of truth for colour in the site.
+ *
+ * Values come from DESIGN.md and must stay in step with it: tests/contrast.test.ts
+ * parses BOTH this file and DESIGN.md's contrast table, so a token changed here
+ * without updating the document (or vice versa) fails the build, as does any
+ * change that drops a documented pairing below its WCAG level.
+ *
+ * Never inline a hex value anywhere else in the codebase.
+ */
+:root {
+  /* action — the only interactive colour */
+  --colour-action: #6d28d9;
+  --colour-action-active: #5b21b6;
+  --colour-action-disabled: #c4b5fd;
+  --colour-action-on-dark: #b39dfb;
+
+  /* text */
+  --colour-ink: #0a0b0d;
+  --colour-body: #5b616e;
+  --colour-body-strong: #0a0b0d;
+  --colour-muted: #6f757e;
+  --colour-muted-soft: #a8acb3;
+
+  /* hairlines */
+  --colour-hairline: #dee1e6;
+  --colour-hairline-soft: #eef0f3;
+
+  /* surfaces */
+  --colour-canvas: #ffffff;
+  --colour-surface-soft: #f7f7f7;
+  --colour-surface-card: #ffffff;
+  --colour-surface-strong: #eef0f3;
+  --colour-surface-dark: #0a0b0d;
+  --colour-surface-dark-elevated: #16181c;
+
+  /* on-colour text */
+  --colour-on-action: #ffffff;
+  --colour-on-dark: #ffffff;
+  --colour-on-dark-soft: #a8acb3;
+
+  /* outcome semantics — text colour only, never a fill */
+  --colour-positive: #00794f;
+  --colour-positive-on-dark: #3ddc97;
+  --colour-negative: #b3121f;
+  --colour-negative-on-dark: #ff6b78;
+
+  /* caution — preview banner and data-quality warnings only */
+  --colour-caution: #8a5a00;
+  --colour-caution-surface: #fdf6e3;
+
+  /* radii */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 100px;
+  --radius-full: 9999px;
+
+  /* spacing */
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-base: 16px;
+  --space-md: 20px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+  --space-section: 96px;
+
+  /* motion */
+  --motion-instant: 0ms;
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 260ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+  }
+}
