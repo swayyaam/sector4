@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import time
 import warnings
@@ -43,10 +44,71 @@ OUT = ROOT / "data" / "enriched"
 MANIFEST = OUT / "_fetch_manifest.json"
 
 FIRST_SEASON = 2018
-RATE_SLEEP = 300        # seconds to wait when the hourly cap is hit
-RATE_MAX_WAITS = 24     # give up after two hours of waiting on one session
+RATE_SLEEP = 300        # fallback wait if the cap is somehow still hit
+RATE_MAX_WAITS = 24
+RATE_LOG = CACHE / "_rate_log.json"
+RATE_MAX_PER_HOUR = 460   # FastF1 caps at 500/h; leave headroom
+REQ_PER_SESSION = 10      # conservative estimate used to reserve budget
 
 log = logging.getLogger("ff1")
+
+
+class RateBudget:
+    """Pace requests so FastF1's hourly cap is never actually hit.
+
+    This matters more than it looks. FastF1's limiter appends a timestamp
+    *before* deciding whether to raise, so a call that fails still consumes a
+    slot. Retrying therefore pushes recovery further away instead of closer --
+    six retries bought thirty minutes of zero progress. The fix is to never
+    trigger it: track real requests ourselves, persist them across restarts so
+    a restart cannot silently reset the count, and wait before asking rather
+    than after being refused.
+    """
+
+    def __init__(self, path: Path = RATE_LOG, per_hour: int = RATE_MAX_PER_HOUR):
+        self.path = path
+        self.per_hour = per_hour
+        self.stamps: list[float] = []
+        if path.exists():
+            try:
+                self.stamps = [float(x) for x in json.loads(path.read_text())]
+            except Exception:
+                self.stamps = []
+
+    def _prune(self) -> None:
+        cutoff = time.time() - 3600
+        self.stamps = [t for t in self.stamps if t > cutoff]
+
+    def record(self, n: int) -> None:
+        now = time.time()
+        self.stamps.extend([now] * max(n, 0))
+        self._prune()
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(json.dumps([round(t, 3) for t in self.stamps]))
+
+    def wait_for(self, need: int) -> float:
+        """Block until `need` slots are free in the trailing hour."""
+        total = 0.0
+        while True:
+            self._prune()
+            free = self.per_hour - len(self.stamps)
+            if free >= need:
+                return total
+            # sleep until enough of the oldest entries fall out of the window
+            k = need - free
+            oldest = sorted(self.stamps)[:k]
+            wait = max(1.0, oldest[-1] + 3600 - time.time() + 1)
+            log.info("    pacing: %d/%d used this hour, need %d slots - waiting %.0fs",
+                     len(self.stamps), self.per_hour, need, wait)
+            time.sleep(wait)
+            total += wait
+
+
+def count_cache_files() -> int:
+    n = 0
+    for _, _, fs in os.walk(CACHE):
+        n += len(fs)
+    return n
 
 
 def td_ms(s: pd.Series) -> pd.Series:
@@ -259,6 +321,9 @@ def main() -> int:
     CACHE.mkdir(parents=True, exist_ok=True)
     Cache.enable_cache(str(CACHE))
 
+    budget = RateBudget()
+    log.info("rate budget: %d requests used in the trailing hour (cap %d)",
+             len(budget.stamps), budget.per_hour)
     mapper = IdMapper()
     races = mapper.races
     races = races[races["year"] >= FIRST_SEASON]
@@ -304,7 +369,12 @@ def main() -> int:
                     got.append(sn)
                     continue
                 try:
+                    # Reserve budget BEFORE calling; a cached session spends
+                    # nothing, which the post-hoc count corrects for.
+                    budget.wait_for(REQ_PER_SESSION)
+                    before_files = count_cache_files()
                     sess = load_session(fastf1, int(year), ev["EventName"], sn)
+                    budget.record(max(count_cache_files() - before_files, 0))
                     out = extract(sess, int(rr.raceId), int(year), sn, mapper)
                     append(frames, out)
                     done[key] = {"raceId": int(rr.raceId), "laps": len(out["laps"]),
