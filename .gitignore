@@ -1,0 +1,15 @@
+# Data (rebuildable: Kaggle download + fetch_jolpica.py)
+data/raw/
+data/processed/
+# ...except the small, auditable ID maps
+!data/processed/id_maps/
+!data/processed/id_maps/*.csv
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# OS
+.DS_Store
