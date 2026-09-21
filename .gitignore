@@ -13,3 +13,6 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# local snapshot used to prove data/processed did not change
+data/processed_v0.1_snapshot/
