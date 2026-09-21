@@ -8,8 +8,7 @@
     "noUnusedParameters": true,
     "exactOptionalPropertyTypes": true,
     "verbatimModuleSyntax": true,
-    "baseUrl": ".",
-    "paths": { "~/*": ["src/*"] }
+    "paths": { "~/*": ["./src/*"] }
   },
   "include": [".astro/types.d.ts", "src/**/*", "tests/**/*", "*.config.*"],
   "exclude": ["dist", "node_modules"]
