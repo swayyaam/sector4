@@ -20,7 +20,8 @@ const OUT = join(HERE, "..", "src", "data", "mock");
 // ---------------------------------------------------------------- seeded rng
 function mulberry32(a) {
   return function () {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -74,15 +75,39 @@ export function buildPrediction({ race, drivers, snapshot, seed, generatedAt, re
 
   const pWinRaw = M.map((r) => r[0]);
   const pWin = normaliseTo(pWinRaw, 1);
-  const pPodium = normaliseTo(M.map((r) => r.slice(0, 3).reduce((a, b) => a + b, 0)), 3);
-  const pTop10 = normaliseTo(M.map((r) => r.slice(0, Math.min(10, n)).reduce((a, b) => a + b, 0)), Math.min(10, n));
+  const pPodium = normaliseTo(
+    M.map((r) => r.slice(0, 3).reduce((a, b) => a + b, 0)),
+    3,
+  );
+  const pTop10 = normaliseTo(
+    M.map((r) => r.slice(0, Math.min(10, n)).reduce((a, b) => a + b, 0)),
+    Math.min(10, n),
+  );
 
-  const FACTORS = [
-    ["Qualifying position", "positive"], ["Gap to pole", "negative"],
-    ["Long-run practice pace", "positive"], ["Team form, last 5 races", "positive"],
-    ["Circuit history", "positive"], ["Grid penalty", "negative"],
-    ["Teammate qualifying gap", "negative"], ["Overtaking difficulty here", "negative"],
+  // Factors have to be coherent with the snapshot they belong to: a prediction
+  // made before the cars run cannot cite a qualifying position. Sample data
+  // that says otherwise teaches the wrong thing about the product.
+  const PRE_WEEKEND_FACTORS = [
+    ["Team form, last 5 races", "positive"],
+    ["Circuit history", "positive"],
+    ["Car pace, season to date", "positive"],
+    ["Reliability, season to date", "negative"],
+    ["Overtaking difficulty here", "negative"],
+    ["Driver form, last 5 races", "positive"],
+    ["Expected grid penalty", "negative"],
+    ["Teammate pace gap", "negative"],
   ];
+  const POST_QUALIFYING_FACTORS = [
+    ["Qualifying position", "positive"],
+    ["Gap to pole", "negative"],
+    ["Long-run practice pace", "positive"],
+    ["Grid penalty", "negative"],
+    ["Teammate qualifying gap", "negative"],
+    ["Overtaking difficulty here", "negative"],
+    ["Team form, last 5 races", "positive"],
+    ["Circuit history", "positive"],
+  ];
+  const FACTORS = snapshot === "post_qualifying" ? POST_QUALIFYING_FACTORS : PRE_WEEKEND_FACTORS;
 
   return {
     race_id: race.race_id,

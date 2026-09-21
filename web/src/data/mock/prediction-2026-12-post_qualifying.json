@@ -93,17 +93,17 @@
       ],
       "top_factors": [
         {
-          "label": "Team form, last 5 races",
-          "direction": "positive",
+          "label": "Grid penalty",
+          "direction": "negative",
           "magnitude": 0.603248
         },
         {
-          "label": "Circuit history",
-          "direction": "positive",
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
           "magnitude": 0.266749
         },
         {
-          "label": "Grid penalty",
+          "label": "Overtaking difficulty here",
           "direction": "negative",
           "magnitude": 0.792819
         }
@@ -143,13 +143,13 @@
       ],
       "top_factors": [
         {
-          "label": "Teammate qualifying gap",
-          "direction": "negative",
+          "label": "Team form, last 5 races",
+          "direction": "positive",
           "magnitude": 0.486251
         },
         {
-          "label": "Overtaking difficulty here",
-          "direction": "negative",
+          "label": "Circuit history",
+          "direction": "positive",
           "magnitude": 0.472522
         },
         {
@@ -203,8 +203,8 @@
           "magnitude": 0.29755
         },
         {
-          "label": "Team form, last 5 races",
-          "direction": "positive",
+          "label": "Grid penalty",
+          "direction": "negative",
           "magnitude": 0.432174
         }
       ]
@@ -243,18 +243,18 @@
       ],
       "top_factors": [
         {
-          "label": "Circuit history",
-          "direction": "positive",
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
           "magnitude": 0.582992
         },
         {
-          "label": "Grid penalty",
+          "label": "Overtaking difficulty here",
           "direction": "negative",
           "magnitude": 0.66689
         },
         {
-          "label": "Teammate qualifying gap",
-          "direction": "negative",
+          "label": "Team form, last 5 races",
+          "direction": "positive",
           "magnitude": 0.820823
         }
       ]
@@ -293,8 +293,8 @@
       ],
       "top_factors": [
         {
-          "label": "Overtaking difficulty here",
-          "direction": "negative",
+          "label": "Circuit history",
+          "direction": "positive",
           "magnitude": 0.661127
         },
         {
@@ -348,13 +348,13 @@
           "magnitude": 0.519653
         },
         {
-          "label": "Team form, last 5 races",
-          "direction": "positive",
+          "label": "Grid penalty",
+          "direction": "negative",
           "magnitude": 0.831928
         },
         {
-          "label": "Circuit history",
-          "direction": "positive",
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
           "magnitude": 0.911626
         }
       ]
@@ -393,18 +393,18 @@
       ],
       "top_factors": [
         {
-          "label": "Grid penalty",
+          "label": "Overtaking difficulty here",
           "direction": "negative",
           "magnitude": 0.770726
         },
         {
-          "label": "Teammate qualifying gap",
-          "direction": "negative",
+          "label": "Team form, last 5 races",
+          "direction": "positive",
           "magnitude": 0.29831
         },
         {
-          "label": "Overtaking difficulty here",
-          "direction": "negative",
+          "label": "Circuit history",
+          "direction": "positive",
           "magnitude": 0.772106
         }
       ]
@@ -493,17 +493,17 @@
       ],
       "top_factors": [
         {
-          "label": "Team form, last 5 races",
-          "direction": "positive",
+          "label": "Grid penalty",
+          "direction": "negative",
           "magnitude": 0.547148
         },
         {
-          "label": "Circuit history",
-          "direction": "positive",
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
           "magnitude": 0.293283
         },
         {
-          "label": "Grid penalty",
+          "label": "Overtaking difficulty here",
           "direction": "negative",
           "magnitude": 0.936521
         }
@@ -543,13 +543,13 @@
       ],
       "top_factors": [
         {
-          "label": "Teammate qualifying gap",
-          "direction": "negative",
+          "label": "Team form, last 5 races",
+          "direction": "positive",
           "magnitude": 0.705135
         },
         {
-          "label": "Overtaking difficulty here",
-          "direction": "negative",
+          "label": "Circuit history",
+          "direction": "positive",
           "magnitude": 0.317702
         },
         {
@@ -603,8 +603,8 @@
           "magnitude": 0.296702
         },
         {
-          "label": "Team form, last 5 races",
-          "direction": "positive",
+          "label": "Grid penalty",
+          "direction": "negative",
           "magnitude": 0.63721
         }
       ]
@@ -643,18 +643,18 @@
       ],
       "top_factors": [
         {
-          "label": "Circuit history",
-          "direction": "positive",
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
           "magnitude": 0.712777
         },
         {
-          "label": "Grid penalty",
+          "label": "Overtaking difficulty here",
           "direction": "negative",
           "magnitude": 0.423293
         },
         {
-          "label": "Teammate qualifying gap",
-          "direction": "negative",
+          "label": "Team form, last 5 races",
+          "direction": "positive",
           "magnitude": 0.760151
         }
       ]
@@ -693,8 +693,8 @@
       ],
       "top_factors": [
         {
-          "label": "Overtaking difficulty here",
-          "direction": "negative",
+          "label": "Circuit history",
+          "direction": "positive",
           "magnitude": 0.729679
         },
         {
@@ -748,13 +748,13 @@
           "magnitude": 0.618234
         },
         {
-          "label": "Team form, last 5 races",
-          "direction": "positive",
+          "label": "Grid penalty",
+          "direction": "negative",
           "magnitude": 0.373291
         },
         {
-          "label": "Circuit history",
-          "direction": "positive",
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
           "magnitude": 0.773336
         }
       ]
@@ -793,18 +793,18 @@
       ],
       "top_factors": [
         {
-          "label": "Grid penalty",
+          "label": "Overtaking difficulty here",
           "direction": "negative",
           "magnitude": 0.344265
         },
         {
-          "label": "Teammate qualifying gap",
-          "direction": "negative",
+          "label": "Team form, last 5 races",
+          "direction": "positive",
           "magnitude": 0.844446
         },
         {
-          "label": "Overtaking difficulty here",
-          "direction": "negative",
+          "label": "Circuit history",
+          "direction": "positive",
           "magnitude": 0.734583
         }
       ]
@@ -893,17 +893,17 @@
       ],
       "top_factors": [
         {
-          "label": "Team form, last 5 races",
-          "direction": "positive",
+          "label": "Grid penalty",
+          "direction": "negative",
           "magnitude": 0.846385
         },
         {
-          "label": "Circuit history",
-          "direction": "positive",
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
           "magnitude": 0.427444
         },
         {
-          "label": "Grid penalty",
+          "label": "Overtaking difficulty here",
           "direction": "negative",
           "magnitude": 0.937996
         }
@@ -943,13 +943,13 @@
       ],
       "top_factors": [
         {
-          "label": "Teammate qualifying gap",
-          "direction": "negative",
+          "label": "Team form, last 5 races",
+          "direction": "positive",
           "magnitude": 0.556112
         },
         {
-          "label": "Overtaking difficulty here",
-          "direction": "negative",
+          "label": "Circuit history",
+          "direction": "positive",
           "magnitude": 0.573465
         },
         {
@@ -1003,8 +1003,8 @@
           "magnitude": 0.868505
         },
         {
-          "label": "Team form, last 5 races",
-          "direction": "positive",
+          "label": "Grid penalty",
+          "direction": "negative",
           "magnitude": 0.70084
         }
       ]
@@ -1043,18 +1043,18 @@
       ],
       "top_factors": [
         {
-          "label": "Circuit history",
-          "direction": "positive",
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
           "magnitude": 0.634213
         },
         {
-          "label": "Grid penalty",
+          "label": "Overtaking difficulty here",
           "direction": "negative",
           "magnitude": 0.337551
         },
         {
-          "label": "Teammate qualifying gap",
-          "direction": "negative",
+          "label": "Team form, last 5 races",
+          "direction": "positive",
           "magnitude": 0.767119
         }
       ]
@@ -1093,8 +1093,8 @@
       ],
       "top_factors": [
         {
-          "label": "Overtaking difficulty here",
-          "direction": "negative",
+          "label": "Circuit history",
+          "direction": "positive",
           "magnitude": 0.791337
         },
         {
