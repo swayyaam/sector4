@@ -1,0 +1,74 @@
+---
+/**
+ * Countdown to the race.
+ *
+ * The server renders a correct, complete value from a fixed UTC instant. The
+ * island only refines it to the minute and to the viewer's local zone, so the
+ * page is right before any JS runs and right after — this is progressive
+ * enhancement, not a loading state.
+ */
+import { countdown, formatCountdown, formatUtc } from "../../lib/time";
+interface Props {
+  startsAt: string;
+  now?: Date;
+}
+const { startsAt, now = new Date() } = Astro.props;
+const initial = formatCountdown(countdown(now, new Date(startsAt)));
+---
+
+<p class="cd" data-starts={startsAt}>
+  <span class="num" data-cd>
+    {initial}
+  </span>
+  <span class="at">
+    <time datetime={startsAt} data-local>
+      {formatUtc(startsAt)}
+    </time>
+  </span>
+</p>
+
+<script>
+  const el = document.querySelector<HTMLElement>(".cd");
+  if (el) {
+    const target = new Date(el.dataset.starts!);
+    const out = el.querySelector<HTMLElement>("[data-cd]")!;
+    const local = el.querySelector<HTMLElement>("[data-local]")!;
+    local.textContent = target.toLocaleString(undefined, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZoneName: "short",
+    });
+    const tick = () => {
+      const ms = target.getTime() - Date.now();
+      if (ms <= 0) {
+        out.textContent = "Under way or complete";
+        return;
+      }
+      const m = Math.floor(ms / 60000);
+      const d = Math.floor(m / 1440);
+      const h = Math.floor((m % 1440) / 60);
+      out.textContent = d > 0 ? `${d}d ${h}h ${m % 60}m` : `${h}h ${m % 60}m`;
+    };
+    tick();
+    setInterval(tick, 60000);
+  }
+</script>
+
+<style>
+  .cd {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+  }
+  .cd .num {
+    font-size: 32px;
+    color: var(--colour-on-dark);
+  }
+  .at {
+    font-size: 13px;
+    color: var(--colour-on-dark-soft);
+  }
+</style>

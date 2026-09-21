@@ -1,0 +1,78 @@
+---
+const { dataVersion, generatedAt } = Astro.props as { dataVersion: string; generatedAt: string };
+---
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <h2 class="h">Sector 4</h2>
+        <p class="sm">Probabilistic F1 race predictions, scored in public.</p>
+      </div>
+      <nav aria-label="Footer">
+        <a href="/track-record/">Track record</a>
+        <a href="/methodology/">Methodology</a>
+        <a href="/credits/">Credits</a>
+      </nav>
+      <p class="sm">
+        Data version <span class="num">{dataVersion}</span>
+        <br />
+        Built{" "}
+        <time datetime={generatedAt} class="num">
+          {generatedAt.slice(0, 10)}
+        </time>
+      </p>
+    </div>
+    <p class="legal">
+      Sector 4 is an unofficial fan project and is not associated in any way with the Formula 1
+      companies. F1, FORMULA ONE, FORMULA 1, and related marks are trademarks of Formula One
+      Licensing B.V.
+    </p>
+    <p class="legal">
+      Predictions are for analysis and entertainment. They are not betting advice.
+    </p>
+  </div>
+</footer>
+
+<style>
+  footer {
+    border-top: 1px solid var(--colour-hairline);
+    padding: var(--space-xxl) 0 var(--space-xl);
+    margin-top: var(--space-xxl);
+  }
+  .cols {
+    display: grid;
+    gap: var(--space-lg);
+    grid-template-columns: 1fr;
+    margin-bottom: var(--space-xl);
+  }
+  @media (min-width: 768px) {
+    .cols {
+      grid-template-columns: 2fr 1fr 1fr;
+    }
+  }
+  .h {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: var(--space-xxs);
+  }
+  .sm {
+    font-size: 14px;
+    color: var(--colour-body);
+  }
+  nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    font-size: 14px;
+  }
+  nav a {
+    color: var(--colour-body);
+  }
+  .legal {
+    font-size: 13px;
+    color: var(--colour-muted);
+    max-width: 68ch;
+    margin-top: var(--space-sm);
+  }
+</style>

@@ -1,0 +1,1232 @@
+{
+  "race_id": 1182,
+  "season": 2026,
+  "round": 14,
+  "snapshot": "post_qualifying",
+  "generated_at": "2026-09-12T17:00:00Z",
+  "model_version": "mock-v0",
+  "data_version": "v0.1.1-data",
+  "commit_sha": "0000000",
+  "is_mock": true,
+  "drivers": [
+    {
+      "driverId": 863,
+      "team_entity_id": "131-2010",
+      "p_win": 0.213075,
+      "p_podium": 0.552225,
+      "p_top10": 0.99,
+      "p_dnf": 0.051199,
+      "expected_position": 3.690925,
+      "position_distribution": [
+        0.213075,
+        0.18485,
+        0.1543,
+        0.128625,
+        0.09825,
+        0.0788,
+        0.056825,
+        0.038375,
+        0.02345,
+        0.01345,
+        0.005775,
+        0.00285,
+        0.00085,
+        0.000325,
+        0.00015,
+        0.00005,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "top_factors": [
+        {
+          "label": "Qualifying position",
+          "direction": "positive",
+          "magnitude": 0.82134
+        },
+        {
+          "label": "Gap to pole",
+          "direction": "negative",
+          "magnitude": 0.739446
+        },
+        {
+          "label": "Long-run practice pace",
+          "direction": "positive",
+          "magnitude": 0.313995
+        }
+      ]
+    },
+    {
+      "driverId": 844,
+      "team_entity_id": "6-1950",
+      "p_win": 0.127575,
+      "p_podium": 0.37875,
+      "p_top10": 0.95135,
+      "p_dnf": 0.120216,
+      "expected_position": 4.9561,
+      "position_distribution": [
+        0.127575,
+        0.1265,
+        0.124675,
+        0.1198,
+        0.108875,
+        0.09785,
+        0.0856,
+        0.069425,
+        0.05405,
+        0.037,
+        0.0234,
+        0.013125,
+        0.006925,
+        0.003575,
+        0.001225,
+        0.000375,
+        0.000025,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "top_factors": [
+        {
+          "label": "Grid penalty",
+          "direction": "negative",
+          "magnitude": 0.370317
+        },
+        {
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
+          "magnitude": 0.778148
+        },
+        {
+          "label": "Overtaking difficulty here",
+          "direction": "negative",
+          "magnitude": 0.57928
+        }
+      ]
+    },
+    {
+      "driverId": 830,
+      "team_entity_id": "9-2005",
+      "p_win": 0.125425,
+      "p_podium": 0.3692,
+      "p_top10": 0.947925,
+      "p_dnf": 0.066159,
+      "expected_position": 5.03575,
+      "position_distribution": [
+        0.125425,
+        0.1223,
+        0.121475,
+        0.1163,
+        0.11245,
+        0.098025,
+        0.08605,
+        0.071325,
+        0.054575,
+        0.04,
+        0.02485,
+        0.014525,
+        0.007025,
+        0.0035,
+        0.0015,
+        0.0004,
+        0.00025,
+        0.000025,
+        0,
+        0,
+        0,
+        0
+      ],
+      "top_factors": [
+        {
+          "label": "Team form, last 5 races",
+          "direction": "positive",
+          "magnitude": 0.331784
+        },
+        {
+          "label": "Circuit history",
+          "direction": "positive",
+          "magnitude": 0.26996
+        },
+        {
+          "label": "Qualifying position",
+          "direction": "positive",
+          "magnitude": 0.736705
+        }
+      ]
+    },
+    {
+      "driverId": 846,
+      "team_entity_id": "1-1968",
+      "p_win": 0.12335,
+      "p_podium": 0.370725,
+      "p_top10": 0.9421,
+      "p_dnf": 0.087228,
+      "expected_position": 5.080525,
+      "position_distribution": [
+        0.12335,
+        0.124775,
+        0.1226,
+        0.11175,
+        0.1108,
+        0.09675,
+        0.0857,
+        0.07125,
+        0.055,
+        0.040125,
+        0.0267,
+        0.01645,
+        0.008175,
+        0.004625,
+        0.00135,
+        0.000425,
+        0.00015,
+        0.000025,
+        0,
+        0,
+        0,
+        0
+      ],
+      "top_factors": [
+        {
+          "label": "Gap to pole",
+          "direction": "negative",
+          "magnitude": 0.379174
+        },
+        {
+          "label": "Long-run practice pace",
+          "direction": "positive",
+          "magnitude": 0.717236
+        },
+        {
+          "label": "Grid penalty",
+          "direction": "negative",
+          "magnitude": 0.518599
+        }
+      ]
+    },
+    {
+      "driverId": 859,
+      "team_entity_id": "215-2024",
+      "p_win": 0.0733,
+      "p_podium": 0.2254,
+      "p_top10": 0.828925,
+      "p_dnf": 0.126508,
+      "expected_position": 6.777375,
+      "position_distribution": [
+        0.0733,
+        0.075725,
+        0.076375,
+        0.0819,
+        0.0866,
+        0.09205,
+        0.091475,
+        0.08995,
+        0.083275,
+        0.078275,
+        0.061425,
+        0.04515,
+        0.02935,
+        0.01925,
+        0.008675,
+        0.004425,
+        0.001825,
+        0.000625,
+        0.000275,
+        0.000075,
+        0,
+        0
+      ],
+      "top_factors": [
+        {
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
+          "magnitude": 0.276594
+        },
+        {
+          "label": "Overtaking difficulty here",
+          "direction": "negative",
+          "magnitude": 0.922852
+        },
+        {
+          "label": "Team form, last 5 races",
+          "direction": "positive",
+          "magnitude": 0.636249
+        }
+      ]
+    },
+    {
+      "driverId": 861,
+      "team_entity_id": "214-2021",
+      "p_win": 0.0746,
+      "p_podium": 0.24315,
+      "p_top10": 0.85025,
+      "p_dnf": 0.138573,
+      "expected_position": 6.512675,
+      "position_distribution": [
+        0.0746,
+        0.081775,
+        0.086775,
+        0.0887,
+        0.09245,
+        0.093,
+        0.0925,
+        0.09,
+        0.08185,
+        0.0686,
+        0.0537,
+        0.040825,
+        0.02665,
+        0.01505,
+        0.007675,
+        0.004,
+        0.0013,
+        0.000425,
+        0.000125,
+        0,
+        0,
+        0
+      ],
+      "top_factors": [
+        {
+          "label": "Circuit history",
+          "direction": "positive",
+          "magnitude": 0.902682
+        },
+        {
+          "label": "Qualifying position",
+          "direction": "positive",
+          "magnitude": 0.704822
+        },
+        {
+          "label": "Gap to pole",
+          "direction": "negative",
+          "magnitude": 0.796876
+        }
+      ]
+    },
+    {
+      "driverId": 864,
+      "team_entity_id": "215-2024",
+      "p_win": 0.059875,
+      "p_podium": 0.185725,
+      "p_top10": 0.7601,
+      "p_dnf": 0.118347,
+      "expected_position": 7.51365,
+      "position_distribution": [
+        0.059875,
+        0.06135,
+        0.0645,
+        0.070575,
+        0.074125,
+        0.080025,
+        0.08895,
+        0.0888,
+        0.09075,
+        0.08115,
+        0.071375,
+        0.059,
+        0.044075,
+        0.030625,
+        0.018225,
+        0.01,
+        0.0046,
+        0.001425,
+        0.000425,
+        0.0001,
+        0.00005,
+        0
+      ],
+      "top_factors": [
+        {
+          "label": "Long-run practice pace",
+          "direction": "positive",
+          "magnitude": 0.408887
+        },
+        {
+          "label": "Grid penalty",
+          "direction": "negative",
+          "magnitude": 0.736467
+        },
+        {
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
+          "magnitude": 0.251586
+        }
+      ]
+    },
+    {
+      "driverId": 857,
+      "team_entity_id": "1-1968",
+      "p_win": 0.0505,
+      "p_podium": 0.16495,
+      "p_top10": 0.715325,
+      "p_dnf": 0.142092,
+      "expected_position": 7.9678,
+      "position_distribution": [
+        0.0505,
+        0.0542,
+        0.06025,
+        0.064275,
+        0.067325,
+        0.07625,
+        0.079575,
+        0.086425,
+        0.08995,
+        0.086575,
+        0.079125,
+        0.066075,
+        0.052875,
+        0.037525,
+        0.0244,
+        0.013675,
+        0.00695,
+        0.0029,
+        0.00095,
+        0.0002,
+        0,
+        0
+      ],
+      "top_factors": [
+        {
+          "label": "Overtaking difficulty here",
+          "direction": "negative",
+          "magnitude": 0.582377
+        },
+        {
+          "label": "Team form, last 5 races",
+          "direction": "positive",
+          "magnitude": 0.658316
+        },
+        {
+          "label": "Circuit history",
+          "direction": "positive",
+          "magnitude": 0.513978
+        }
+      ]
+    },
+    {
+      "driverId": 847,
+      "team_entity_id": "131-2010",
+      "p_win": 0.029,
+      "p_podium": 0.093475,
+      "p_top10": 0.502775,
+      "p_dnf": 0.159939,
+      "expected_position": 10.05835,
+      "position_distribution": [
+        0.029,
+        0.03135,
+        0.033125,
+        0.038675,
+        0.0438,
+        0.04945,
+        0.05635,
+        0.0637,
+        0.073475,
+        0.08385,
+        0.090575,
+        0.08955,
+        0.083725,
+        0.073225,
+        0.057925,
+        0.044375,
+        0.028775,
+        0.0166,
+        0.008725,
+        0.0029,
+        0.000775,
+        0.000075
+      ],
+      "top_factors": [
+        {
+          "label": "Qualifying position",
+          "direction": "positive",
+          "magnitude": 0.623778
+        },
+        {
+          "label": "Gap to pole",
+          "direction": "negative",
+          "magnitude": 0.359967
+        },
+        {
+          "label": "Long-run practice pace",
+          "direction": "positive",
+          "magnitude": 0.490869
+        }
+      ]
+    },
+    {
+      "driverId": 865,
+      "team_entity_id": "216-2026",
+      "p_win": 0.025425,
+      "p_podium": 0.0863,
+      "p_top10": 0.4656,
+      "p_dnf": 0.069703,
+      "expected_position": 10.444225,
+      "position_distribution": [
+        0.025425,
+        0.0284,
+        0.032475,
+        0.035275,
+        0.039175,
+        0.04535,
+        0.053725,
+        0.0589,
+        0.06825,
+        0.078625,
+        0.0861,
+        0.0893,
+        0.088025,
+        0.07855,
+        0.067725,
+        0.051125,
+        0.0359,
+        0.021725,
+        0.010525,
+        0.004225,
+        0.0011,
+        0.0001
+      ],
+      "top_factors": [
+        {
+          "label": "Grid penalty",
+          "direction": "negative",
+          "magnitude": 0.38785
+        },
+        {
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
+          "magnitude": 0.564102
+        },
+        {
+          "label": "Overtaking difficulty here",
+          "direction": "negative",
+          "magnitude": 0.78197
+        }
+      ]
+    },
+    {
+      "driverId": 4,
+      "team_entity_id": "117-2021",
+      "p_win": 0.0186,
+      "p_podium": 0.05975,
+      "p_top10": 0.35275,
+      "p_dnf": 0.074626,
+      "expected_position": 11.768425,
+      "position_distribution": [
+        0.0186,
+        0.0185,
+        0.02265,
+        0.026225,
+        0.0291,
+        0.03365,
+        0.039425,
+        0.046375,
+        0.0528,
+        0.065425,
+        0.0736,
+        0.082725,
+        0.09035,
+        0.091275,
+        0.086625,
+        0.0747,
+        0.0618,
+        0.043425,
+        0.026075,
+        0.0118,
+        0.00405,
+        0.000825
+      ],
+      "top_factors": [
+        {
+          "label": "Team form, last 5 races",
+          "direction": "positive",
+          "magnitude": 0.92002
+        },
+        {
+          "label": "Circuit history",
+          "direction": "positive",
+          "magnitude": 0.453362
+        },
+        {
+          "label": "Qualifying position",
+          "direction": "positive",
+          "magnitude": 0.931854
+        }
+      ]
+    },
+    {
+      "driverId": 852,
+      "team_entity_id": "215-2024",
+      "p_win": 0.019075,
+      "p_podium": 0.063175,
+      "p_top10": 0.367425,
+      "p_dnf": 0.141302,
+      "expected_position": 11.586025,
+      "position_distribution": [
+        0.019075,
+        0.020775,
+        0.023325,
+        0.028225,
+        0.030775,
+        0.035775,
+        0.038725,
+        0.050025,
+        0.0561,
+        0.064625,
+        0.07675,
+        0.0838,
+        0.08745,
+        0.091975,
+        0.0826,
+        0.07175,
+        0.058475,
+        0.04035,
+        0.023475,
+        0.0117,
+        0.003675,
+        0.000575
+      ],
+      "top_factors": [
+        {
+          "label": "Gap to pole",
+          "direction": "negative",
+          "magnitude": 0.588299
+        },
+        {
+          "label": "Long-run practice pace",
+          "direction": "positive",
+          "magnitude": 0.590143
+        },
+        {
+          "label": "Grid penalty",
+          "direction": "negative",
+          "magnitude": 0.337877
+        }
+      ]
+    },
+    {
+      "driverId": 807,
+      "team_entity_id": "216-2026",
+      "p_win": 0.01215,
+      "p_podium": 0.041325,
+      "p_top10": 0.24855,
+      "p_dnf": 0.058357,
+      "expected_position": 13.264475,
+      "position_distribution": [
+        0.01215,
+        0.013925,
+        0.01525,
+        0.017025,
+        0.02015,
+        0.0234,
+        0.0274,
+        0.032775,
+        0.039,
+        0.047475,
+        0.0601,
+        0.0676,
+        0.07885,
+        0.087375,
+        0.0919,
+        0.09505,
+        0.086625,
+        0.0749,
+        0.055875,
+        0.03395,
+        0.014575,
+        0.00465
+      ],
+      "top_factors": [
+        {
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
+          "magnitude": 0.307961
+        },
+        {
+          "label": "Overtaking difficulty here",
+          "direction": "negative",
+          "magnitude": 0.482929
+        },
+        {
+          "label": "Team form, last 5 races",
+          "direction": "positive",
+          "magnitude": 0.735289
+        }
+      ]
+    },
+    {
+      "driverId": 839,
+      "team_entity_id": "210-2016",
+      "p_win": 0.01015,
+      "p_podium": 0.034975,
+      "p_top10": 0.224625,
+      "p_dnf": 0.14098,
+      "expected_position": 13.67315,
+      "position_distribution": [
+        0.01015,
+        0.0118,
+        0.013025,
+        0.015475,
+        0.017975,
+        0.02195,
+        0.025025,
+        0.0299,
+        0.037725,
+        0.0416,
+        0.052175,
+        0.065075,
+        0.076275,
+        0.086325,
+        0.090925,
+        0.094675,
+        0.09525,
+        0.083325,
+        0.064275,
+        0.041525,
+        0.0196,
+        0.00595
+      ],
+      "top_factors": [
+        {
+          "label": "Circuit history",
+          "direction": "positive",
+          "magnitude": 0.39464
+        },
+        {
+          "label": "Qualifying position",
+          "direction": "positive",
+          "magnitude": 0.935792
+        },
+        {
+          "label": "Gap to pole",
+          "direction": "negative",
+          "magnitude": 0.361244
+        }
+      ]
+    },
+    {
+      "driverId": 842,
+      "team_entity_id": "214-2021",
+      "p_win": 0.009825,
+      "p_podium": 0.033275,
+      "p_top10": 0.209275,
+      "p_dnf": 0.176755,
+      "expected_position": 13.957225,
+      "position_distribution": [
+        0.009825,
+        0.010675,
+        0.012775,
+        0.014725,
+        0.017075,
+        0.019925,
+        0.0222,
+        0.027775,
+        0.03485,
+        0.03945,
+        0.050875,
+        0.062625,
+        0.069975,
+        0.080475,
+        0.0913,
+        0.098425,
+        0.09445,
+        0.090075,
+        0.071675,
+        0.047725,
+        0.025675,
+        0.00745
+      ],
+      "top_factors": [
+        {
+          "label": "Long-run practice pace",
+          "direction": "positive",
+          "magnitude": 0.940678
+        },
+        {
+          "label": "Grid penalty",
+          "direction": "negative",
+          "magnitude": 0.842392
+        },
+        {
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
+          "magnitude": 0.844713
+        }
+      ]
+    },
+    {
+      "driverId": 860,
+      "team_entity_id": "210-2016",
+      "p_win": 0.008975,
+      "p_podium": 0.0299,
+      "p_top10": 0.190025,
+      "p_dnf": 0.109036,
+      "expected_position": 14.3614,
+      "position_distribution": [
+        0.008975,
+        0.0099,
+        0.011025,
+        0.0138,
+        0.015525,
+        0.0173,
+        0.019425,
+        0.025175,
+        0.0309,
+        0.038,
+        0.046575,
+        0.054425,
+        0.06785,
+        0.074875,
+        0.0881,
+        0.0953,
+        0.10145,
+        0.099325,
+        0.080675,
+        0.059825,
+        0.03105,
+        0.010525
+      ],
+      "top_factors": [
+        {
+          "label": "Overtaking difficulty here",
+          "direction": "negative",
+          "magnitude": 0.383392
+        },
+        {
+          "label": "Team form, last 5 races",
+          "direction": "positive",
+          "magnitude": 0.532872
+        },
+        {
+          "label": "Circuit history",
+          "direction": "positive",
+          "magnitude": 0.716761
+        }
+      ]
+    },
+    {
+      "driverId": 840,
+      "team_entity_id": "117-2021",
+      "p_win": 0.005225,
+      "p_podium": 0.019075,
+      "p_top10": 0.128575,
+      "p_dnf": 0.172721,
+      "expected_position": 15.85605,
+      "position_distribution": [
+        0.005225,
+        0.006225,
+        0.007625,
+        0.008325,
+        0.00995,
+        0.0113,
+        0.015875,
+        0.0166,
+        0.021175,
+        0.026275,
+        0.031775,
+        0.040375,
+        0.049,
+        0.0589,
+        0.071375,
+        0.08505,
+        0.09385,
+        0.108425,
+        0.11185,
+        0.105025,
+        0.08,
+        0.0358
+      ],
+      "top_factors": [
+        {
+          "label": "Qualifying position",
+          "direction": "positive",
+          "magnitude": 0.413789
+        },
+        {
+          "label": "Gap to pole",
+          "direction": "negative",
+          "magnitude": 0.425123
+        },
+        {
+          "label": "Long-run practice pace",
+          "direction": "positive",
+          "magnitude": 0.729578
+        }
+      ]
+    },
+    {
+      "driverId": 848,
+      "team_entity_id": "3-1975",
+      "p_win": 0.00355,
+      "p_podium": 0.013625,
+      "p_top10": 0.09565,
+      "p_dnf": 0.044405,
+      "expected_position": 16.884575,
+      "position_distribution": [
+        0.00355,
+        0.005,
+        0.005075,
+        0.006225,
+        0.0075,
+        0.008425,
+        0.00945,
+        0.0135,
+        0.0169,
+        0.020025,
+        0.0251,
+        0.0308,
+        0.036225,
+        0.045125,
+        0.0569,
+        0.067375,
+        0.086625,
+        0.103275,
+        0.125225,
+        0.13225,
+        0.119275,
+        0.076175
+      ],
+      "top_factors": [
+        {
+          "label": "Grid penalty",
+          "direction": "negative",
+          "magnitude": 0.6801
+        },
+        {
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
+          "magnitude": 0.669335
+        },
+        {
+          "label": "Overtaking difficulty here",
+          "direction": "negative",
+          "magnitude": 0.755234
+        }
+      ]
+    },
+    {
+      "driverId": 815,
+      "team_entity_id": "217-2026",
+      "p_win": 0.002675,
+      "p_podium": 0.010225,
+      "p_top10": 0.069175,
+      "p_dnf": 0.085581,
+      "expected_position": 17.788675,
+      "position_distribution": [
+        0.002675,
+        0.003575,
+        0.003975,
+        0.004025,
+        0.00555,
+        0.00625,
+        0.008125,
+        0.00905,
+        0.0109,
+        0.01505,
+        0.0181,
+        0.0234,
+        0.029925,
+        0.03665,
+        0.0464,
+        0.056,
+        0.07135,
+        0.090575,
+        0.1168,
+        0.142725,
+        0.159125,
+        0.139775
+      ],
+      "top_factors": [
+        {
+          "label": "Team form, last 5 races",
+          "direction": "positive",
+          "magnitude": 0.80206
+        },
+        {
+          "label": "Circuit history",
+          "direction": "positive",
+          "magnitude": 0.88763
+        },
+        {
+          "label": "Qualifying position",
+          "direction": "positive",
+          "magnitude": 0.740728
+        }
+      ]
+    },
+    {
+      "driverId": 1,
+      "team_entity_id": "6-1950",
+      "p_win": 0.00285,
+      "p_podium": 0.00895,
+      "p_top10": 0.0625,
+      "p_dnf": 0.077538,
+      "expected_position": 18.18855,
+      "position_distribution": [
+        0.00285,
+        0.003125,
+        0.002975,
+        0.004075,
+        0.00515,
+        0.005925,
+        0.00685,
+        0.008175,
+        0.00965,
+        0.013725,
+        0.0163,
+        0.019025,
+        0.02575,
+        0.031275,
+        0.040725,
+        0.04915,
+        0.063375,
+        0.082175,
+        0.11105,
+        0.1414,
+        0.176525,
+        0.18075
+      ],
+      "top_factors": [
+        {
+          "label": "Gap to pole",
+          "direction": "negative",
+          "magnitude": 0.650792
+        },
+        {
+          "label": "Long-run practice pace",
+          "direction": "positive",
+          "magnitude": 0.447934
+        },
+        {
+          "label": "Grid penalty",
+          "direction": "negative",
+          "magnitude": 0.727467
+        }
+      ]
+    },
+    {
+      "driverId": 822,
+      "team_entity_id": "217-2026",
+      "p_win": 0.00285,
+      "p_podium": 0.00945,
+      "p_top10": 0.058425,
+      "p_dnf": 0.050345,
+      "expected_position": 18.322325,
+      "position_distribution": [
+        0.00285,
+        0.002975,
+        0.003625,
+        0.003425,
+        0.004725,
+        0.00515,
+        0.0062,
+        0.007675,
+        0.009225,
+        0.012575,
+        0.01515,
+        0.01975,
+        0.02435,
+        0.0289,
+        0.0375,
+        0.049775,
+        0.061475,
+        0.08155,
+        0.107925,
+        0.139875,
+        0.18105,
+        0.194275
+      ],
+      "top_factors": [
+        {
+          "label": "Teammate qualifying gap",
+          "direction": "negative",
+          "magnitude": 0.300531
+        },
+        {
+          "label": "Overtaking difficulty here",
+          "direction": "negative",
+          "magnitude": 0.578119
+        },
+        {
+          "label": "Team form, last 5 races",
+          "direction": "positive",
+          "magnitude": 0.379854
+        }
+      ]
+    },
+    {
+      "driverId": 832,
+      "team_entity_id": "3-1975",
+      "p_win": 0.00195,
+      "p_podium": 0.006375,
+      "p_top10": 0.038675,
+      "p_dnf": 0.155759,
+      "expected_position": 19.31175,
+      "position_distribution": [
+        0.00195,
+        0.0023,
+        0.002125,
+        0.002575,
+        0.002675,
+        0.0034,
+        0.00455,
+        0.004825,
+        0.00615,
+        0.008125,
+        0.010475,
+        0.01355,
+        0.016325,
+        0.0206,
+        0.0268,
+        0.0339,
+        0.0455,
+        0.05885,
+        0.084075,
+        0.1247,
+        0.183475,
+        0.343075
+      ],
+      "top_factors": [
+        {
+          "label": "Circuit history",
+          "direction": "positive",
+          "magnitude": 0.831223
+        },
+        {
+          "label": "Qualifying position",
+          "direction": "positive",
+          "magnitude": 0.338857
+        },
+        {
+          "label": "Gap to pole",
+          "direction": "negative",
+          "magnitude": 0.306885
+        }
+      ]
+    }
+  ],
+  "result": {
+    "scored_at": "2026-09-13T16:00:00Z",
+    "drivers": [
+      {
+        "driverId": 863,
+        "actual_position": 1,
+        "status": "Finished"
+      },
+      {
+        "driverId": 830,
+        "actual_position": 2,
+        "status": "Finished"
+      },
+      {
+        "driverId": 846,
+        "actual_position": 3,
+        "status": "Finished"
+      },
+      {
+        "driverId": 844,
+        "actual_position": 4,
+        "status": "Finished"
+      },
+      {
+        "driverId": 847,
+        "actual_position": 5,
+        "status": "Finished"
+      },
+      {
+        "driverId": 859,
+        "actual_position": 6,
+        "status": "Finished"
+      },
+      {
+        "driverId": 861,
+        "actual_position": 7,
+        "status": "Finished"
+      },
+      {
+        "driverId": 857,
+        "actual_position": 8,
+        "status": "Finished"
+      },
+      {
+        "driverId": 864,
+        "actual_position": 9,
+        "status": "Lapped"
+      },
+      {
+        "driverId": 807,
+        "actual_position": 10,
+        "status": "Lapped"
+      },
+      {
+        "driverId": 839,
+        "actual_position": 11,
+        "status": "Lapped"
+      },
+      {
+        "driverId": 842,
+        "actual_position": 12,
+        "status": "Lapped"
+      },
+      {
+        "driverId": 865,
+        "actual_position": 13,
+        "status": "Lapped"
+      },
+      {
+        "driverId": 852,
+        "actual_position": 14,
+        "status": "Lapped"
+      },
+      {
+        "driverId": 848,
+        "actual_position": 15,
+        "status": "Lapped"
+      },
+      {
+        "driverId": 860,
+        "actual_position": 16,
+        "status": "Lapped"
+      },
+      {
+        "driverId": 4,
+        "actual_position": 17,
+        "status": "Lapped"
+      },
+      {
+        "driverId": 822,
+        "actual_position": 18,
+        "status": "Lapped"
+      },
+      {
+        "driverId": 832,
+        "actual_position": null,
+        "status": "Retired"
+      },
+      {
+        "driverId": 815,
+        "actual_position": null,
+        "status": "Retired"
+      },
+      {
+        "driverId": 840,
+        "actual_position": null,
+        "status": "Retired"
+      },
+      {
+        "driverId": 1,
+        "actual_position": null,
+        "status": "Retired"
+      }
+    ],
+    "log_loss": 1.546111,
+    "brier": 0.686238,
+    "winner_hit": true,
+    "podium_hits": 2
+  }
+}

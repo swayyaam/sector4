@@ -20,3 +20,9 @@ data/processed_*_snapshot/
 # FastF1 cache (rebuildable)
 data/raw/fastf1/
 data/enriched/
+
+# Web
+web/node_modules/
+web/dist/
+web/.astro/
+.DS_Store

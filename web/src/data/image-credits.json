@@ -1,0 +1,12 @@
+{
+  "f1-circuits": {
+    "kind": "dataset",
+    "title": "f1-circuits",
+    "author": "Tomislav Bacinger",
+    "licence": "MIT",
+    "licence_url": "https://github.com/bacinger/f1-circuits/blob/master/LICENSE",
+    "source": "https://github.com/bacinger/f1-circuits",
+    "notice": "Copyright (c) 2019-2025 Tomislav Bacinger",
+    "used_for": "Circuit outlines, projected to SVG paths"
+  }
+}

@@ -1,0 +1,39 @@
+---
+/** Per-page metadata. Titles and descriptions are generated from data. */
+interface Props {
+  title: string;
+  description: string;
+  path: string;
+  /** Site-relative path to the card. Absolute URL is required by every scraper. */
+  image?: string | undefined;
+  imageAlt?: string | undefined;
+  jsonLd?: Record<string, unknown>[];
+}
+const { title, description, path, image = "/og/default.png", imageAlt, jsonLd = [] } = Astro.props;
+const site = Astro.site ?? new URL("https://sector4.dev");
+const canonical = new URL(path, site).href;
+const fullTitle = path === "/" ? title : `${title} · Sector 4`;
+const ogImage = new URL(image, site).href;
+---
+
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical} />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Sector 4" />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:image" content={ogImage} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content={imageAlt ?? fullTitle} />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content={ogImage} />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+
+{jsonLd.map((block) => (
+  <script type="application/ld+json" set:html={JSON.stringify(block)}></script>
+))}

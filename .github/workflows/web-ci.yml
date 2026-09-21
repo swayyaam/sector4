@@ -1,0 +1,51 @@
+name: web
+
+on:
+  pull_request:
+    paths: ["web/**", "schema/**", "DESIGN.md", ".github/workflows/web-ci.yml"]
+  push:
+    branches: [main]
+    paths: ["web/**", "schema/**", "DESIGN.md", ".github/workflows/web-ci.yml"]
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Format check
+        run: npm run format:check
+
+      # Recomputes every contrast pairing DESIGN.md claims, from the shipped
+      # tokens. A colour change that breaks readability fails here rather than
+      # reaching a page.
+      - name: Test
+        run: npm run test
+
+      # Type-checks the templates too, which tsc --noEmit does not see.
+      - name: Astro check
+        run: npm run check
+
+      # The build validates every data file and renders every page, so a
+      # malformed prediction or a broken probability sum fails here.
+      - name: Build
+        run: npm run build

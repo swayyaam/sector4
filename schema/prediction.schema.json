@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sector4.dev/schema/prediction.schema.json",
+  "title": "Race prediction snapshot",
+  "description": "One prediction snapshot for one race, at one prediction moment. Cross-row constraints (probability sums, referential integrity against drivers/teams) are NOT expressible in JSON Schema and are enforced by the zod layer at build time; see web/src/lib/schema.ts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["race_id", "season", "round", "snapshot", "generated_at", "model_version", "data_version", "commit_sha", "drivers", "result"],
+  "properties": {
+    "race_id": { "type": "integer", "minimum": 1, "description": "Our raceId, matching data/processed/races.csv" },
+    "season": { "type": "integer", "minimum": 1950, "maximum": 2100 },
+    "round": { "type": "integer", "minimum": 1, "maximum": 30 },
+    "snapshot": {
+      "type": "string",
+      "enum": ["pre_weekend", "post_qualifying"],
+      "description": "The prediction moment. pre_weekend uses only data available before FP1; post_qualifying adds practice and qualifying."
+    },
+    "generated_at": { "type": "string", "format": "date-time", "description": "UTC, RFC3339. Must be before the race start to be an honest prediction." },
+    "model_version": { "type": "string", "minLength": 1, "examples": ["v0.2-model"] },
+    "data_version": { "type": "string", "minLength": 1, "description": "Tag of the dataset used", "examples": ["v0.1.1-data"] },
+    "commit_sha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$", "description": "Commit that published this prediction, for the public track record" },
+    "is_mock": { "type": "boolean", "default": false, "description": "True for sample data. Drives the site-wide preview banner." },
+    "drivers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 30,
+      "items": { "$ref": "#/$defs/driverPrediction" }
+    },
+    "result": {
+      "oneOf": [
+        { "type": "null", "description": "Race not yet run, or not yet scored" },
+        { "$ref": "#/$defs/raceResult" }
+      ]
+    }
+  },
+  "$defs": {
+    "probability": { "type": "number", "minimum": 0, "maximum": 1 },
+    "driverPrediction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["driverId", "team_entity_id", "p_win", "p_podium", "p_top10", "p_dnf", "expected_position", "position_distribution", "top_factors"],
+      "properties": {
+        "driverId": { "type": "integer", "minimum": 1 },
+        "team_entity_id": { "type": "string", "minLength": 1, "description": "Splits a constructorId at identity breaks; see DATA_REPORT.md", "examples": ["9-2005"] },
+        "p_win": { "$ref": "#/$defs/probability" },
+        "p_podium": { "$ref": "#/$defs/probability" },
+        "p_top10": { "$ref": "#/$defs/probability" },
+        "p_dnf": { "$ref": "#/$defs/probability" },
+        "expected_position": { "type": "number", "minimum": 1, "maximum": 30 },
+        "position_distribution": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 30,
+          "items": { "$ref": "#/$defs/probability" },
+          "description": "Index 0 is P1. Must sum to 1 within tolerance, and have one entry per driver in the field."
+        },
+        "top_factors": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "direction", "magnitude"],
+            "properties": {
+              "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "direction": { "type": "string", "enum": ["positive", "negative"] },
+              "magnitude": { "type": "number", "minimum": 0, "maximum": 1, "description": "Normalised contribution, for bar length only" }
+            }
+          }
+        }
+      }
+    },
+    "raceResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scored_at", "drivers", "log_loss", "brier", "winner_hit", "podium_hits"],
+      "properties": {
+        "scored_at": { "type": "string", "format": "date-time" },
+        "drivers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["driverId", "actual_position", "status"],
+            "properties": {
+              "driverId": { "type": "integer", "minimum": 1 },
+              "actual_position": {
+                "oneOf": [
+                  { "type": "integer", "minimum": 1, "maximum": 30 },
+                  { "type": "null", "description": "Not classified" }
+                ]
+              },
+              "status": { "type": "string", "minLength": 1, "examples": ["Finished", "Retired", "Lapped", "Disqualified"] }
+            }
+          }
+        },
+        "log_loss": { "type": "number", "minimum": 0, "description": "Multiclass log loss on the winner target. Lower is better." },
+        "brier": { "type": "number", "minimum": 0, "maximum": 2, "description": "Brier score on the winner target." },
+        "winner_hit": { "type": "boolean", "description": "Did the highest p_win driver win?" },
+        "podium_hits": { "type": "integer", "minimum": 0, "maximum": 3, "description": "How many of the top-3 p_podium drivers finished on the podium." }
+      }
+    }
+  }
+}

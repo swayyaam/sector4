@@ -1,0 +1,35 @@
+{
+  "name": "@sector4/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro sync && tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "astro check",
+    "fonts": "node scripts/fetch-fonts.mjs"
+  },
+  "dependencies": {
+    "astro": "^7.3.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/node": "^22.20.4",
+    "prettier": "^3.9.8",
+    "prettier-plugin-astro": "^1.0.1",
+    "satori": "^0.33.4",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.1"
+  },
+  "overrides": {
+    "fflate": "^0.8.2"
+  }
+}

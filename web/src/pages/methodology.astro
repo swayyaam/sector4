@@ -1,0 +1,261 @@
+---
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import { loadDataset } from "../lib/data";
+import { SUM_TOLERANCE } from "../lib/schema";
+
+const { predictions, meta, isMock } = loadDataset();
+const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((a, b) => a - b);
+---
+
+<BaseLayout
+  title="Methodology"
+  description="What Sector 4 predicts, which data it is built on, how each prediction is scored against the result, and what the model cannot see."
+  image="/og/methodology.png"
+  breadcrumbs={[{ name: "Methodology", path: "/methodology/" }]}
+>
+  <section class="band band-dark">
+    <div class="wrap">
+      <p class="eyebrow">Methodology</p>
+      <h1>How the numbers are made</h1>
+      <p class="sub">
+        A prediction you cannot check is a claim, not a forecast. Everything below is here so the
+        numbers on this site can be argued with.
+      </p>
+    </div>
+  </section>
+
+  {isMock && (
+    <section class="band">
+      <div class="wrap prose">
+        <h2>What is running right now</h2>
+        <p class="flag">
+          <strong>There is no model yet.</strong> Every probability on this site is sample data,
+          generated to exercise the layout. It is produced by a Plackett–Luce draw over a plausible
+          field and scored against invented results. It says nothing about any real race, past or
+          future.
+        </p>
+        <p>
+          What does exist is the data foundation described below, and the scoring machinery that
+          will judge the model once there is one. This page describes both: what is built, and what
+          the predictions will be when they are real. The banner at the top of every page and the
+          label on every link preview come from the same flag, so neither can be forgotten.
+        </p>
+      </div>
+    </section>
+  )}
+
+  <section class="band band-soft">
+    <div class="wrap prose">
+      <h2>The data</h2>
+      <p>
+        Results, qualifying, grids, laps, pit stops and status codes come from the Ergast schema:
+        the Kaggle Formula 1 World Championship export for 1950 to 2024, and the Jolpica F1 API for
+        2025 onward. Session telemetry, timing and weather from 2018 onward come from FastF1.
+      </p>
+      <p>Five rules govern that pipeline, and they are enforced rather than intended.</p>
+      <ul>
+        <li>
+          <strong>Nothing is invented.</strong> A missing value stays missing and is flagged. No
+          interpolation, no back-filling, no plausible substitutes.
+        </li>
+        <li>
+          <strong>Provenance travels with the row.</strong> Every record carries the source it came
+          from, so any figure can be traced back to the file it was read from.
+        </li>
+        <li>
+          <strong>Conflicts are logged, not resolved quietly.</strong> Where two sources disagree,
+          both values are recorded with the evidence, and the resolution is a documented decision
+          rather than a silent preference.
+        </li>
+        <li>
+          <strong>Time is UTC.</strong> Stored in UTC, rendered in your zone by the page. Original
+          local date fields are kept as they were.
+        </li>
+        <li>
+          <strong>Builds are deterministic.</strong> The same inputs produce byte-identical outputs,
+          which is what makes a change reviewable at all.
+        </li>
+      </ul>
+      <p>
+        The current data version is <span class="num">{meta.data_version}</span>. Sources and
+        licences are listed on <a href="/credits/">the credits page</a>.
+      </p>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap prose">
+      <h2>Two snapshots per race</h2>
+      <p>
+        A prediction is only meaningful with a timestamp on it, so each race gets up to two, and
+        neither is ever revised after the fact.
+      </p>
+      <dl class="defs">
+        <dt>Pre-weekend</dt>
+        <dd>
+          Published before any car runs. It sees season form, car pace, circuit history and
+          reliability, and knows nothing about the grid.
+        </dd>
+        <dt>Post-qualifying</dt>
+        <dd>
+          Published after qualifying, with the grid known, including penalties. This is the sharper
+          of the two and the one a race page shows by default.
+        </dd>
+      </dl>
+      <p>
+        Both remain on the race page afterwards. Comparing them is the honest way to see how much of
+        the prediction was the grid and how much was everything else.
+      </p>
+    </div>
+  </section>
+
+  <section class="band band-soft">
+    <div class="wrap prose">
+      <h2>What is predicted</h2>
+      <p>For every driver in the field, each snapshot gives:</p>
+      <ul>
+        <li>
+          <strong>Win, podium, top ten</strong> — the probability of finishing there or better.
+        </li>
+        <li>
+          <strong>DNF</strong> — the probability of not being classified as a finisher.
+        </li>
+        <li>
+          <strong>Expected position</strong> — the mean of the driver's full finishing-position
+          distribution, not a rounded guess at a place.
+        </li>
+        <li>
+          <strong>Top factors</strong> — the handful of inputs moving that driver's number most,
+          with direction and relative weight.
+        </li>
+      </ul>
+      <p>
+        Those numbers have to hold together, so the build checks them rather than trusting them.
+        Across a field of {fieldSizes.join(" or ")} drivers, win probabilities must sum to one,
+        podium probabilities to three and top-ten probabilities to ten; each driver's position
+        distribution must sum to one; and no driver may be likelier to win than to podium, or
+        likelier to podium than to finish in the top ten. The tolerance is{" "}
+        <span class="num">{SUM_TOLERANCE.toExponential(0)}</span>, which is float noise and nothing
+        more. A file that fails any of these stops the build instead of reaching a page.
+      </p>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap prose">
+      <h2>How a prediction is scored</h2>
+      <p>
+        Scoring happens once, against the snapshot that was public before the race started, and the
+        result is never recomputed. Four numbers per race:
+      </p>
+      <dl class="defs">
+        <dt>Log loss</dt>
+        <dd>
+          <span class="num">−ln p</span>, where <span class="num">p</span> is the probability given
+          to the driver who actually won. It punishes confident misses hard, which is the point: a
+          model that says 60% and is wrong should hurt more than one that says 20% and is wrong.
+          Lower is better.
+        </dd>
+        <dt>Brier score</dt>
+        <dd>
+          The squared error of the whole win distribution, summed over every driver, with one for
+          the winner and zero for everybody else. Unlike log loss it is bounded, so a single
+          catastrophic race cannot dominate a season. Lower is better.
+        </dd>
+        <dt>Winner called</dt>
+        <dd>
+          Whether the driver given the highest win probability won. Crude, and included because it
+          is the number everyone actually checks.
+        </dd>
+        <dt>Podium places</dt>
+        <dd>
+          How many of the three drivers given the highest podium probability finished on the podium,
+          out of three.
+        </dd>
+      </dl>
+      <p>
+        A log loss means nothing without a reference, so{" "}
+        <a href="/track-record/">the track record</a>
+        prints the score a uniform random pick over the same field would have got. Beating that is
+        the floor.
+      </p>
+    </div>
+  </section>
+
+  <section class="band band-soft">
+    <div class="wrap prose">
+      <h2>What the model cannot see</h2>
+      <ul>
+        <li>
+          <strong>Weather on the day.</strong> A dry forecast that turns wet rearranges a race, and
+          a probability published on Friday cannot know that.
+        </li>
+        <li>
+          <strong>Incidents.</strong> First-lap contact, a safety car at the wrong moment, a failure
+          with three laps left. These are a large part of the residual, and they are irreducible
+          rather than a bug to be fixed.
+        </li>
+        <li>
+          <strong>Information that is not in the data.</strong> Team orders, an undisclosed upgrade,
+          a driver racing unwell.
+        </li>
+        <li>
+          <strong>Regulation changes.</strong> History across a rules boundary is weak evidence
+          about what comes after it, and 2026 is a reset. Early-season numbers deserve more
+          scepticism than late-season ones.
+        </li>
+      </ul>
+      <p class="flag">
+        Predictions here are for analysis and entertainment. They are not betting advice, and a
+        calibrated probability is not an edge.
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .sub {
+    color: var(--colour-on-dark-soft);
+    margin-top: var(--space-sm);
+    max-width: 62ch;
+  }
+  .prose h2 {
+    font-size: 26px;
+    margin-bottom: var(--space-base);
+  }
+  .prose p,
+  .prose li {
+    color: var(--colour-body);
+    margin-bottom: var(--space-base);
+    line-height: 1.65;
+  }
+  .prose strong {
+    color: var(--colour-ink);
+  }
+  .prose ul {
+    padding-left: var(--space-lg);
+    margin-bottom: var(--space-base);
+  }
+  .prose li {
+    margin-bottom: var(--space-sm);
+  }
+  .defs {
+    margin: 0 0 var(--space-base);
+  }
+  .defs dt {
+    font-weight: 600;
+    color: var(--colour-ink);
+    margin-top: var(--space-base);
+  }
+  .defs dd {
+    margin: var(--space-xxs) 0 0;
+    color: var(--colour-body);
+    line-height: 1.65;
+  }
+  .flag {
+    border-left: 3px solid var(--colour-caution);
+    background: var(--colour-caution-surface);
+    padding: var(--space-base) var(--space-lg);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+</style>

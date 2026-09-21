@@ -1,0 +1,80 @@
+---
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import { loadDataset, raceById, scoredPredictions } from "../lib/data";
+
+const { reference, predictions, meta } = loadDataset();
+const races = raceById(reference);
+const next = meta.next_race;
+const last = scoredPredictions(predictions)[0];
+const lastRace = last ? races.get(last.race_id) : undefined;
+---
+
+<BaseLayout title="Page not found" description="That page does not exist on Sector 4.">
+  <section class="band">
+    <div class="wrap">
+      <p class="eyebrow num">404</p>
+      <h1>That page does not exist</h1>
+      <p class="lede">
+        Race pages live at <span class="num">/races/&lt;season&gt;/&lt;race-slug&gt;/</span>, and
+        only for races a prediction was published for. If you followed a link from elsewhere on this
+        site, that is a bug worth reporting.
+      </p>
+      <ul class="links">
+        {next && (
+          <li>
+            <a href={`/races/${next.season}/${next.slug}/`}>{next.name}</a>
+            <span class="meta">The next race</span>
+          </li>
+        )}
+        {lastRace && (
+          <li>
+            <a href={`/races/${lastRace.season}/${lastRace.slug}/`}>{lastRace.name}</a>
+            <span class="meta">The most recent result</span>
+          </li>
+        )}
+        <li>
+          <a href="/track-record/">Track record</a>
+          <span class="meta">Every prediction, scored</span>
+        </li>
+        <li>
+          <a href="/methodology/">Methodology</a>
+          <span class="meta">How the numbers are made</span>
+        </li>
+        <li>
+          <a href="/">Home</a>
+          <span class="meta">Start again</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .lede {
+    max-width: 62ch;
+    color: var(--colour-body);
+    margin-top: var(--space-sm);
+    line-height: 1.65;
+  }
+  .links {
+    list-style: none;
+    margin: var(--space-xl) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-base);
+    max-width: 480px;
+  }
+  .links li {
+    border-top: 1px solid var(--colour-hairline);
+    padding-top: var(--space-sm);
+  }
+  .links a {
+    font-weight: 600;
+  }
+  .meta {
+    display: block;
+    font-size: 13px;
+    color: var(--colour-muted);
+    margin-top: var(--space-xxs);
+  }
+</style>
