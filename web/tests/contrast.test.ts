@@ -41,7 +41,7 @@ function resolve(name: string): string {
   return hex;
 }
 
-const LIGHT_SURFACES = ["canvas", "surface-soft", "surface-strong"];
+const LIGHT_SURFACES = ["canvas", "surface-soft", "surface-strong", "caution-surface"];
 const DARK_SURFACES = ["surface-dark", "surface-dark-elevated"];
 
 /**
@@ -146,7 +146,7 @@ describe("rules the system states in prose", () => {
     // and may sit inside a badge on surface-strong. Checking only the canvas
     // missed a real failure once already.
     for (const semantic of ["positive", "negative", "muted", "body", "action"]) {
-      for (const surface of ["canvas", "surface-soft", "surface-strong"]) {
+      for (const surface of LIGHT_SURFACES) {
         const r = contrastRatio(resolve(semantic), resolve(surface));
         expect(r, `${semantic} on ${surface} is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(
           AA_NORMAL,
@@ -210,6 +210,7 @@ describe("the guard itself fails when it should", () => {
         "| `{colors.muted}` on canvas | 5.54:1 | AA |\n",
     );
     expect(missingCoverage(rows, LIGHT_SURFACES)).toEqual([
+      "muted on caution-surface",
       "muted on surface-soft",
       "muted on surface-strong",
     ]);

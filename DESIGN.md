@@ -393,7 +393,16 @@ Contrast is a constraint on the tokens, not a later check. Every pairing below w
 | `{colors.negative}` on canvas | 6.95:1 | AA |
 | `{colors.negative}` on surface-soft | 6.48:1 | AA |
 | `{colors.negative}` on surface-strong | 6.08:1 | AA |
+| `{colors.caution}` on canvas | 5.93:1 | AA |
+| `{colors.caution}` on surface-soft | 5.53:1 | AA |
+| `{colors.caution}` on surface-strong | 5.19:1 | AA |
 | `{colors.caution}` on caution-surface | 5.49:1 | AA |
+| `{colors.ink}` on caution-surface | 18.25:1 | AA, AAA |
+| `{colors.body}` on caution-surface | 5.76:1 | AA |
+| `{colors.muted}` on caution-surface | 5.14:1 | AA |
+| `{colors.action}` on caution-surface | 6.59:1 | AA |
+| `{colors.positive}` on caution-surface | 5.06:1 | AA |
+| `{colors.negative}` on caution-surface | 6.44:1 | AA |
 | `{colors.on-action}` on action | 7.10:1 | AA, AAA |
 | `{colors.on-dark}` on surface-dark | 19.69:1 | AA, AAA |
 | `{colors.on-dark}` on surface-dark-elevated | 17.77:1 | AA, AAA |
