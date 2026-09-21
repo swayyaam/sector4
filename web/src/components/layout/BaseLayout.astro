@@ -9,10 +9,13 @@ import { loadDataset } from "../../lib/data";
 interface Props {
   title: string;
   description: string;
+  /** Site-relative path to this page's Open Graph card. */
+  image?: string | undefined;
+  imageAlt?: string | undefined;
   jsonLd?: Record<string, unknown>[];
   breadcrumbs?: { name: string; path: string }[];
 }
-const { title, description, jsonLd = [], breadcrumbs = [] } = Astro.props;
+const { title, description, image, imageAlt, jsonLd = [], breadcrumbs = [] } = Astro.props;
 const path = Astro.url.pathname;
 const { meta, isMock } = loadDataset();
 const site = (Astro.site ?? new URL("https://sector4.dev")).href.replace(/\/$/, "");
@@ -47,10 +50,19 @@ const crumbs =
       type="font/woff2"
       crossorigin="anonymous"
     />
-    <Seo title={title} description={description} path={path} jsonLd={[...jsonLd, ...crumbs]} />
+    <Seo
+      title={title}
+      description={description}
+      path={path}
+      image={image}
+      imageAlt={imageAlt}
+      jsonLd={[...jsonLd, ...crumbs]}
+    />
   </head>
   <body>
-    <a href="#main" class="skip">Skip to content</a>
+    <a href="#main" class="skip">
+      Skip to content
+    </a>
     {isMock && <PreviewBanner />}
     <SiteHeader path={path} />
     <main id="main">

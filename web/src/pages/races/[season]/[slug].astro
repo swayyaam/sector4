@@ -80,7 +80,11 @@ const jsonLd = [
     location: {
       "@type": "Place",
       name: circuit.name,
-      address: { "@type": "PostalAddress", addressLocality: circuit.locality, addressCountry: circuit.country },
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: circuit.locality,
+        addressCountry: circuit.country,
+      },
       geo: { "@type": "GeoCoordinates", latitude: circuit.lat, longitude: circuit.lng },
     },
   },
@@ -90,6 +94,8 @@ const jsonLd = [
 <BaseLayout
   title={title}
   description={description}
+  image={`/og/races/${race.season}/${race.slug}.png`}
+  imageAlt={`${race.season} ${race.name}: the three drivers most likely to win, with probabilities.`}
   jsonLd={jsonLd}
   breadcrumbs={[
     { name: "Track record", path: "/track-record/" },
@@ -99,209 +105,221 @@ const jsonLd = [
   <section class="band band-dark">
     <div class="wrap head">
       <div>
-        <p class="eyebrow">{race.season} · Round {race.round}</p>
+        <p class="eyebrow">
+          {race.season} · Round {race.round}
+        </p>
         <h1>{race.name}</h1>
-        <p class="where">{circuit.name} — {circuit.locality}, {circuit.country}</p>
+        <p class="where">
+          {circuit.name} — {circuit.locality}, {circuit.country}
+        </p>
       </div>
       <div class="when">
-        {
-          started ? (
-            <p class="cd">
-              <span class="num">Race complete</span>
-              <span class="at">
-                <time datetime={race.starts_at}>{formatUtc(race.starts_at)}</time>
-              </span>
-            </p>
-          ) : (
-            <Countdown startsAt={race.starts_at} />
-          )
-        }
+        {started ? (
+          <p class="cd">
+            <span class="num">Race complete</span>
+            <span class="at">
+              <time datetime={race.starts_at}>{formatUtc(race.starts_at)}</time>
+            </span>
+          </p>
+        ) : (
+          <Countdown startsAt={race.starts_at} />
+        )}
       </div>
     </div>
   </section>
 
-  {
-    result && scoredWith && (
-      <section class="band">
-        <div class="wrap">
-          <p class="eyebrow">Result</p>
-          <h2>Predicted against actual</h2>
-          <p class="lede">
-            Scored on the {SNAPSHOT_LABEL[scoredWith.snapshot].toLowerCase()} snapshot, the one
-            published before the race started. Nothing here is recalculated after the fact.
-          </p>
-          <dl class="scores">
-            <div>
-              <dt>Log loss</dt>
-              <dd class="num">{score(result.log_loss)}</dd>
-            </div>
-            <div>
-              <dt>Brier</dt>
-              <dd class="num">{score(result.brier)}</dd>
-            </div>
-            <div>
-              <dt>Winner</dt>
-              <dd class:list={["outcome", result.winner_hit ? "hit" : "miss"]}>
-                {result.winner_hit ? "Called" : "Missed"}
-              </dd>
-            </div>
-            <div>
-              <dt>Podium places</dt>
-              <dd class="num">{result.podium_hits} of 3</dd>
-            </div>
-          </dl>
-
-          <div class="scroller">
-            <table class="grid">
-              <caption class="sr-only">
-                Every driver's finishing position beside the probability given before the race.
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col" class="pos">Pos</th>
-                  <th scope="col">Driver</th>
-                  <th scope="col" class="n">Win prob.</th>
-                  <th scope="col" class="n">Podium prob.</th>
-                  <th scope="col" class="n">Expected</th>
-                  <th scope="col" class="n">Delta</th>
-                  <th scope="col">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {finalOrder.map((row) => {
-                  const d = drivers.get(row.driverId);
-                  const t = teams.get(row.team_entity_id);
-                  const a = actualById.get(row.driverId);
-                  const pos = a?.actual_position ?? null;
-                  const delta = pos === null ? null : row.expected_position - pos;
-                  return (
-                    <tr>
-                      <td class="pos num">{pos === null ? "—" : pos}</td>
-                      <th scope="row">
-                        <span class="who">
-                          {t && <TeamMarker colour={t.colour} name={t.name} />}
-                          <span>
-                            <span class="name">{d ? driverName(d) : `Driver ${row.driverId}`}</span>
-                            <span class="team">{t?.short_name ?? "Unknown team"}</span>
-                          </span>
-                        </span>
-                      </th>
-                      <td class="n num">{percent(row.p_win)}</td>
-                      <td class="n num">{percent(row.p_podium)}</td>
-                      <td class="n num dim">{position(row.expected_position)}</td>
-                      <td
-                        class:list={[
-                          "n",
-                          "num",
-                          delta === null ? "dim" : delta > 0.5 ? "hit" : delta < -0.5 ? "miss" : "dim",
-                        ]}
-                      >
-                        {delta === null ? "—" : `${delta > 0 ? "+" : ""}${position(delta)}`}
-                      </td>
-                      <td class="status">{a?.status ?? "Unknown"}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+  {result && scoredWith && (
+    <section class="band">
+      <div class="wrap">
+        <p class="eyebrow">Result</p>
+        <h2>Predicted against actual</h2>
+        <p class="lede">
+          Scored on the {SNAPSHOT_LABEL[scoredWith.snapshot].toLowerCase()} snapshot, the one
+          published before the race started. Nothing here is recalculated after the fact.
+        </p>
+        <dl class="scores">
+          <div>
+            <dt>Log loss</dt>
+            <dd class="num">{score(result.log_loss)}</dd>
           </div>
-          <p class="note">
-            Delta is expected position minus actual: positive means the driver beat the prediction.
-            A driver who did not finish has no position, so no delta.
-          </p>
+          <div>
+            <dt>Brier</dt>
+            <dd class="num">{score(result.brier)}</dd>
+          </div>
+          <div>
+            <dt>Winner</dt>
+            <dd class:list={["outcome", result.winner_hit ? "hit" : "miss"]}>
+              {result.winner_hit ? "Called" : "Missed"}
+            </dd>
+          </div>
+          <div>
+            <dt>Podium places</dt>
+            <dd class="num">{result.podium_hits} of 3</dd>
+          </div>
+        </dl>
+
+        <div class="scroller">
+          <table class="grid">
+            <caption class="sr-only">
+              Every driver's finishing position beside the probability given before the race.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col" class="pos">
+                  Pos
+                </th>
+                <th scope="col">Driver</th>
+                <th scope="col" class="n">
+                  Win prob.
+                </th>
+                <th scope="col" class="n">
+                  Podium prob.
+                </th>
+                <th scope="col" class="n">
+                  Expected
+                </th>
+                <th scope="col" class="n">
+                  Delta
+                </th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {finalOrder.map((row) => {
+                const d = drivers.get(row.driverId);
+                const t = teams.get(row.team_entity_id);
+                const a = actualById.get(row.driverId);
+                const pos = a?.actual_position ?? null;
+                const delta = pos === null ? null : row.expected_position - pos;
+                return (
+                  <tr>
+                    <td class="pos num">{pos === null ? "—" : pos}</td>
+                    <th scope="row">
+                      <span class="who">
+                        {t && <TeamMarker colour={t.colour} name={t.name} />}
+                        <span>
+                          <span class="name">{d ? driverName(d) : `Driver ${row.driverId}`}</span>
+                          <span class="team">{t?.short_name ?? "Unknown team"}</span>
+                        </span>
+                      </span>
+                    </th>
+                    <td class="n num">{percent(row.p_win)}</td>
+                    <td class="n num">{percent(row.p_podium)}</td>
+                    <td class="n num dim">{position(row.expected_position)}</td>
+                    <td
+                      class:list={[
+                        "n",
+                        "num",
+                        delta === null
+                          ? "dim"
+                          : delta > 0.5
+                            ? "hit"
+                            : delta < -0.5
+                              ? "miss"
+                              : "dim",
+                      ]}
+                    >
+                      {delta === null ? "—" : `${delta > 0 ? "+" : ""}${position(delta)}`}
+                    </td>
+                    <td class="status">{a?.status ?? "Unknown"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      </section>
-    )
-  }
+        <p class="note">
+          Delta is expected position minus actual: positive means the driver beat the prediction. A
+          driver who did not finish has no position, so no delta.
+        </p>
+      </div>
+    </section>
+  )}
 
   <section class="band band-soft">
     <div class="wrap">
       <p class="eyebrow">Prediction</p>
       <h2>Full field</h2>
 
-      {
-        snapshots.length > 1 && (
-          <fieldset class="switch">
-            <legend>Snapshot</legend>
-            {snapshots.map((s, i) => (
-              <>
-                <input
-                  type="radio"
-                  name="snapshot"
-                  id={`snap-${s.snapshot}`}
-                  value={s.snapshot}
-                  checked={i === 0}
-                />
-                <label for={`snap-${s.snapshot}`}>{SNAPSHOT_LABEL[s.snapshot]}</label>
-              </>
-            ))}
-          </fieldset>
-        )
-      }
+      {snapshots.length > 1 && (
+        <fieldset class="switch">
+          <legend>Snapshot</legend>
+          {snapshots.map((s, i) => (
+            <>
+              <input
+                type="radio"
+                name="snapshot"
+                id={`snap-${s.snapshot}`}
+                value={s.snapshot}
+                checked={i === 0}
+              />
+              <label for={`snap-${s.snapshot}`}>{SNAPSHOT_LABEL[s.snapshot]}</label>
+            </>
+          ))}
+        </fieldset>
+      )}
 
       <div class="panels">
-        {
-          snapshots.map((s) => {
-            const rows = driversByWinProbability(s);
-            return (
-              <div class="panel" data-snap={s.snapshot}>
-                <p class="meta">
-                  <strong>{SNAPSHOT_LABEL[s.snapshot]}.</strong> {SNAPSHOT_BLURB[s.snapshot]}{" "}
-                  Generated <time datetime={s.generated_at}>{formatUtc(s.generated_at)}</time> ·
-                  model {s.model_version} · data {s.data_version} ·{" "}
-                  <span class="num">{s.commit_sha.slice(0, 7)}</span>
-                </p>
-                <div class="scroller">
-                  <ProbabilityTable
-                    rows={rows}
-                    drivers={drivers}
-                    teams={teams}
-                    caption={`${SNAPSHOT_LABEL[s.snapshot]} probabilities for all ${rows.length} drivers, most likely winner first.`}
-                  />
-                </div>
-
-                <h3 class="fh">What is driving each number</h3>
-                <ul class="factors">
-                  {rows.map((r, i) => {
-                    const d = drivers.get(r.driverId);
-                    const t = teams.get(r.team_entity_id);
-                    return (
-                      <li>
-                        <details open={i < 3}>
-                          <summary>
-                            <span class="fname">{d ? driverName(d) : `Driver ${r.driverId}`}</span>
-                            <span class="fteam">{t?.short_name ?? "Unknown team"}</span>
-                            <span class="num fpct">{percent(r.p_win)}</span>
-                          </summary>
-                          {r.top_factors.length === 0 ? (
-                            <p class="empty">No factor above the reporting threshold.</p>
-                          ) : (
-                            <ul class="flist">
-                              {r.top_factors.map((f) => (
-                                <li>
-                                  <span class="flabel">{f.label}</span>
-                                  <span class="fmag" aria-hidden="true">
-                                    <span
-                                      class:list={["fbar", f.direction]}
-                                      style={`width:${Math.round(f.magnitude * 100)}%`}
-                                    />
-                                  </span>
-                                  <span class:list={["fdir", f.direction]}>
-                                    {f.direction === "positive" ? "helps" : "hurts"}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </details>
-                      </li>
-                    );
-                  })}
-                </ul>
+        {snapshots.map((s) => {
+          const rows = driversByWinProbability(s);
+          return (
+            <div class="panel" data-snap={s.snapshot}>
+              <p class="meta">
+                <strong>{SNAPSHOT_LABEL[s.snapshot]}.</strong> {SNAPSHOT_BLURB[s.snapshot]}{" "}
+                Generated <time datetime={s.generated_at}>{formatUtc(s.generated_at)}</time> · model{" "}
+                {s.model_version} · data {s.data_version} ·{" "}
+                <span class="num">{s.commit_sha.slice(0, 7)}</span>
+              </p>
+              <div class="scroller">
+                <ProbabilityTable
+                  rows={rows}
+                  drivers={drivers}
+                  teams={teams}
+                  caption={`${SNAPSHOT_LABEL[s.snapshot]} probabilities for all ${rows.length} drivers, most likely winner first.`}
+                />
               </div>
-            );
-          })
-        }
+
+              <h3 class="fh">What is driving each number</h3>
+              <ul class="factors">
+                {rows.map((r, i) => {
+                  const d = drivers.get(r.driverId);
+                  const t = teams.get(r.team_entity_id);
+                  return (
+                    <li>
+                      <details open={i < 3}>
+                        <summary>
+                          <span class="fname">{d ? driverName(d) : `Driver ${r.driverId}`}</span>
+                          <span class="fteam">{t?.short_name ?? "Unknown team"}</span>
+                          <span class="num fpct">{percent(r.p_win)}</span>
+                        </summary>
+                        {r.top_factors.length === 0 ? (
+                          <p class="empty">No factor above the reporting threshold.</p>
+                        ) : (
+                          <ul class="flist">
+                            {r.top_factors.map((f) => (
+                              <li>
+                                <span class="flabel">{f.label}</span>
+                                <span class="fmag" aria-hidden="true">
+                                  <span
+                                    class:list={["fbar", f.direction]}
+                                    style={`width:${Math.round(f.magnitude * 100)}%`}
+                                  />
+                                </span>
+                                <span class:list={["fdir", f.direction]}>
+                                  {f.direction === "positive" ? "helps" : "hurts"}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </details>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
       </div>
     </div>
   </section>
