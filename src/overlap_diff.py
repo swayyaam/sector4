@@ -34,12 +34,23 @@ IGNORE = {"resultId", "qualifyId", "driverStandingsId", "constructorStandingsId"
           "lap_data_suspect", "red_flag_affected", "championship_points"}
 
 
-def norm(s: pd.Series) -> pd.Series:
-    """Comparable form: numbers as numbers, everything else as trimmed strings."""
-    num = pd.to_numeric(s, errors="coerce")
-    if num.notna().sum() >= s.notna().sum() and s.notna().any():
-        return num.astype("Float64")
-    return s.astype("string").str.strip()
+def compare(a: pd.Series, b: pd.Series) -> pd.Series:
+    """Element-wise inequality, NA-safe, with both sides coerced the same way.
+
+    Both columns are judged together: if every non-null value on both sides
+    parses as a number we compare numerically (so 25 and 25.0 agree),
+    otherwise we compare trimmed strings.
+    """
+    na = pd.Series(a.isna().to_numpy() & b.isna().to_numpy(), index=a.index)
+    an, bn = pd.to_numeric(a, errors="coerce"), pd.to_numeric(b, errors="coerce")
+    numeric = (an.notna().sum() == a.notna().sum()) and (bn.notna().sum() == b.notna().sum())
+    if numeric and (a.notna().any() or b.notna().any()):
+        eq = pd.Series((an.to_numpy() == bn.to_numpy()), index=a.index)
+    else:
+        av = a.astype("string").str.strip().fillna("\x00")
+        bv = b.astype("string").str.strip().fillna("\x00")
+        eq = pd.Series((av.to_numpy() == bv.to_numpy()), index=a.index)
+    return ~(eq | na)
 
 
 def diff_table(table: str, year: int = 2024) -> dict:
@@ -60,8 +71,7 @@ def diff_table(table: str, year: int = 2024) -> dict:
     per_col = {}
     examples = {}
     for c in cols:
-        a, b = norm(both[f"{c}_k"]), norm(both[f"{c}_j"])
-        neq = ~((a == b) | (a.isna() & b.isna()))
+        neq = compare(both[f"{c}_k"], both[f"{c}_j"])
         n = int(neq.sum())
         if n:
             per_col[c] = n

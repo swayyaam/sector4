@@ -48,7 +48,7 @@ def _num(v):
     return None if v in (None, "") else v
 
 
-def build(seasons: list[int]) -> dict[str, list[dict]]:
+def build(seasons: list[int], skip_laps: bool = False) -> dict[str, list[dict]]:
     client = JolpicaClient()
     a = audit(seasons)
     write_maps(a)
@@ -235,10 +235,12 @@ def build(seasons: list[int]) -> dict[str, list[dict]]:
                         "milliseconds": ms,
                         "red_flag_affected": (ms is not None and ms >= RED_FLAG_STOP_MS),
                         "source": "jolpica"})
-            try:
-                races_lp = client.get_all(f"{year}/{rnd}/laps")
-            except Exception:
-                races_lp = []
+            races_lp = []
+            if not skip_laps:
+                try:
+                    races_lp = client.get_all(f"{year}/{rnd}/laps")
+                except Exception:
+                    races_lp = []
             rows = []
             for race in races_lp:
                 for lap in race.get("Laps", []):
@@ -254,8 +256,29 @@ def build(seasons: list[int]) -> dict[str, list[dict]]:
                     r["red_flag_affected"] = bool(pd.notna(v) and median and v >= RED_FLAG_LAP_RATIO * median)
             out["lap_times"].extend(rows)
 
+    # ---------------------------------------------- derived: constructor_results
+    # Jolpica has no constructor-results endpoint. Part 1 established that from
+    # 1980 on this table equals the sum of a team's race + sprint points for
+    # that race (pre-1979 only the best-placed car scored, which does not apply
+    # here). The `status` column stays null: it flags a championship exclusion
+    # and there is none in 2024-2026.
+    team_pts: dict[tuple[int, int], float] = {}
+    for tbl in ("results", "sprint_results"):
+        for r in out[tbl]:
+            k = (r["raceId"], r["constructorId"])
+            team_pts[k] = team_pts.get(k, 0.0) + float(r["points"])
+    for i, ((rid, cid), pts) in enumerate(sorted(team_pts.items()), start=1):
+        out["constructor_results"].append({
+            "constructorResultsId": i, "raceId": rid, "constructorId": cid,
+            "points": pts, "status": None, "derived": True, "source": "jolpica"})
+
     # ------------------------------------ derived: lap_data_suspect on results
-    if out["lap_times"]:
+    # With no lap data loaded we cannot judge, so the flag is left null rather
+    # than defaulting to False, which would assert the laps agree.
+    if skip_laps and not out["lap_times"]:
+        for r in out["results"]:
+            r["lap_data_suspect"] = None
+    elif out["lap_times"]:
         lt = pd.DataFrame(out["lap_times"]).groupby(["raceId", "driverId"]).size()
         for r in out["results"]:
             n = lt.get((r["raceId"], r["driverId"]))
@@ -271,11 +294,12 @@ def build(seasons: list[int]) -> dict[str, list[dict]]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seasons", nargs="+", type=int, default=[2024, 2025, 2026])
+    ap.add_argument("--skip-laps", action="store_true")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)-7s %(message)s")
 
     OUT.mkdir(parents=True, exist_ok=True)
-    data = build(args.seasons)
+    data = build(args.seasons, skip_laps=args.skip_laps)
     sidecar = data.pop("_sidecar")
 
     for table, rows in data.items():
