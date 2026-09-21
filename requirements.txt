@@ -1,3 +1,22 @@
-pandas==3.0.6
+# Phase 1 (data) + Phase 2 (enrichment and modelling).
+#
+# pandas is held at 2.x because fastf1 requires <3.0.0. The full Phase 1
+# pipeline was re-run on 2.3.3 and data/processed verified byte-identical to
+# the v0.1-data baseline (src/checksum_processed.py verify), with all 59
+# validation checks and 96 tests passing. Do not bump pandas without
+# re-running that check.
+
+pandas==2.3.3
 requests==2.34.2
 pytest==9.1.1
+fastf1==3.8.3
+scikit-learn==1.9.1
+lightgbm==4.7.0
+
+# Transitive but pinned because they carry numerical behaviour:
+numpy==2.5.3
+scipy==1.18.1
+matplotlib==3.11.2
+
+# macOS note: lightgbm needs the OpenMP runtime, which pip does not provide.
+#   brew install libomp
