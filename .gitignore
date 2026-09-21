@@ -16,3 +16,7 @@ __pycache__/
 
 # local snapshot used to prove data/processed did not change
 data/processed_*_snapshot/
+
+# FastF1 cache (rebuildable)
+data/raw/fastf1/
+data/enriched/
