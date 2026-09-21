@@ -250,3 +250,227 @@ The same applies to `results.points`, `positionOrder`, `laps`, `time`, `statusId
 **2024 needs no backfill** — it is complete and verified. It will still be re-fetched from Jolpica so the overlap can be diffed, as planned.
 
 Because 2026 is a regulation reset, pre-2026 car performance is a weak prior for 2026 pace. Worth carrying an explicit era flag into any model.
+
+---
+
+# Phase 2 — Jolpica fetch and transform
+
+## API constraints (checked, not assumed)
+
+From [the Jolpica docs](https://github.com/jolpica/jolpica-f1), read 2026-09-21:
+
+| Constraint | Value | Consequence |
+|---|---|---|
+| Burst limit | 4 requests/second | Limiter set to 3/s with headroom; still saw 429s, so backoff matters |
+| Sustained limit | 500 requests/hour | The binding constraint. Limiter capped at 460/hour |
+| Max `limit` | **100** (Ergast allowed 1000) | Lap times need ~10 requests per race |
+| User-Agent | Mandatory, must identify the app | Sent on every request |
+| Auth | Token-based access still in development | Anonymous only for now |
+
+Bulk CSV dumps exist but the free tier releases them **14 days late**, so they cannot serve "up to the latest completed race". Worth revisiting as an independent cross-check.
+
+### Two pagination traps, both verified against the live API
+
+1. **`total` counts the innermost rows**, not the race objects wrapping them. `/2025/results` reports `total=479` (result rows) while returning 5 race objects per page. Counting races would have failed the verification; counting the nested rows passes.
+2. **A race straddles page boundaries.** Page 1 of `/2025/results` ends with round 11 holding a *single* result and page 2 continues it. Laps split the same way — lap 6's timings span two pages. Naive concatenation yields duplicate race objects each holding a fragment, so pages are merged on `(season, round)` and, for laps, on lap number.
+
+Every fetch asserts `merged_row_count == total` and raises otherwise, so a short read cannot pass silently.
+
+## What was fetched
+
+| Season | Scheduled | Completed | Notes |
+|---|---:|---:|---|
+| 2024 | 24 | 24 | Re-fetched in full for the overlap diff |
+| 2025 | 24 | 24 | Complete |
+| 2026 | 23 | **14** | Last completed: **R14 Spanish GP, 2026-09-13**. R15 Azerbaijan is 2026-09-26 |
+
+**62 completed races.** No cancelled or postponed races; no race missing a table. 342 network requests, 133 retried after a 429, zero hard failures. R12–R14 of 2026 fall inside the 30-day provisional window and are re-fetched with a diff on every run.
+
+## Jolpica vs the Kaggle schema
+
+### Field mapping decisions (each verified on live data)
+
+| Issue | Finding | Handling |
+|---|---|---|
+| **`position` semantics** | Jolpica's `position` is a dense 1..N classification rank — a retired driver comes back as `position=15, positionText='R'`. Verified dense across all 48 checked races. | Maps to Kaggle's **`positionOrder`**. Kaggle's nullable `position` is derived from `positionText`. |
+| **`Time.millis`** | Total race time, not the gap — same as Kaggle. | Straight copy. |
+| **`fastestLapSpeed`** | **Absent.** 0 of 479 rows carry `AverageSpeed`. | Null for every Jolpica row. Not invented. |
+| **`circuits.alt`** | **Absent** from `Location`. | Null for the one new circuit. Not invented. |
+| **Pit stop / lap `milliseconds`** | **Absent.** Jolpica gives only the time string. | Derived by exact parse of that string — a lossless unit conversion, not an estimate. Part 1 verified the two agree on all 600k Kaggle rows. |
+| **`SprintQualifying`** | A field with nowhere to live in the Kaggle schema. | Stored in a **`race_sessions_extra` sidecar** (17 rows), not dropped. |
+| **Sprint weekends** | Ergast stored Sprint Qualifying in `fp2_date`/`fp2_time`. That is why Kaggle shows an "FP2" on sprint weekends where none was run. | Jolpica's proper field goes to the sidecar; the `fp2_*` difference on the 6 sprint weekends is this, not a data error. |
+| **`constructor_results`** | **No such endpoint exists.** | Derived from race + sprint points per team-race. Part 1 established this reproduces the table exactly for 1980+. Rows carry `derived=True`. |
+| **Session times** | Jolpica returns `"15:00:00Z"`, Kaggle `"15:00:00"`. | Same instant; Jolpica states UTC explicitly. Confirms the Ergast UTC convention. |
+
+### Status taxonomy — the biggest divergence
+
+Jolpica collapses the retirement taxonomy, and **applies the collapse to 2024 as well**, not just 2025+:
+
+| Jolpica status | Count (2024) | Kaggle equivalents it replaces |
+|---|---:|---|
+| Lapped (**id 143, new**) | 138 | `+1 Lap` (123), `+2 Laps` (14), `+7 Laps` (1) |
+| Retired (id 31) | 40 | Collision (12), Accident (9), Engine (5), Spun off (3), Brakes (2), Collision damage (2), Gearbox (2), Hydraulics, Overheating, Power Unit, Radiator, Water pressure |
+| Did not start (**id 142, new**) | 3 | Withdrew (2), Gearbox (1) |
+
+Good news on IDs: Jolpica **reuses Ergast's integer status IDs** — all 35 statuses in a 2010 sample match Kaggle's labels exactly, and only two IDs are new. Both sit above Kaggle's max of 141, so **there is no collision and no reassignment is needed**.
+
+Consequence for modelling: retirement *cause* is a usable feature up to 2024 (from Kaggle) but **not from 2025 onward** — only "Retired" survives.
+
+## New IDs created
+
+Deliberately derived from entities that actually appear in a classification, **not** from `/{year}/drivers`, which lists FP1-only drivers (2025 lists 36 for a 20-car grid).
+
+| Kind | New | IDs | Why |
+|---|---:|---|---|
+| Drivers | 4 | `antonelli` 863, `arvid_lindblad` 864, `bortoleto` 865, `hadjar` 866 | Genuine F1 debutants; no matching `driverRef` exists |
+| Constructors | 2 | `audi` 216, `cadillac` 217 | Both new for 2026 |
+| Circuits | 1 | `madring` 81 | Madrid, new for 2026 |
+| Statuses | 2 | `Did not start` 142, `Lapped` 143 | Jolpica's own IDs, no collision |
+| Races | 38 | 1145–1168 (2025), 1169–1182 (2026 R1–14) | 2024 reuses the existing 1121–1144 |
+
+Assignment is deterministic: sorted by ref, starting after the current max. Maps are in `data/processed/id_maps/`.
+
+### Two traps this caught
+
+- **Sauber → Audi is a rebrand with a new `constructorRef`.** `sauber` does not appear in 2026 and `audi` does. Treating it as new matches Ergast's own convention (Jaguar→Red Bull, Racing Point→Aston Martin each got fresh IDs), **but it means Audi carries no Sauber history.** Worth confirming.
+- **The 2026 Spanish GP moved circuits.** It is now at `madring` (Madrid) while Barcelona hosts a separate "Barcelona Grand Prix" at the existing `catalunya`. Matching on `circuitRef` handles this correctly; matching on race *name* would have silently mapped Madrid onto Barcelona.
+
+### Metadata conflicts on entities that already existed (5)
+
+| Ref | Field | Kaggle | Jolpica | Verdict |
+|---|---|---|---|---|
+| `max_verstappen` | number | 33 | **3** | **Jolpica correct.** Verstappen took #3 for 2026 after losing the title; Ricciardo released the number ([formula1.com](https://www.formula1.com/en/latest/article/max-verstappen-confirms-he-will-use-car-number-3-for-2026-season.6qvN2SQwcyGYnMWhGdDpNS)) |
+| `norris` | number | 4 | **1** | Jolpica correct — champion's number for 2026 |
+| `bearman` | number | 38 | **87** | Jolpica correct — permanent number as a full-time driver |
+| `doohan` | number | 61 | **7** | Jolpica correct for 2025 |
+| `colapinto` | nationality | `"Argentinian "` | `"Argentine"` | **Kaggle has a trailing space.** A cosmetic bug worth correcting |
+
+⚠️ **`permanentNumber` is the driver's *current* number applied retroactively to every season.** Norris shows `permanentNumber=1` even on 2024 rows, when he actually ran #4. So it must never be used as a per-season value — `results.number` is the season-accurate car number. Existing drivers' `drivers.number` is left untouched.
+
+**Decision needed:** `drivers.number` is a single-value column on a dimension whose real value changes per season. I would leave Kaggle's value alone for existing drivers and rely on `results.number`, but you may prefer to refresh it to the current number.
+
+---
+
+# Phase 3 — Validation
+
+## 2024 overlap diff: Kaggle vs Jolpica
+
+Both sides keyed on the same natural keys and compared column by column. Surrogate IDs are excluded (each side assigns them independently).
+
+| Table | Rows (K / J) | Matched | Unmatched | Conflicting cells |
+|---|---|---:|---:|---:|
+| `driver_standings` | 519 / 519 | 519 | 0 | **0** ✅ |
+| `constructor_standings` | 240 / 240 | 240 | 0 | **0** ✅ |
+| `results` | 479 / 479 | 479 | 0 | 1,049 |
+| `qualifying` | 479 / 479 | 479 | 0 | 72 |
+| `sprint_results` | 120 / 120 | 120 | 0 | 15 |
+| `pit_stops` | 825 / 825 | 818 | 7 / 7 | 2 |
+| `races` | 24 / 24 | 24 | 0 | 126 |
+
+**Both standings tables agree perfectly** — every point total, position and win count, across all 24 rounds. That is the strongest possible signal that the two sources describe the same season.
+
+The row counts match exactly everywhere. The only key mismatch is 7 pit stops, and that turns out to be a Kaggle bug (below).
+
+## Conflicts by type, with a recommendation for each
+
+### Clear-cut — evidence decides
+
+| # | Conflict | Cells | What the evidence shows | Winner |
+|---|---|---:|---|---|
+| 1 | **2024 Belgian GP race times** | 19 | Russell won on track then was disqualified. Kaggle kept gaps relative to Russell, giving the *classified winner* Hamilton `time=+0.526, ms=526`. Jolpica has Hamilton at `1:19:57.566` with everyone else re-gapped to him. Official classification: **Hamilton 1:19:57.566, Piastri +0.647, Leclerc +8.023** — exactly Jolpica. | **Jolpica** (verified) |
+| 2 | **Russell's DSQ encoding**, same race | 2 | Kaggle: `positionText='D'`, `position=NULL`. Jolpica: `positionText='20'`, `position=20` — despite its own `status` saying Disqualified. Kaggle follows the documented convention. | **Kaggle** |
+| 3 | **Pit stop `stop`/`lap` transposed** | 7 rows | 2024 Monaco GP: Kaggle has Hamilton `stop=51, lap=2`; Jolpica `stop=2, lap=51`. `time` and `duration` are identical, so it is the same event with two columns swapped. Kaggle has 7 rows where `stop > lap` (impossible) and a max `stop` of **70**; Jolpica has none. | **Jolpica** |
+| 4 | **Malformed 4-decimal times** | 2 | Saudi GP: Kaggle `+13.6431` and `+1:45.7373` — F1 times carry 3 decimals. Kaggle's `milliseconds` is also wrong by 5.8 s; Jolpica's equals winner + gap exactly. | **Jolpica** |
+| 5 | **`fastestLap` = lap 1** | 12 | Kaggle records lap 1 as the fastest lap for Norris and Piastri at Bahrain and Saudi. A lap-1 fastest lap does not happen on a full-fuel start. Jolpica gives laps 35/39/45/40. | **Jolpica** |
+| 6 | **`rank` all zero** | 20 | Kaggle has `rank=0` for every driver at Monaco 2024 — a placeholder, not a rank. | **Jolpica** |
+| 7 | **`statusId` granularity** | 181 | Jolpica collapses to Retired/Lapped/Did not start; Kaggle keeps Collision, Engine, Gearbox, `+1 Lap` etc. | **Kaggle** (2024 only — 2025+ has no granular option) |
+| 8 | **`fastestLapSpeed`** | 447 | Jolpica does not publish it at all. | **Kaggle** |
+| 9 | **Qualifying times missing** | 56 | Jolpica has no Q2/Q3 times for Azerbaijan, Dutch, Emilia Romagna and Saudi. Kaggle has them. | **Kaggle** |
+| 10 | **Qualifying `position` broken** | 10 | Jolpica produces duplicate and non-dense positions in 4 races (2024 Monaco, Dutch, Azerbaijan; 2025 Emilia Romagna) — e.g. two drivers at P14 and a maximum of 18 for 20 entrants. Kaggle is clean on all 494 of its races. | **Kaggle** (2024); 2025 Imola needs a correction |
+| 11 | **`results.time`/`milliseconds` coverage** | 144 | Jolpica supplies gap times for 137 classified finishers where Kaggle has null. Strictly more data, no contradiction. | **Jolpica** |
+| 12 | **Session-time format** | 96 | Jolpica returns `"15:00:00Z"`, Kaggle `"15:00:00"`. Identical instants. | Either — normalise |
+| 13 | **`fp2_*` on sprint weekends** | 12 | Not an error: Ergast stored Sprint Qualifying in the FP2 columns. Now captured properly in the sidecar. | Keep both |
+
+### Needs your decision
+
+| # | Conflict | Cells | The trade-off |
+|---|---|---:|---|
+| A | **`grid = 0` vs the real grid slot** | 11 | Kaggle encodes a pit-lane start as `grid=0`, losing the slot. Jolpica gives the nominal slot (19/20), losing the pit-lane fact. My `pit_lane_start` flag already preserves the fact, so we could keep Kaggle's `grid` (consistent with 1950–2023) **and** add Jolpica's value as `grid_slot`. One genuine disagreement sits underneath: Hülkenberg at São Paulo is grid 17 (Kaggle) vs 18 (Jolpica). |
+| B | **Fastest lap transposed between two drivers** | 6 | Saudi GP: Kaggle gives Sargeant 1:33.523 / Tsunoda 1:33.026, Jolpica the reverse. One source has the pair swapped; the official document decides. Low impact. |
+| C | **São Paulo Q2 times** | 3 | Albon 1:25.889 (K) vs 1:24.657 (J), Piastri 1:25.179 vs 1:24.686, Alonso 1:25.035 vs 1:28.998. A real disagreement in a wet, red-flagged session. Needs the official document. |
+| D | **Singapore Q1, Tsunoda** | 1 | 1:30.710 (K) vs 1:30.716 (J) — 6 ms apart. |
+| E | **Sprint retirement encoding** | 6 | Kaggle classifies Stroll P19 and Norris P20 at the Miami sprint (Norris completed **0 laps**) and Hülkenberg P20 at São Paulo; Jolpica calls all three `R`. Both sources say `status=Retired`, so Kaggle contradicts itself. Jolpica looks right, but the official classification should settle it. |
+
+**Proposed default:** Kaggle wins for 2024 *except* where Jolpica is demonstrably correct (rows 1, 3, 4, 5, 6, 11). Those become `corrections.csv` entries citing the official source, so the raw Kaggle CSVs stay untouched.
+
+## Pass / fail
+
+| Group | Check | Result |
+|---|---|---|
+| Structural | `races`: no duplicate `raceId` | **PASS** |
+| Structural | `races`: no duplicate `(year, round)` | **PASS** |
+| Structural | `races`: round numbers contiguous from 1 | **PASS** |
+| Structural | `results`: `(raceId, driverId)` unique | **PASS** |
+| Structural | `qualifying`: `(raceId, driverId)` unique | **PASS** |
+| Structural | `pit_stops`: `(raceId, driverId, stop)` unique | **PASS** |
+| Structural | every `raceId` resolves (7 tables) | **PASS** |
+| Structural | `results.driverId` / `.constructorId` resolve | **PASS** |
+| Structural | `results.positionOrder` dense 1..N | **PASS** |
+| Structural | `qualifying.position` dense 1..N | **FAIL** — Jolpica broken in raceIds 1128, 1135, 1137, 1151 |
+| Completeness | every race has results / qualifying / both standings | **PASS** |
+| Completeness | every race has pit stops | **PASS** |
+| Completeness | every race has lap times | **PENDING** — lap fetch still running |
+| Recompute | 2024 / 2025 / 2026 driver standings == sum(results + sprint) | **PASS** |
+| Recompute | 2024 / 2025 / 2026 constructor standings == sum(results + sprint) | **PASS** |
+| Ground truth | 2024 drivers and constructors vs formula1.com | **PASS** |
+| Ground truth | 2025 drivers and constructors vs formula1.com | **PASS** |
+| Ground truth | 2026 drivers and constructors vs formula1.com | **PASS** |
+| Sanity | 18–24 entrants per race | **PASS** |
+| Sanity | season race counts plausible | **PASS** |
+| Sanity | no negative points | **PASS** |
+| Sanity | grid within 0..26 | **PASS** |
+
+**36 passed, 2 failed** (one of which is pending data, not a defect).
+
+Every 2024, 2025 and 2026 championship total reconciles three ways: the fetched standings table, a recomputation from results + sprint, and the official formula1.com classification.
+
+## Derived columns added
+
+Raw columns are never overwritten.
+
+| Column | Table | Rule |
+|---|---|---|
+| `source` | all | `kaggle` or `jolpica` |
+| `regs_era` | races | See `src/eras.py` — 13 eras, contiguous, 2026 is its own |
+| `pit_lane_start` | results | `grid == 0` |
+| `lap_data_suspect` | results | `results.laps` disagrees with the `lap_times` row count. Null when lap data is not loaded, rather than defaulting to false |
+| `red_flag_affected` | lap_times | lap ≥ **3.0×** that race's median lap |
+| `red_flag_affected` | pit_stops | duration ≥ **180 s** |
+| `championship_points` | constructor_standings | Points after championship penalties |
+| `derived` | constructor_results | Marks the whole table as computed, not fetched |
+
+### Threshold justification
+
+Both thresholds come from the distribution, not from round numbers.
+
+**Lap times** use a ratio to each race's own median lap, because absolute lap times vary by circuit. The ratio distribution has a clean discontinuity: p99 = 1.63, p99.5 = **1.71**, then p99.9 = **10.33**. Safety-car and VSC laps occupy the 1.5–2× band (10,986 laps across 416 races) and must not be flagged. A 3.0× cut sits inside the empty gap and selects 723 laps across 109 races — and those races are exactly the known red-flag events: 2023 Australia (49 laps), 2016 Brazil (36), 2021 Saudi Arabia (35), 2011 Canada (max lap 125 minutes).
+
+**Pit stops** need no ratio. The bands are: 10,890 stops under 120 s, 3 between 120–180 s, **zero between 180–300 s**, and 478 above 300 s. The two populations are perfectly separated by an empty band, so any cut in [180, 300) behaves identically; 180 s is the conservative edge. The 3 stops in the 120–180 s band are long repairs, correctly left unflagged.
+
+## Leakage — restated for the merged dataset
+
+`driver_standings` and `constructor_standings` remain **post-race snapshots**: the row for `raceId = R` already contains race R's points. A model predicting race R must use round R−1 or a recomputed pre-race total. Both tables reconcile exactly with a cumulative sum for 1991–2026, so the lagged version can be rebuilt with confidence.
+
+Post-race columns that must never be inputs for the same race: `results.points`, `position`, `positionText`, `positionOrder`, `laps`, `time`, `milliseconds`, `statusId`, every `fastestLap*` column, and both standings tables. Legitimate pre-race features: `grid`, qualifying times and positions, `regs_era`, and anything lagged from earlier rounds.
+
+---
+
+# Recommended next sources (not built)
+
+| Source | Adds | Worth it for prediction? | Cross-check value |
+|---|---|---|---|
+| **FastF1** | Tyre compound and stint lengths, per-lap fuel-corrected pace, sector times, weather (air/track temp, rain, wind), full telemetry, practice session pace | **Yes — the highest-value addition.** Tyre stints and practice pace are genuinely predictive and completely absent here. Weather explains much of the variance Jolpica cannot. It wraps the official F1 timing API, so coverage is strong from 2018 and telemetry from 2018 on. | **Strong.** Independently sourced from official timing, so it is a real second opinion on lap times, pit stops and classifications — it would settle conflicts B, C and E above. |
+| **OpenF1** | Live and historical timing, radio, car telemetry, position data, pit timing, race control messages | Useful for in-race/live prediction and for race-control context (safety cars, flags), which would replace my inferred `red_flag_affected` with actual flag states. Less essential for pre-race prediction. | Moderate — overlaps FastF1; coverage starts 2023. |
+| **Jolpica bulk CSV dumps** | The same data as the API, in bulk | No new content. | Useful as an integrity check on the API path, but the free tier lags 14 days so it cannot cover the latest race. |
+
+Worth noting for 2026 specifically: the regulation reset means pre-2026 car performance is a weak prior. Practice and tyre data from FastF1 would matter *more* than usual for 2026 races, because within-season signal has to carry weight that historical form normally would.
