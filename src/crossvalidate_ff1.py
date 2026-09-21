@@ -74,14 +74,22 @@ def main() -> int:
     both["diff"] = (both["ff_ms"] - both["our_ms"]).abs()
 
     n_both = len(both)
-    exact = int((both["diff"] == 0).sum())
-    within = int((both["diff"] <= LAP_TOL_MS).sum())
-    over = both[both["diff"] > LAP_TOL_MS]
+    # A null on either side is not agreement or disagreement -- it is absence,
+    # and lumping it into a match rate would overstate agreement.
+    comparable = both[both["ff_ms"].notna() & both["our_ms"].notna()]
+    ff_null = int(both["ff_ms"].isna().sum())
+    our_null = int(both["our_ms"].isna().sum())
+    nc = len(comparable)
+    exact = int((comparable["diff"] == 0).sum())
+    within = int((comparable["diff"] <= LAP_TOL_MS).sum())
+    over = comparable[comparable["diff"] > LAP_TOL_MS]
     print(f"\n### Race lap times  ({len(shared)} overlapping races)")
-    print(f"    laps compared      : {n_both:,}")
-    print(f"    exact match        : {exact:,} ({100*exact/max(n_both,1):.3f}%)")
-    print(f"    within {LAP_TOL_MS} ms      : {within:,} ({100*within/max(n_both,1):.3f}%)")
-    print(f"    differing > {LAP_TOL_MS} ms : {len(over):,} ({100*len(over)/max(n_both,1):.3f}%)")
+    print(f"    lap rows in both   : {n_both:,}")
+    print(f"      no time in FastF1: {ff_null:,}   no time in ours: {our_null:,}")
+    print(f"    comparable         : {nc:,}")
+    print(f"      exact match      : {exact:,} ({100*exact/max(nc,1):.3f}%)")
+    print(f"      within {LAP_TOL_MS} ms    : {within:,} ({100*within/max(nc,1):.3f}%)")
+    print(f"      differing >{LAP_TOL_MS}ms : {len(over):,} ({100*len(over)/max(nc,1):.3f}%)")
     print(f"    only in FastF1     : {int((m['_merge']=='left_only').sum()):,}")
     print(f"    only in ours       : {int((m['_merge']=='right_only').sum()):,}")
     if len(over):
