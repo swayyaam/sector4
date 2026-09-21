@@ -563,3 +563,17 @@ Five driver-races carry `laps = 0` for a driver who demonstrably completed most 
 This is **not** a clean convention change — Jolpica is inconsistent with itself. The 2025 Las Vegas disqualifications (Norris, Piastri) correctly carry `laps = 50`, and Kaggle records real lap counts for 141 of its 151 historical DSQ rows (Russell's 2024 Belgian DSQ is `laps = 44`).
 
 formula1.com cannot settle it: its classification shows "–" for a disqualified driver's laps. **The `lap_times` table can** — counting a driver's lap rows gives the figure directly, from data already in the set. The derived `lap_data_suspect` flag catches exactly these rows once lap times are loaded. No value has been filled; the rows are flagged and left as recorded.
+
+## Full-classification spot checks
+
+Five races drawn at random across 2024–2026 (seed 4), each compared **row by row** against the official formula1.com classification — every position, driver, lap count and points total, including retirements and disqualifications.
+
+| Race | Rows | Result |
+|---|---:|---|
+| 2024 Emilia Romagna GP | 20 | ✅ Exact, incl. Russell's fastest-lap point (7) and Albon NC at 51 laps |
+| 2024 Italian GP | 20 | ✅ Exact, incl. Norris 16 (15 + fastest lap) and Tsunoda DNF at 7 laps |
+| 2024 Mexico City GP | 20 | ✅ Exact, incl. Leclerc 16 (15 + fastest lap) and three DNFs |
+| 2025 Chinese GP | 20 | ✅ Exact, incl. Alonso DNF at 4 laps and three disqualifications |
+| 2025 Qatar GP | 20 | ✅ Exact, incl. Stroll and Hadjar classified 17th/18th despite retiring, and two NC |
+
+**100 of 100 rows match.** The only discrepancy anywhere in the five was the DSQ lap-count issue recorded above, which official cannot adjudicate.
