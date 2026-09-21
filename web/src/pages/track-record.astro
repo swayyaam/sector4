@@ -1,0 +1,334 @@
+---
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import { loadDataset, raceById, scoredPredictions, predictionsForRace } from "../lib/data";
+import { percent, score } from "../lib/format";
+import { formatUtc } from "../lib/time";
+
+const { reference, predictions, meta } = loadDataset();
+const races = raceById(reference);
+const scored = scoredPredictions(predictions);
+
+// Predicted but not yet run. Listed so the record cannot be read as a
+// selection of the races that happened to go well.
+const pending = predictions
+  .filter((p) => p.result === null)
+  .filter((p, i, all) => all.findIndex((q) => q.race_id === p.race_id) === i)
+  .sort((a, b) => a.season - b.season || a.round - b.round);
+
+const wins = scored.filter((p) => p.result!.winner_hit).length;
+const podiums = scored.reduce((a, p) => a + p.result!.podium_hits, 0);
+const meanLogLoss = scored.reduce((a, p) => a + p.result!.log_loss, 0) / scored.length;
+const meanBrier = scored.reduce((a, p) => a + p.result!.brier, 0) / scored.length;
+
+// A field of n drivers picked uniformly at random gives -ln(1/n) per race.
+// Printed beside the model's own number because a log loss on its own says
+// nothing about whether the model is any good.
+const meanField = scored.reduce((a, p) => a + p.drivers.length, 0) / scored.length;
+const uniformLogLoss = Math.log(meanField);
+
+const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qualifying" } as const;
+---
+
+<BaseLayout
+  title="Track record"
+  description={`Every Sector 4 prediction scored against the result: ${wins} of ${scored.length} winners called, ${podiums} of ${scored.length * 3} podium places, mean log loss ${score(meanLogLoss)}.`}
+  image="/og/track-record.png"
+  breadcrumbs={[{ name: "Track record", path: "/track-record/" }]}
+>
+  <section class="band band-dark">
+    <div class="wrap">
+      <p class="eyebrow">Track record</p>
+      <h1>Every prediction, including the misses</h1>
+      <p class="sub">
+        Each race is scored against the snapshot published before it started. Nothing is
+        recalculated afterwards, and no race is left out.
+      </p>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap">
+      <h2>{scored.length} races scored</h2>
+      <dl class="summary">
+        <div>
+          <dt>Winner called</dt>
+          <dd class="num">
+            {wins} of {scored.length}
+          </dd>
+        </div>
+        <div>
+          <dt>Podium places</dt>
+          <dd class="num">
+            {podiums} of {scored.length * 3}
+          </dd>
+        </div>
+        <div>
+          <dt>Mean log loss</dt>
+          <dd class="num">{score(meanLogLoss)}</dd>
+        </div>
+        <div>
+          <dt>Mean Brier</dt>
+          <dd class="num">{score(meanBrier)}</dd>
+        </div>
+      </dl>
+      <p class="note">
+        Picking a winner uniformly at random from a {meanField.toFixed(0)}-driver field scores a log
+        loss of {score(uniformLogLoss)}. Lower is better, and beating that number is the floor, not
+        the goal. <a href="/methodology/">How the scores are computed</a>.
+      </p>
+    </div>
+  </section>
+
+  <section class="band band-soft">
+    <div class="wrap">
+      <h2>Race by race</h2>
+      <div class="scroller">
+        <table>
+          <caption class="sr-only">
+            Every scored race, most recent first, with the snapshot used and the resulting scores.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col" class="pos">
+                Rd
+              </th>
+              <th scope="col">Race</th>
+              <th scope="col">Snapshot</th>
+              <th scope="col">Winner</th>
+              <th scope="col" class="n">
+                Podium
+              </th>
+              <th scope="col" class="n">
+                Log loss
+              </th>
+              <th scope="col" class="n">
+                Brier
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {scored.map((p) => {
+              const race = races.get(p.race_id)!;
+              const r = p.result!;
+              return (
+                <tr>
+                  <td class="pos num">{p.round}</td>
+                  <th scope="row">
+                    <a href={`/races/${race.season}/${race.slug}/`}>{race.name}</a>
+                    <span class="season num">{race.season}</span>
+                  </th>
+                  <td class="snap" data-label="Snapshot">
+                    {SNAPSHOT_LABEL[p.snapshot]}
+                  </td>
+                  <td class:list={["outcome", r.winner_hit ? "hit" : "miss"]} data-label="Winner">
+                    {r.winner_hit ? "Hit" : "Miss"}
+                  </td>
+                  <td class="n num" data-label="Podium">
+                    {r.podium_hits} of 3
+                  </td>
+                  <td class="n num" data-label="Log loss">
+                    {score(r.log_loss)}
+                  </td>
+                  <td class="n num" data-label="Brier">
+                    {score(r.brier)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  {pending.length > 0 && (
+    <section class="band">
+      <div class="wrap">
+        <h2>Published, not yet scored</h2>
+        <p class="note">
+          These predictions are already public. They will appear above with their scores once the
+          race has run, whichever way they go.
+        </p>
+        <ul class="pending">
+          {pending.map((p) => {
+            const race = races.get(p.race_id)!;
+            const snapshots = predictionsForRace(predictions, p.race_id);
+            return (
+              <li>
+                <a href={`/races/${race.season}/${race.slug}/`}>{race.name}</a>
+                <span class="meta">
+                  Round {race.round} ·{" "}
+                  {snapshots.map((s) => SNAPSHOT_LABEL[s.snapshot]).join(" and ")} ·{" "}
+                  <time datetime={race.starts_at}>{formatUtc(race.starts_at)}</time>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </section>
+  )}
+
+  <section class="band band-soft">
+    <div class="wrap">
+      <p class="note">
+        Data version <span class="num">{meta.data_version}</span>, generated{" "}
+        <time datetime={meta.generated_at}>{formatUtc(meta.generated_at)}</time>. Percentages on
+        this page are rounded for display only; the scores are computed from the stored values.
+        Example: the best single win probability in this record is{" "}
+        <span class="num">
+          {percent(Math.max(...scored.flatMap((p) => p.drivers.map((d) => d.p_win))))}
+        </span>
+        .
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .sub {
+    color: var(--colour-on-dark-soft);
+    margin-top: var(--space-sm);
+    max-width: 62ch;
+  }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--space-base);
+    margin: var(--space-lg) 0 0;
+  }
+  .summary div {
+    border-top: 1px solid var(--colour-hairline);
+    padding-top: var(--space-xs);
+  }
+  dt {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--colour-muted);
+  }
+  dd {
+    margin: var(--space-xxs) 0 0;
+    font-size: 20px;
+    color: var(--colour-ink);
+  }
+  .note {
+    margin-top: var(--space-lg);
+    font-size: 14px;
+    color: var(--colour-muted);
+    max-width: 68ch;
+  }
+  .scroller {
+    overflow-x: auto;
+    margin-top: var(--space-lg);
+  }
+  table {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th,
+  td {
+    text-align: left;
+    padding: var(--space-sm) var(--space-xs);
+    font-weight: 400;
+    white-space: nowrap;
+  }
+  thead th {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--colour-muted);
+    border-bottom: 1px solid var(--colour-hairline);
+  }
+  tbody tr {
+    border-bottom: 1px solid var(--colour-hairline);
+  }
+  tbody th {
+    font-weight: 600;
+  }
+  .season {
+    display: block;
+    font-size: 12px;
+    color: var(--colour-muted);
+  }
+  .snap {
+    color: var(--colour-muted);
+  }
+  .pos {
+    width: 3ch;
+    color: var(--colour-muted);
+  }
+  .n {
+    text-align: right;
+  }
+  .outcome {
+    font-weight: 600;
+  }
+  .hit {
+    color: var(--colour-positive);
+  }
+  .miss {
+    color: var(--colour-negative);
+  }
+  /* Below 640px the row becomes a block. A horizontal scroller put every score
+     — the whole point of the page — off the right edge of a phone. */
+  @media (max-width: 639px) {
+    .scroller {
+      overflow-x: visible;
+    }
+    table {
+      min-width: 0;
+    }
+    thead,
+    .pos {
+      display: none;
+    }
+    tbody tr {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-xxs) var(--space-sm);
+      padding: var(--space-sm) 0;
+    }
+    tbody th {
+      grid-column: 1 / -1;
+      padding: 0 0 var(--space-xs);
+    }
+    tbody td {
+      padding: 0;
+      text-align: left;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    /* Decorative: the <th> in thead still names the column for assistive tech. */
+    tbody td::before {
+      content: attr(data-label) " ";
+      color: var(--colour-muted);
+      font-weight: 400;
+    }
+  }
+
+  .pending {
+    list-style: none;
+    margin: var(--space-lg) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-base);
+  }
+  .pending li {
+    border-top: 1px solid var(--colour-hairline);
+    padding-top: var(--space-sm);
+  }
+  .pending a {
+    font-weight: 600;
+  }
+  .pending .meta {
+    display: block;
+    font-size: 13px;
+    color: var(--colour-muted);
+    margin-top: var(--space-xxs);
+  }
+</style>

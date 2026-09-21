@@ -1,0 +1,71 @@
+{
+  "note": "Licence strings here were read from each project's own licence or terms document. Where a source does not state one unambiguously, this file says so rather than guessing.",
+  "sources": [
+    {
+      "id": "kaggle-f1",
+      "kind": "Data",
+      "title": "Formula 1 World Championship (1950-2024)",
+      "author": "Rohan Rao (Vopani)",
+      "licence": "CC0 1.0 (Public Domain Dedication)",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "url": "https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020",
+      "used_for": "Races, results, qualifying, grids, lap times, pit stops and status codes, 1950 to 2024.",
+      "notice": "Compiled by its author from the Ergast Developer API, which was published for non-commercial use and has since been retired."
+    },
+    {
+      "id": "jolpica",
+      "kind": "Data",
+      "title": "Jolpica F1 API",
+      "author": "The jolpica-f1 project",
+      "licence": "Data: CC BY-NC-SA 4.0 · Code: Apache-2.0",
+      "licence_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      "url": "https://github.com/jolpica/jolpica-f1",
+      "used_for": "Everything from 2025 onward, in the Ergast schema.",
+      "notice": "The share-alike and non-commercial terms of this licence apply to Sector 4 as a whole, because the current season's data cannot be separated from the rest."
+    },
+    {
+      "id": "fastf1",
+      "kind": "Data",
+      "title": "FastF1",
+      "author": "Philipp Schaefer and contributors",
+      "licence": "MIT",
+      "licence_url": "https://github.com/theOehrly/Fast-F1/blob/master/LICENSE",
+      "url": "https://github.com/theOehrly/Fast-F1",
+      "used_for": "Session timing, telemetry, weather and race control messages from 2018 onward.",
+      "notice": null
+    },
+    {
+      "id": "f1-circuits",
+      "kind": "Geometry",
+      "title": "f1-circuits",
+      "author": "Tomislav Bacinger",
+      "licence": "MIT",
+      "licence_url": "https://github.com/bacinger/f1-circuits/blob/master/LICENSE",
+      "url": "https://github.com/bacinger/f1-circuits",
+      "used_for": "Circuit outlines, projected to the SVG paths drawn on every race page.",
+      "notice": "Copyright (c) 2019-2025 Tomislav Bacinger"
+    },
+    {
+      "id": "inter",
+      "kind": "Typeface",
+      "title": "Inter",
+      "author": "Rasmus Andersson",
+      "licence": "SIL Open Font License 1.1",
+      "licence_url": "https://openfontlicense.org/",
+      "url": "https://rsms.me/inter/",
+      "used_for": "All text on the site, self-hosted.",
+      "notice": null
+    },
+    {
+      "id": "jetbrains-mono",
+      "kind": "Typeface",
+      "title": "JetBrains Mono",
+      "author": "JetBrains",
+      "licence": "SIL Open Font License 1.1",
+      "licence_url": "https://openfontlicense.org/",
+      "url": "https://www.jetbrains.com/lp/mono/",
+      "used_for": "Every number, so digits line up across rows.",
+      "notice": null
+    }
+  ]
+}
