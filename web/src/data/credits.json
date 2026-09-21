@@ -10,7 +10,7 @@
       "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
       "url": "https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020",
       "used_for": "Races, results, qualifying, grids, lap times, pit stops and status codes, 1950 to 2024.",
-      "notice": "Compiled by its author from the Ergast Developer API, which was published for non-commercial use and has since been retired."
+      "notice": "Compiled by its author from the Ergast Developer API, which permitted personal and non-commercial use and prohibited charging. Ergast stopped updating after 2024 and its domain now hosts unrelated content, so this page does not link to it."
     },
     {
       "id": "jolpica",
@@ -27,12 +27,23 @@
       "id": "fastf1",
       "kind": "Data",
       "title": "FastF1",
-      "author": "Philipp Schaefer and contributors",
+      "author": "Philipp Schäfer and contributors",
       "licence": "MIT",
       "licence_url": "https://github.com/theOehrly/Fast-F1/blob/master/LICENSE",
       "url": "https://github.com/theOehrly/Fast-F1",
-      "used_for": "Session timing, telemetry, weather and race control messages from 2018 onward.",
-      "notice": null
+      "used_for": "The library used to retrieve session timing, telemetry, weather and race control data.",
+      "notice": "Copyright (c) 2026 Philipp Schäfer. MIT covers the library's code, not the data it retrieves. Those terms are separate and stricter — see Formula 1 live timing below."
+    },
+    {
+      "id": "f1-livetiming",
+      "kind": "Data",
+      "title": "Formula 1 live timing",
+      "author": "Formula One World Championship Limited",
+      "licence": "Copyright. Personal, non-commercial use only",
+      "licence_url": "https://www.formula1.com/en/information/legal-notices.7egvZU48hzrypubGBNcQKt",
+      "url": "https://www.formula1.com/en/information/legal-notices.7egvZU48hzrypubGBNcQKt",
+      "used_for": "Model inputs only. None of this data is shown on this site.",
+      "notice": "Formula 1's legal notices name live timing and historical race data as protected material and prohibit republishing it without prior written consent. It is used locally to fit the model and is never served from here, committed to the repository, or redistributed."
     },
     {
       "id": "f1-circuits",

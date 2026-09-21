@@ -6,6 +6,10 @@ import { loadDataset } from "../lib/data";
 const { reference } = loadDataset();
 const withOutlines = reference.circuits.filter((c) => c.track_path !== null).length;
 
+const REPO = "https://github.com/swayyaam/sector4/blob/main";
+const DATA_LICENSE_URL = `${REPO}/DATA_LICENSE.md`;
+const LICENSE_URL = `${REPO}/LICENSE`;
+
 const groups = [...new Set(credits.sources.map((s) => s.kind))].map((kind) => ({
   kind,
   items: credits.sources.filter((s) => s.kind === kind),
@@ -64,6 +68,24 @@ const groups = [...new Set(credits.sources.map((s) => s.kind))].map((kind) => ({
         severable from the rest of the dataset, so Sector 4 is a non-commercial project and stays
         one: no advertising, no paid tier, no data resale. Anything built on it inherits the same
         terms.
+      </p>
+      <p>
+        Formula 1's own timing data is stricter still. It is copyright Formula One World
+        Championship Limited, licensed for personal and non-commercial use, and may not be
+        republished without written consent. It is used to fit the model and never shown here. No
+        lap time, sector time, telemetry channel or weather reading from that source appears on this
+        site or in the repository.
+      </p>
+      <p>
+        <a href={DATA_LICENSE_URL} rel="noopener">
+          DATA_LICENSE.md
+        </a>{" "}
+        quotes the full terms for every source from that source's own licence document, and{" "}
+        <a href={LICENSE_URL} rel="noopener">
+          LICENSE
+        </a>{" "}
+        covers the code. Share-alike reaches the data and the outputs derived from it, not the
+        software that reads them.
       </p>
       <p>
         Circuit outlines are drawn from the f1-circuits geometry for{" "}
