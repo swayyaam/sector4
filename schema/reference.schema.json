@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sector4.dev/schema/reference.schema.json",
+  "title": "Reference data",
+  "description": "Drivers, teams, races and circuits the pages look up. Team colours are DATA, not brand: they identify a team in a chart or marker and are never used for UI surfaces, buttons, links or headings. Every use must be paired with a text label.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["drivers", "teams", "races", "circuits"],
+  "properties": {
+    "drivers": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/driver" } },
+    "teams": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/team" } },
+    "races": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/race" } },
+    "circuits": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/circuit" } }
+  },
+  "$defs": {
+    "driver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["driverId", "driverRef", "code", "forename", "surname", "nationality"],
+      "properties": {
+        "driverId": { "type": "integer", "minimum": 1 },
+        "driverRef": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "code": { "oneOf": [{ "type": "string", "pattern": "^[A-Z]{3}$" }, { "type": "null" }] },
+        "permanent_number": { "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 99 }, { "type": "null" }] },
+        "forename": { "type": "string", "minLength": 1 },
+        "surname": { "type": "string", "minLength": 1 },
+        "nationality": { "type": "string", "minLength": 1 },
+        "photo": {
+          "oneOf": [
+            { "type": "null", "description": "No properly licensed photo; the designed fallback is used instead" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["file", "width", "height", "credit_id"],
+              "properties": {
+                "file": { "type": "string", "minLength": 1 },
+                "width": { "type": "integer", "minimum": 1 },
+                "height": { "type": "integer", "minimum": 1 },
+                "credit_id": { "type": "string", "minLength": 1, "description": "Key into image-credits.json" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "team": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["team_entity_id", "constructorId", "constructorRef", "name", "season", "colour"],
+      "properties": {
+        "team_entity_id": { "type": "string", "minLength": 1 },
+        "constructorId": { "type": "integer", "minimum": 1 },
+        "constructorRef": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "name": { "type": "string", "minLength": 1 },
+        "short_name": { "type": "string", "minLength": 1, "maxLength": 16 },
+        "season": { "type": "integer", "minimum": 1950, "maximum": 2100 },
+        "colour": {
+          "type": "string",
+          "pattern": "^#[0-9a-f]{6}$",
+          "description": "Identification only: markers, thin accent borders and chart series. Never a UI surface, button, link or heading."
+        },
+        "colour_on_light": {
+          "type": "string",
+          "pattern": "^#[0-9a-f]{6}$",
+          "description": "Tint adjusted to reach WCAG AA (4.5:1) against the light canvas, for the rare case the colour carries text."
+        }
+      }
+    },
+    "race": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["race_id", "season", "round", "name", "slug", "circuit_id", "starts_at"],
+      "properties": {
+        "race_id": { "type": "integer", "minimum": 1 },
+        "season": { "type": "integer", "minimum": 1950, "maximum": 2100 },
+        "round": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "name": { "type": "string", "minLength": 1 },
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "circuit_id": { "type": "integer", "minimum": 1 },
+        "starts_at": { "type": "string", "format": "date-time" },
+        "regs_era": { "type": "string", "minLength": 1 }
+      }
+    },
+    "circuit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["circuit_id", "circuitRef", "name", "locality", "country"],
+      "properties": {
+        "circuit_id": { "type": "integer", "minimum": 1 },
+        "circuitRef": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "name": { "type": "string", "minLength": 1 },
+        "locality": { "type": "string", "minLength": 1 },
+        "country": { "type": "string", "minLength": 1 },
+        "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+        "lng": { "type": "number", "minimum": -180, "maximum": 180 },
+        "track_path": {
+          "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }],
+          "description": "SVG path data for the inline track map, projected from the source GeoJSON"
+        },
+        "track_view_box": { "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }] },
+        "track_credit_id": { "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }] }
+      }
+    }
+  }
+}
