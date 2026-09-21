@@ -33,6 +33,7 @@ SRC = {
     "bahrain_fl": f"{F1}/1229/bahrain/fastest-laps",
     "monaco_fl": f"{F1}/1236/monaco/fastest-laps",
     "singapore_q": f"{F1}/1246/singapore/qualifying",
+    "monaco_pits": f"{F1}/1236/monaco/pit-stop-summary",
 }
 
 rows: list[dict] = []
@@ -126,10 +127,18 @@ def main() -> int:
         for col in ("fastestLap", "fastestLapTime"):
             a, b = fmtv(r[f"{col}_k"]), fmtv(r[f"{col}_j"])
             if a == "" and b != "":
-                add("results", f"{int(r['raceId'])}|{int(r['driverId'])}", col, "", b,
-                    "Kaggle leaves this null; Jolpica supplies it and the value is consistent "
-                    "with the winner's time plus the stated gap.", "internal",
-                    "derived: winner_ms + gap == driver_ms")
+                if int(r["raceId"]) == 1128:
+                    # Kaggle carries no fastest-lap data at all for Monaco 2024.
+                    # The official page lists exactly these 16 drivers and every
+                    # lap number and time was checked against it.
+                    add("results", f"{int(r['raceId'])}|{int(r['driverId'])}", col, "", b,
+                        "Kaggle has no fastest-lap data for this race (rank is 0 for every "
+                        "driver). All 16 lap numbers and times verified against the official "
+                        "fastest-laps page.", "official", SRC["monaco_fl"])
+                else:
+                    add("results", f"{int(r['raceId'])}|{int(r['driverId'])}", col, "", b,
+                        "Kaggle leaves this null; Jolpica supplies it.", "internal",
+                        "derived: present in Jolpica, absent in Kaggle")
 
     # 7) Monaco pit stops: `stop` and `lap` are transposed in Kaggle.
     kp = load_table("pit_stops")
@@ -144,11 +153,14 @@ def main() -> int:
         add("pit_stops", pk, "stop", int(r["stop"]), int(r["lap"]),
             "stop and lap are transposed: stop > lap is impossible, and the row's time and "
             "duration are identical to Jolpica's, so it is the same event with two columns "
-            "swapped. Kaggle's max stop number is 70.", "internal",
+            "swapped. Kaggle's max stop number is 70. The index itself follows the Ergast "
+            "convention of counting the lap-1 red-flag hold as a stop, which formula1.com does "
+            "not - see official_stop_number for the official count.", "internal",
             "derived: stop>lap impossible; identical time+duration")
         add("pit_stops", pk, "lap", int(r["lap"]), int(r["stop"]),
-            "Paired with the stop correction above.", "internal",
-            "derived: stop>lap impossible; identical time+duration")
+            "Official pit-stop summary confirms the lap number and duration "
+            "(e.g. Stroll lap 48 / 28.211s, Hamilton lap 51 / 24.232s).",
+            "official", SRC["monaco_pits"])
 
     # 8) Singapore Q1: Kaggle is 6 ms out.
     kq = load_table("qualifying")
