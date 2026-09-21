@@ -65,6 +65,19 @@ def save_manifest(m: dict) -> None:
     MANIFEST.write_text(json.dumps(m, indent=2, sort_keys=True))
 
 
+def with_rate_retry(fn, what: str):
+    """Run fn(), sleeping off FastF1's hourly cap rather than failing."""
+    from fastf1.exceptions import RateLimitExceededError
+    for attempt in range(RATE_MAX_WAITS):
+        try:
+            return fn()
+        except RateLimitExceededError as e:
+            log.warning("    hourly rate cap hit (%s) - sleeping %ds (wait %d/%d) [%s]",
+                        e, RATE_SLEEP, attempt + 1, RATE_MAX_WAITS, what)
+            time.sleep(RATE_SLEEP)
+    raise RuntimeError(f"gave up on {what} after {RATE_MAX_WAITS} rate-limit waits")
+
+
 def load_session(fastf1, year: int, event_name: str, session_name: str):
     """Load one session, sleeping off FastF1's hourly rate cap."""
     from fastf1.exceptions import RateLimitExceededError
@@ -260,9 +273,14 @@ def main() -> int:
         log.info("=" * 74)
         log.info("SEASON %d  (%d races)", year, len(yr_races))
         try:
-            sched = fastf1.get_event_schedule(int(year), include_testing=False)
+            # Wrapped too: losing a whole season to a rate cap on the schedule
+            # call would be a silent, expensive gap.
+            sched = with_rate_retry(
+                lambda: fastf1.get_event_schedule(int(year), include_testing=False),
+                f"{year} schedule")
         except Exception as e:
             log.error("  cannot load schedule: %s", e)
+            manifest["failures"][f"{year}-schedule"] = f"{type(e).__name__}: {str(e)[:200]}"
             continue
         frames = {"laps": [], "weather": [], "results": [], "race_control": [], "unmapped": []}
         for rr in yr_races.itertuples():
