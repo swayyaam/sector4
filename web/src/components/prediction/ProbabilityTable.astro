@@ -25,43 +25,67 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
   <caption class="sr-only">{caption}</caption>
   <thead>
     <tr>
-      <th scope="col" class="pos">#</th>
+      <th scope="col" class="pos">
+        #
+      </th>
       <th scope="col">Driver</th>
-      <th scope="col" class="n">Win</th>
-      <th scope="col" class="bar">Relative</th>
-      <th scope="col" class="n">Podium</th>
-      <th scope="col" class="n">Top 10</th>
-      <th scope="col" class="n">DNF</th>
-      <th scope="col" class="n">Exp. pos</th>
+      <th scope="col" class="n">
+        Win
+      </th>
+      <th scope="col" class="bar">
+        Relative
+      </th>
+      <th scope="col" class="n">
+        Podium
+      </th>
+      <th scope="col" class="n">
+        Top 10
+      </th>
+      <th scope="col" class="n">
+        DNF
+      </th>
+      <th scope="col" class="n">
+        Exp. pos
+      </th>
     </tr>
   </thead>
   <tbody>
-    {
-      rows.map((r, i) => {
-        const d = drivers.get(r.driverId);
-        const t = teams.get(r.team_entity_id);
-        return (
-          <tr>
-            <td class="pos num">{i + 1}</td>
-            <th scope="row">
-              <span class="who">
-                {t && <TeamMarker colour={t.colour} name={t.name} />}
-                <span>
-                  <span class="name">{d ? driverName(d) : `Driver ${r.driverId}`}</span>
-                  <span class="team">{t?.short_name ?? "Unknown team"}</span>
-                </span>
+    {rows.map((r, i) => {
+      const d = drivers.get(r.driverId);
+      const t = teams.get(r.team_entity_id);
+      return (
+        <tr>
+          <td class="pos num">{i + 1}</td>
+          <th scope="row">
+            <span class="who">
+              {t && <TeamMarker colour={t.colour} name={t.name} />}
+              <span>
+                <span class="name">{d ? driverName(d) : `Driver ${r.driverId}`}</span>
+                <span class="team">{t?.short_name ?? "Unknown team"}</span>
               </span>
-            </th>
-            <td class="n num" data-label="Win">{percent(r.p_win)}</td>
-            <td class="bar"><ProbabilityBar value={r.p_win} columnMax={maxWin} /></td>
-            <td class="n num" data-label="Podium">{percent(r.p_podium)}</td>
-            <td class="n num" data-label="Top 10">{percent(r.p_top10)}</td>
-            <td class="n num dim" data-label="DNF">{percent(r.p_dnf)}</td>
-            <td class="n num dim" data-label="Exp. pos">{position(r.expected_position)}</td>
-          </tr>
-        );
-      })
-    }
+            </span>
+          </th>
+          <td class="n num" data-label="Win">
+            {percent(r.p_win)}
+          </td>
+          <td class="bar">
+            <ProbabilityBar value={r.p_win} columnMax={maxWin} />
+          </td>
+          <td class="n num" data-label="Podium">
+            {percent(r.p_podium)}
+          </td>
+          <td class="n num" data-label="Top 10">
+            {percent(r.p_top10)}
+          </td>
+          <td class="n num dim" data-label="DNF">
+            {percent(r.p_dnf)}
+          </td>
+          <td class="n num dim" data-label="Exp. pos">
+            {position(r.expected_position)}
+          </td>
+        </tr>
+      );
+    })}
   </tbody>
 </table>
 
@@ -144,9 +168,7 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
       text-align: left;
       font-size: 13px;
     }
-    /* Decorative: the <th> in thead still associates each cell with its column
-       for assistive technology, so this label exists only for sighted readers
-       who can no longer see the header row. */
+    /* Decorative: the <th> in thead still names the column for assistive tech. */
     tbody td::before {
       content: attr(data-label) " ";
       color: var(--colour-muted);

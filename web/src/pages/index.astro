@@ -73,23 +73,23 @@ const jsonLd = [
           </p>
         </div>
         <ol class="contenders">
-          {
-            contenders.map((c) => {
-              const d = drivers.get(c.driverId)!;
-              const t = teams.get(c.team_entity_id)!;
-              return (
-                <li>
-                  <TeamMarker colour={t.colour} name={t.name} />
-                  <span class="cname">
-                    {driverName(d)}
-                    <span class="cteam">{t.short_name}</span>
-                  </span>
-                  <span class="cbar"><ProbabilityBar value={c.p_win} columnMax={maxWin} /></span>
-                  <span class="num cpct">{percent(c.p_win)}</span>
-                </li>
-              );
-            })
-          }
+          {contenders.map((c) => {
+            const d = drivers.get(c.driverId)!;
+            const t = teams.get(c.team_entity_id)!;
+            return (
+              <li>
+                <TeamMarker colour={t.colour} name={t.name} />
+                <span class="cname">
+                  {driverName(d)}
+                  <span class="cteam">{t.short_name}</span>
+                </span>
+                <span class="cbar">
+                  <ProbabilityBar value={c.p_win} columnMax={maxWin} />
+                </span>
+                <span class="num cpct">{percent(c.p_win)}</span>
+              </li>
+            );
+          })}
         </ol>
         <a class="cta" href={`/races/${nextRace.season}/${nextRace.slug}/`}>
           Full field and factors
@@ -110,46 +110,61 @@ const jsonLd = [
           <thead>
             <tr>
               <th scope="col">Predicted top 3</th>
-              <th scope="col" class="n">Win prob.</th>
-              <th scope="col" class="n">Finished</th>
-              <th scope="col" class="n">Outcome</th>
+              <th scope="col" class="n">
+                Win prob.
+              </th>
+              <th scope="col" class="n">
+                Finished
+              </th>
+              <th scope="col" class="n">
+                Outcome
+              </th>
             </tr>
           </thead>
           <tbody>
-            {
-              lastTop.map((c) => {
-                const d = drivers.get(c.driverId)!;
-                const a = actualById.get(c.driverId);
-                const pos = a?.actual_position ?? null;
-                const hit = pos !== null && pos <= 3;
-                return (
-                  <tr>
-                    <th scope="row">{driverName(d)}</th>
-                    <td class="n num">{percent(c.p_win)}</td>
-                    <td class="n num">{pos === null ? "—" : `P${pos}`}</td>
-                    <td class:list={["n", "outcome", hit ? "hit" : "miss"]}>
-                      {hit ? "Podium hit" : "Miss"}
-                    </td>
-                  </tr>
-                );
-              })
-            }
+            {lastTop.map((c) => {
+              const d = drivers.get(c.driverId)!;
+              const a = actualById.get(c.driverId);
+              const pos = a?.actual_position ?? null;
+              const hit = pos !== null && pos <= 3;
+              return (
+                <tr>
+                  <th scope="row">{driverName(d)}</th>
+                  <td class="n num">{percent(c.p_win)}</td>
+                  <td class="n num">{pos === null ? "—" : `P${pos}`}</td>
+                  <td class:list={["n", "outcome", hit ? "hit" : "miss"]}>
+                    {hit ? "Podium hit" : "Miss"}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         <dl class="scores">
-          <div><dt>Log loss</dt><dd class="num">{score(last.result!.log_loss)}</dd></div>
-          <div><dt>Brier</dt><dd class="num">{score(last.result!.brier)}</dd></div>
+          <div>
+            <dt>Log loss</dt>
+            <dd class="num">{score(last.result!.log_loss)}</dd>
+          </div>
+          <div>
+            <dt>Brier</dt>
+            <dd class="num">{score(last.result!.brier)}</dd>
+          </div>
           <div>
             <dt>Winner</dt>
             <dd class:list={["outcome", last.result!.winner_hit ? "hit" : "miss"]}>
               {last.result!.winner_hit ? "Hit" : "Miss"}
             </dd>
           </div>
-          <div><dt>Podium</dt><dd class="num">{last.result!.podium_hits} of 3</dd></div>
+          <div>
+            <dt>Podium</dt>
+            <dd class="num">{last.result!.podium_hits} of 3</dd>
+          </div>
         </dl>
       </div>
       <p class="more">
-        <a href={`/races/${lastRace.season}/${lastRace.slug}/`}>See the full {lastRace.name} result</a>
+        <a href={`/races/${lastRace.season}/${lastRace.slug}/`}>
+          See the full {lastRace.name} result
+        </a>
       </p>
     </div>
   </section>
@@ -159,15 +174,32 @@ const jsonLd = [
       <p class="eyebrow">Season so far</p>
       <h2>{scored.length} races scored</h2>
       <dl class="summary">
-        <div><dt>Winner called</dt><dd class="num">{wins} of {scored.length}</dd></div>
-        <div><dt>Podium places</dt><dd class="num">{podiums} of {scored.length * 3}</dd></div>
-        <div><dt>Mean log loss</dt><dd class="num">{score(meanLogLoss)}</dd></div>
+        <div>
+          <dt>Winner called</dt>
+          <dd class="num">
+            {wins} of {scored.length}
+          </dd>
+        </div>
+        <div>
+          <dt>Podium places</dt>
+          <dd class="num">
+            {podiums} of {scored.length * 3}
+          </dd>
+        </div>
+        <div>
+          <dt>Mean log loss</dt>
+          <dd class="num">{score(meanLogLoss)}</dd>
+        </div>
         <div>
           <dt>Data freshness</dt>
-          <dd><time datetime={meta.generated_at}>{formatUtc(meta.generated_at)}</time></dd>
+          <dd>
+            <time datetime={meta.generated_at}>{formatUtc(meta.generated_at)}</time>
+          </dd>
         </div>
       </dl>
-      <p class="more"><a href="/track-record/">Every prediction, including the misses</a></p>
+      <p class="more">
+        <a href="/track-record/">Every prediction, including the misses</a>
+      </p>
     </div>
   </section>
 </BaseLayout>

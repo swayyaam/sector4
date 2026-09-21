@@ -15,8 +15,12 @@ const { dataVersion, generatedAt } = Astro.props as { dataVersion: string; gener
         <a href="/credits/">Credits</a>
       </nav>
       <p class="sm">
-        Data version <span class="num">{dataVersion}</span><br />
-        Built <time datetime={generatedAt} class="num">{generatedAt.slice(0, 10)}</time>
+        Data version <span class="num">{dataVersion}</span>
+        <br />
+        Built{" "}
+        <time datetime={generatedAt} class="num">
+          {generatedAt.slice(0, 10)}
+        </time>
       </p>
     </div>
     <p class="legal">

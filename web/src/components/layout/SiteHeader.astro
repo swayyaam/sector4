@@ -12,13 +12,11 @@ const links = [
       <span class="mark" aria-hidden="true"></span>Sector 4
     </a>
     <nav aria-label="Main">
-      {
-        links.map((l) => (
-          <a href={l.href} class:list={["link", { on: path.startsWith(l.href) }]}>
-            {l.label}
-          </a>
-        ))
-      }
+      {links.map((l) => (
+        <a href={l.href} class:list={["link", { on: path.startsWith(l.href) }]}>
+          {l.label}
+        </a>
+      ))}
     </nav>
   </div>
 </header>

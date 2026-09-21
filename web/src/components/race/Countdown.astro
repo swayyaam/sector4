@@ -17,9 +17,13 @@ const initial = formatCountdown(countdown(now, new Date(startsAt)));
 ---
 
 <p class="cd" data-starts={startsAt}>
-  <span class="num" data-cd>{initial}</span>
+  <span class="num" data-cd>
+    {initial}
+  </span>
   <span class="at">
-    <time datetime={startsAt} data-local>{formatUtc(startsAt)}</time>
+    <time datetime={startsAt} data-local>
+      {formatUtc(startsAt)}
+    </time>
   </span>
 </p>
 

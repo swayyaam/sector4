@@ -16,7 +16,9 @@ const { value, columnMax } = Astro.props;
 const w = barWidth(value, columnMax);
 ---
 
-<span class="track" aria-hidden="true"><span class="fill" style={`width:${w}%`}></span></span>
+<span class="track" aria-hidden="true">
+  <span class="fill" style={`width:${w}%`}></span>
+</span>
 
 <style>
   .track {

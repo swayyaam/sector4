@@ -40,3 +40,12 @@ jobs:
       # reaching a page.
       - name: Test
         run: npm run test
+
+      # Type-checks the templates too, which tsc --noEmit does not see.
+      - name: Astro check
+        run: npm run check
+
+      # The build validates every data file and renders every page, so a
+      # malformed prediction or a broken probability sum fails here.
+      - name: Build
+        run: npm run build

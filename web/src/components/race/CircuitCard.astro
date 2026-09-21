@@ -12,25 +12,25 @@ const { circuit } = Astro.props;
 ---
 
 <figure class="card">
-  {
-    circuit.track_path ? (
-      <svg
-        viewBox={circuit.track_view_box ?? "0 0 1000 1000"}
-        class="map"
-        role="img"
-        aria-label={`Outline of ${circuit.name}`}
-      >
-        <path d={circuit.track_path} />
-      </svg>
-    ) : (
-      <div class="none" role="img" aria-label="No circuit outline available">
-        <span>No outline</span>
-      </div>
-    )
-  }
+  {circuit.track_path ? (
+    <svg
+      viewBox={circuit.track_view_box ?? "0 0 1000 1000"}
+      class="map"
+      role="img"
+      aria-label={`Outline of ${circuit.name}`}
+    >
+      <path d={circuit.track_path} />
+    </svg>
+  ) : (
+    <div class="none" role="img" aria-label="No circuit outline available">
+      <span>No outline</span>
+    </div>
+  )}
   <figcaption>
     <h3>{circuit.name}</h3>
-    <p class="loc">{circuit.locality}, {circuit.country}</p>
+    <p class="loc">
+      {circuit.locality}, {circuit.country}
+    </p>
     <p class="credit">
       Outline: <a href="https://github.com/bacinger/f1-circuits">f1-circuits</a> by Tomislav
       Bacinger, MIT
