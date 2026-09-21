@@ -234,6 +234,55 @@ def main() -> int:
     check("Sanity", "pit_lane_start is null only for jolpica rows",
           bool(results.loc[results["pit_lane_start"].isna(), "source"].eq("jolpica").all()))
 
+    # --------------------------------------------- lap completion / attribution
+    if len(laps) and "counts_as_completed_lap" in laps.columns:
+        cc = laps["counts_as_completed_lap"]
+        sus = laps["driver_attribution_suspect"].fillna(False).astype(bool)
+        reason = laps["counts_as_completed_lap_reason"]
+        check("Lap flags", "counts_as_completed_lap is NULL exactly where the driver is suspect",
+              bool((cc.isna() == sus).all()),
+              f"{int((cc.isna() != sus).sum())} rows disagree")
+        check("Lap flags", "every non-True row carries a reason",
+              bool(reason[cc != True].notna().all()),  # noqa: E712
+              f"{int(reason[cc != True].isna().sum())} rows without a reason")  # noqa: E712
+        check("Lap flags", "every True row carries no reason",
+              bool(reason[cc == True].isna().all()),  # noqa: E712
+              f"{int(reason[cc == True].notna().sum())} rows with a stray reason")  # noqa: E712
+        check("Lap flags", "reasons are from the agreed set",
+              set(reason.dropna()) <= {"declared_early", "flagged_mid_lap",
+                                       "lap_times_driver_transposed"},
+              str(sorted(set(reason.dropna()))))
+        check("Lap flags", "suspect rows are all reasoned as transposed",
+              bool((reason[sus] == "lap_times_driver_transposed").all()))
+        # A False row must actually lie beyond that driver's classified laps.
+        lb = (results[["raceId", "driverId", "laps"]].drop_duplicates(["raceId", "driverId"])
+              .set_index(["raceId", "driverId"])["laps"])
+        f = laps[cc == False]  # noqa: E712
+        rl = lb.reindex(pd.MultiIndex.from_frame(f[["raceId", "driverId"]])).to_numpy()
+        check("Lap flags", "every False row is beyond the driver's classified laps",
+              bool((f["lap"].to_numpy() > rl).all()),
+              f"{int((f['lap'].to_numpy() <= rl).sum())} rows are not beyond")
+        # declared_early must only appear in races flagged with classified_laps
+        de = set(laps.loc[reason == "declared_early", "raceId"])
+        cl = set(races.loc[races["classified_laps"].notna(), "raceId"])
+        check("Lap flags", "declared_early appears only in races with classified_laps set",
+              de <= cl, f"unlisted races: {sorted(de - cl)}")
+
+    if "classified_laps" in races.columns:
+        notes_p = DATA / "race_classification_notes.csv"
+        n_set = int(races["classified_laps"].notna().sum())
+        check("Lap flags", "classified_laps is populated only where documented",
+              notes_p.exists() and n_set == len(pd.read_csv(notes_p)),
+              f"{n_set} races set")
+        if notes_p.exists():
+            nt = pd.read_csv(notes_p)
+            check("Lap flags", "every classified_laps note cites a source",
+                  bool(nt["evidence_source"].notna().all() and
+                       nt["evidence_source"].str.startswith("http").all()))
+            wl = results[results["positionText"] == "1"].groupby("raceId")["laps"].max()
+            ok = all(int(wl.get(r.raceId, -1)) == int(r.classified_laps) for r in nt.itertuples())
+            check("Lap flags", "classified_laps matches the winner's classified distance", ok)
+
     # ------------------------------------------------------- team entities
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from entities import GAP_YEARS, year_blocks  # noqa: E402

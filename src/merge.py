@@ -32,6 +32,26 @@ OUT = ROOT / "data" / "processed"
 
 RED_FLAG_LAP_RATIO = 3.0
 RED_FLAG_STOP_MS = 180_000
+
+# Races whose official classification was taken at an earlier lap than the
+# distance actually run (FIA Sporting Regulations Art. 43.2 countback).
+# raceId -> (classified_laps, scheduled_laps, evidence_source)
+CLASSIFIED_EARLY = {
+    903: (54, 56, "https://www.formula1.com/en/results/2014/races/901/china/race-result"),
+}
+
+# lap_times rows whose driverId is demonstrably wrong: in each of these races
+# two (or three) drivers' lap sets are exact mirrors of each other, so the laps
+# belong to a different driver than the one they are filed under. NOT repaired
+# -- swapping the ids back would be an inference from the mirror pattern, not
+# evidence. All are 2001/2009, i.e. before FastF1's 2018 coverage floor, so no
+# independent lap-by-lap source exists to settle them.
+TRANSPOSED_LAP_DRIVERS = {
+    153: [15, 55],        # 2001 Hungarian GP  - Trulli / Alesi
+    155: [15, 55],        # 2001 Italian GP    - Trulli / Alesi
+    157: [15, 55],        # 2001 Japanese GP   - Trulli / Alesi
+    13: [17, 67, 153],    # 2009 Italian GP    - Webber / Buemi / Alguersuari
+}
 JOLPICA_FROM_YEAR = 2025          # 2024 comes from Kaggle + corrections
 
 # Surrogate keys restart at 1 on the Jolpica side, so they must be reassigned to
@@ -185,6 +205,61 @@ def main() -> int:
     if len(lt):
         med = lt.groupby("raceId")["milliseconds"].transform("median")
         lt["red_flag_affected"] = lt["milliseconds"] >= RED_FLAG_LAP_RATIO * med
+
+        # ---- counts_as_completed_lap + driver_attribution_suspect
+        # A timed lap is not always a *classified* lap. Three reasons, kept
+        # distinct so a lap-counting quirk is never confused with a data defect.
+        laps_by = (res[["raceId", "driverId", "laps"]]
+                   .drop_duplicates(["raceId", "driverId"])
+                   .set_index(["raceId", "driverId"])["laps"])
+        idx_lt = pd.MultiIndex.from_frame(lt[["raceId", "driverId"]])
+        res_laps = pd.Series(laps_by.reindex(idx_lt).to_numpy(), index=lt.index)
+
+        lt["driver_attribution_suspect"] = False
+        for rid, dids in TRANSPOSED_LAP_DRIVERS.items():
+            lt.loc[(lt["raceId"] == rid) & (lt["driverId"].isin(dids)),
+                   "driver_attribution_suspect"] = True
+
+        lt["counts_as_completed_lap"] = pd.Series(True, index=lt.index, dtype="boolean")
+        lt["counts_as_completed_lap_reason"] = pd.Series(pd.NA, index=lt.index, dtype="object")
+
+        beyond = res_laps.notna() & (lt["lap"] > res_laps)
+        early = lt["raceId"].isin(CLASSIFIED_EARLY)
+        lt.loc[beyond & early, ["counts_as_completed_lap"]] = False
+        lt.loc[beyond & early, "counts_as_completed_lap_reason"] = "declared_early"
+        lt.loc[beyond & ~early, ["counts_as_completed_lap"]] = False
+        lt.loc[beyond & ~early, "counts_as_completed_lap_reason"] = "flagged_mid_lap"
+
+        # Transposed rows: whether the lap counts is UNKNOWN, not False, because
+        # we do not know whose lap it is. Overrides any flag set above.
+        sus = lt["driver_attribution_suspect"]
+        lt.loc[sus, "counts_as_completed_lap"] = pd.NA
+        lt.loc[sus, "counts_as_completed_lap_reason"] = "lap_times_driver_transposed"
+
+        log.info("  counts_as_completed_lap: %d True, %d False, %d NULL",
+                 int((lt["counts_as_completed_lap"] == True).sum()),  # noqa: E712
+                 int((lt["counts_as_completed_lap"] == False).sum()),  # noqa: E712
+                 int(lt["counts_as_completed_lap"].isna().sum()))
+        for reason, n in lt["counts_as_completed_lap_reason"].value_counts().items():
+            log.info("      %-30s %d rows", reason, n)
+        log.info("  driver_attribution_suspect: %d rows across %d races "
+                 "(lap-based features must exclude these)",
+                 int(sus.sum()), lt.loc[sus, "raceId"].nunique())
+
+    # ---- races.classified_laps: set only where it differs from the distance run
+    races["classified_laps"] = pd.Series(pd.NA, index=races.index, dtype="Int64")
+    notes = []
+    for rid, (cl, sched, src) in CLASSIFIED_EARLY.items():
+        races.loc[races["raceId"] == rid, "classified_laps"] = cl
+        row = races[races["raceId"] == rid]
+        notes.append({"raceId": rid, "year": int(row.iloc[0]["year"]), "name": row.iloc[0]["name"],
+                      "classified_laps": cl, "scheduled_laps": sched,
+                      "reason": "Result declared at the end of lap %d of %d under FIA Sporting "
+                                "Regulations Art. 43.2 (countback)" % (cl, sched),
+                      "evidence_source": src})
+    pd.DataFrame(notes).to_csv(OUT / "race_classification_notes.csv", index=False)
+    log.info("  races.classified_laps: set on %d race(s); notes -> race_classification_notes.csv",
+             len(notes))
     ps = merged["pit_stops"]
     ps["red_flag_affected"] = ps["milliseconds"] >= RED_FLAG_STOP_MS
     # Ergast counts a red-flag pit-lane hold as a stop; formula1.com does not.

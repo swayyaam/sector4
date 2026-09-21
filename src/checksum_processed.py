@@ -5,9 +5,12 @@ byte-identical outputs. That promise is what lets us change the environment
 (e.g. the pandas major version FastF1 requires) and *prove* the verified
 dataset did not move, rather than assuming it.
 
-    python src/checksum_processed.py record    # write baseline + snapshot the files
-    python src/checksum_processed.py verify    # sha256 comparison
-    python src/checksum_processed.py classify  # value-level diff vs the snapshot
+    python src/checksum_processed.py record  v0.1.1-data  # baseline + snapshot
+    python src/checksum_processed.py verify  v0.1.1-data  # sha256 comparison
+    python src/checksum_processed.py classify v0.1.1-data # value-level diff
+
+A tagged baseline is frozen: each version writes its own file, so recording a
+new one never overwrites the evidence behind an earlier tag.
 
 `classify` answers the question a checksum cannot: when the bytes differ, is it
 only how values are *rendered* (pandas 3 changed the default string dtype and
@@ -25,8 +28,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data" / "processed"
-BASELINE = ROOT / "data" / "checksums_v0.1-data.json"
-SNAPSHOT = ROOT / "data" / "processed_v0.1_snapshot"
+DEFAULT_VERSION = "v0.1.1-data"
+
+
+def paths_for(version: str) -> tuple[Path, Path]:
+    return (ROOT / "data" / f"checksums_{version}.json",
+            ROOT / "data" / f"processed_{version}_snapshot")
+
+
+BASELINE, SNAPSHOT = paths_for(DEFAULT_VERSION)
 
 
 def digest(p: Path) -> str:
@@ -46,7 +56,11 @@ def snapshot() -> dict[str, dict]:
 
 
 def main() -> int:
+    global BASELINE, SNAPSHOT
     mode = sys.argv[1] if len(sys.argv) > 1 else "verify"
+    version = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_VERSION
+    BASELINE, SNAPSHOT = paths_for(version)
+    print(f"version: {version}")
     cur = snapshot()
     if mode == "record":
         BASELINE.write_text(json.dumps(cur, indent=2, sort_keys=True))

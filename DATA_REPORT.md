@@ -631,3 +631,69 @@ Supporting files: `corrections_applied.csv` (135), `pit_lane_starts.csv` (808), 
 ## Remaining known issue
 
 One driver-race inside the 2018+ modelling window still disagrees with itself: **2026 British GP, Sainz** — `results.laps` is 51 while `lap_times` holds 52 contiguous laps. Flagged via `lap_data_suspect`, listed in `lap_data_suspect_2018plus.csv`, and left as recorded. The five DSQ rows that carried `laps = 0` were filled from `lap_times` where the sequence was contiguous; notably the three 2025 Chinese GP disqualifications come out at 56 laps, exactly the winner's distance, confirming they completed the race before exclusion.
+
+---
+
+# v0.1.1-data — timed laps vs classified laps
+
+A timed lap is not always a *classified* lap. `lap_times` records laps that were
+timed; `results.laps` records laps the classification credits. Scanning the whole
+dataset for rows where `lap_times.lap` exceeds `results.laps` found **248 rows
+(0.039%) across 37 driver-races in 16 races** — and they split into three
+causes that must not be conflated.
+
+| Cause | Rows | Races | `counts_as_completed_lap` |
+|---|---:|---:|---|
+| Race declared early (FIA Art. 43.2 countback) | 40 | 1 | `False`, reason `declared_early` |
+| Driver flagged mid-lap | 35 | 11 | `False`, reason `flagged_mid_lap` |
+| **`lap_times` driverId transposed** | **308** † | 4 | **`NULL`**, reason `lap_times_driver_transposed` |
+
+† the 308 covers *every* lap row for both drivers in each affected pair, not just the overhanging ones.
+
+## The countback case is real and unique
+
+The **2014 Chinese Grand Prix** is the only race in the lap-times era (1996+)
+where the whole field's timed laps exceed the classified distance — 20 of 22
+entrants, uniformly +2. Official confirms why: the *"result was declared at the
+end of Lap 54 of 56, in accordance with Article 43.2 of the FIA Sporting
+Regulations."* 56 laps were timed, 54 classified. Both tables are correct; they
+measure different things.
+
+`races.classified_laps` is a new nullable column, populated **only** where the
+classified distance differs from the distance run — currently one race — with the
+citation recorded in `race_classification_notes.csv`.
+
+## The transpositions are a different defect
+
+Four races have `lap_times` rows filed under the wrong `driverId`, and the
+evidence is that the lap counts are **exact mirrors** between two drivers:
+
+| Race | Driver | `results.laps` | lap rows | Mirror |
+|---|---|---:|---:|---|
+| 2001 Hungarian GP | Alesi / Trulli | 75 / 53 | 53 / 75 | swapped |
+| 2001 Italian GP | Alesi / Trulli | 52 / 0 | 0 / 52 | swapped |
+| 2001 Japanese GP | Trulli / Alesi | 52 / 5 | 5 / 52 | swapped |
+| 2009 Italian GP | Buemi / Alguersuari / Webber | 52 / 19 / 0 | 19 / 0 / 52 | three-way |
+
+These rows are **not** "laps beyond what the driver completed" — they are another
+driver's laps under the wrong ID. So `counts_as_completed_lap` is **`NULL`, not
+`False`**: whether the lap counts is *unknown*, because we do not know whose lap
+it is. A separate boolean `driver_attribution_suspect` marks every lap row for
+both drivers in each pair.
+
+⚠️ **Any lap-based feature must exclude rows where `driver_attribution_suspect`
+is true.**
+
+Nothing was repaired. Swapping the IDs back would be an inference from the mirror
+pattern, not evidence. All four races are **2001 and 2009**, before FastF1's 2018
+coverage floor, so no independent lap-by-lap source exists to settle them — this
+is unlikely ever to be resolvable and should be treated as permanent.
+
+## Sainz, 2026 British GP — resolved
+
+The open issue from v0.1-data is settled. The official classification gives
+**Sainz 51 laps (+1 lap)**, and he is the only driver in that race with a
+mismatch — Stroll and Alonso, also a lap down, have exactly 51 laps and 51 lap
+rows. So `results.laps = 51` is correct as recorded and the 52nd lap row is a
+mid-lap timing artefact, now flagged `counts_as_completed_lap = False`,
+`flagged_mid_lap`. No correction to `results` was needed.

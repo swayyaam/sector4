@@ -1,0 +1,166 @@
+{
+  "circuits.csv": {
+    "bytes": 10135,
+    "sha256": "7938a2534c815ca5d07ffb78c5b35935841b5b662f8dc614af9c59078f92a3cd"
+  },
+  "constructor_identity_breaks.csv": {
+    "bytes": 1055,
+    "sha256": "e08413b5b23597dd062675bf7a49a7616c135989345a58df075a6df53ea355d6"
+  },
+  "constructor_results.csv": {
+    "bytes": 486399,
+    "sha256": "83ce0229c29430314223a22c9f8bc1a3b2c0b973c501795b6d53173a23c203aa"
+  },
+  "constructor_standings.csv": {
+    "bytes": 595213,
+    "sha256": "f2e304744b680d5df0a7f3686afca0dd5129b743465cafa2f253a26367da7bcc"
+  },
+  "constructors.csv": {
+    "bytes": 17453,
+    "sha256": "e07ee1564ea9a2f73f64e0f98c5bcc5c9a6c9281cff35d85795c5c4feaf76ec7"
+  },
+  "corrections_applied.csv": {
+    "bytes": 38618,
+    "sha256": "988dc556703534ceb18eac127d83c829e2b178f20cfb270f545f8149de55b418"
+  },
+  "driver_seasons.csv": {
+    "bytes": 68882,
+    "sha256": "9022ab8472de5563a3e9e8464da8c64b9a3f3ca47e35b854c31927833dfc5559"
+  },
+  "driver_standings.csv": {
+    "bytes": 1226747,
+    "sha256": "77e2d394b87cbb798586dae2057055f1550a70adc91df66c1490b86b1fd2608a"
+  },
+  "drivers.csv": {
+    "bytes": 90437,
+    "sha256": "49b24aa578da5d7dad53e5bf7aa55baf6e643ec9a750947e539859d5aad0821d"
+  },
+  "id_maps/circuits.csv": {
+    "bytes": 480,
+    "sha256": "6e37b2fe2c5994693cd8de3faf8c70615af36468a94493f04741172b0901cae3"
+  },
+  "id_maps/constructors.csv": {
+    "bytes": 237,
+    "sha256": "0bf391a9e578bbc25238e1cb0366851794d2158f4f93e70a3db868d125be0992"
+  },
+  "id_maps/drivers.csv": {
+    "bytes": 536,
+    "sha256": "032edd478d3af4fb2553bc1fccd57fb1a372a26e60cf4937a14c7cb8212f5267"
+  },
+  "jolpica/circuits.csv": {
+    "bytes": 3451,
+    "sha256": "44f543f4a47dd10cdb89acad3823dad397d3b1d402bd2fd8139d9c490b6b0fd9"
+  },
+  "jolpica/constructor_results.csv": {
+    "bytes": 19327,
+    "sha256": "bc6abc4a248d4a1a2642f8fafb98ea89fcee80ddbf146edd56ceda72fa5c62f8"
+  },
+  "jolpica/constructor_standings.csv": {
+    "bytes": 23204,
+    "sha256": "b7b618715d22c99055d311b8922667e23356b356dfaa0b964b1531d960f996e0"
+  },
+  "jolpica/constructors.csv": {
+    "bytes": 1079,
+    "sha256": "b70c8a7fb27b3fbdfd15d1bc97e54d1ffbd0a52d7d65e5adacd38336d392edee"
+  },
+  "jolpica/driver_standings.csv": {
+    "bytes": 43842,
+    "sha256": "6001ee3aed537d4c6de4e81ab48a9ef4fb894c0079df9271853b5f8646c53884"
+  },
+  "jolpica/drivers.csv": {
+    "bytes": 3057,
+    "sha256": "b307d914e23592c784e6be635d1afd626b4d4c6bb2803d7c445c35a8082866fd"
+  },
+  "jolpica/lap_times.csv": {
+    "bytes": 3011369,
+    "sha256": "c7889ad327e58fd2be6099c0a91e4e5625dccd7d162d8a40ad4e3d02054f215b"
+  },
+  "jolpica/pit_stops.csv": {
+    "bytes": 114226,
+    "sha256": "47e535bed63b777155e024bcf8decabfa7ce60e17a28c668ec2509ead6c1f16d"
+  },
+  "jolpica/qualifying.csv": {
+    "bytes": 62916,
+    "sha256": "2e3f2fea9ee6e9b15539d55308072d253ed7e2073ffcc677b96eb463e564d8b8"
+  },
+  "jolpica/race_sessions_extra.csv": {
+    "bytes": 893,
+    "sha256": "2ba28a94e369748664ce72ad471975ed4d300cc66bdc6565c7f3ab9495c1b418"
+  },
+  "jolpica/races.csv": {
+    "bytes": 13671,
+    "sha256": "ab2bd5237caae049cd0db8fc8f60b2af66d3043ca517f15245eaec1c9054d6dd"
+  },
+  "jolpica/results.csv": {
+    "bytes": 114074,
+    "sha256": "12ff9039bde1eedffb662773a1721fff9f463a7b3831a03b6983b60e31fd797d"
+  },
+  "jolpica/seasons.csv": {
+    "bytes": 253,
+    "sha256": "712d7f82b47154e42b1624c7947bd10910583a78caff4ea59c5122309a59c0fe"
+  },
+  "jolpica/sprint_results.csv": {
+    "bytes": 26010,
+    "sha256": "54fde2bb20e90aa1c2080111cf9f8298469ae84192b16837251aa493409ad6ba"
+  },
+  "jolpica/status.csv": {
+    "bytes": 129,
+    "sha256": "0929113c4cedf48f598efb2210c810e9acb708caea930f80010f18ec58532457"
+  },
+  "lap_data_suspect_2018plus.csv": {
+    "bytes": 335,
+    "sha256": "bec226b5a6541944a26b114060c08e92eedae8064193f01726412f9ae175aae0"
+  },
+  "lap_times.csv": {
+    "bytes": 34815990,
+    "sha256": "b19d48d88996cd2f9f58a2336d27c64b1dc594d1614381098ef979e62c929f97"
+  },
+  "pit_lane_starts.csv": {
+    "bytes": 104775,
+    "sha256": "473505573357a74d2ae804ad62a1fcf0abaab4f1dc595c1834a858e85fa7c20a"
+  },
+  "pit_stops.csv": {
+    "bytes": 730037,
+    "sha256": "6f211df94db31fa7644601480808f4f400ebf377b010b6afdc418c2808a7fe1a"
+  },
+  "qualifying.csv": {
+    "bytes": 627969,
+    "sha256": "0b1dc35382538b99c80d2ad5d56a86ed075c7a5e0468a6b3f90c29c6ed7aff69"
+  },
+  "race_classification_notes.csv": {
+    "bytes": 270,
+    "sha256": "635df8bb71606be70c353529c25d49ac69f5651737e2fb874dcb23b125c8cb8a"
+  },
+  "races.csv": {
+    "bytes": 190393,
+    "sha256": "69f6d035b57cbf9b722f5362e9a0213255685fb936c1ff2e9332a3b74064f83b"
+  },
+  "results.csv": {
+    "bytes": 2993096,
+    "sha256": "30fe0e71586ce3b7356fd6f840293c708fc1522cd95791c41950b280cf60d0ef"
+  },
+  "seasons.csv": {
+    "bytes": 5134,
+    "sha256": "0042e0c03804db8ba1014c86922f395c9b464ca8c86298577896bf2dca8dd5a6"
+  },
+  "sprint_results.csv": {
+    "bytes": 54310,
+    "sha256": "7aa94f780e843ed86d4addd39b2b9834b3f30f316586d11fd3d82fcd9967a5dc"
+  },
+  "status.csv": {
+    "bytes": 2883,
+    "sha256": "a880ce20519575516a82f02af1febc9ca1055bc5e413e0871a549be5565632ae"
+  },
+  "team_entities.csv": {
+    "bytes": 5828,
+    "sha256": "9375563b90082c3ca3ddb82aaf24a4357256cbbf2dacfbf54cdd2546859bdacd"
+  },
+  "team_lineage.csv": {
+    "bytes": 4853,
+    "sha256": "ae4138a5dab977fbddd5d4612bafa1684c23f90776d3e97295c224d326cc1b16"
+  },
+  "unresolved_conflicts.csv": {
+    "bytes": 58,
+    "sha256": "7faf33c4482f92a3be5e038651b12b26a7f6aeb202d1e14aca5514949ec26ce9"
+  }
+}
