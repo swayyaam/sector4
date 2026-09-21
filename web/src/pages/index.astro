@@ -1,0 +1,336 @@
+---
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import Countdown from "../components/race/Countdown.astro";
+import TeamMarker from "../components/prediction/TeamMarker.astro";
+import ProbabilityBar from "../components/prediction/ProbabilityBar.astro";
+import {
+  circuitById,
+  driverById,
+  driversByWinProbability,
+  loadDataset,
+  preferredSnapshot,
+  raceById,
+  scoredPredictions,
+  teamById,
+} from "../lib/data";
+import { driverName, percent, score } from "../lib/format";
+import { formatUtc } from "../lib/time";
+
+const { reference, predictions, meta } = loadDataset();
+const drivers = driverById(reference);
+const teams = teamById(reference);
+const races = raceById(reference);
+const circuits = circuitById(reference);
+
+const next = meta.next_race!;
+const nextRace = races.get(next.race_id)!;
+const nextPred = preferredSnapshot(predictions, next.race_id)!;
+const contenders = driversByWinProbability(nextPred).slice(0, 5);
+const maxWin = contenders[0]!.p_win;
+
+const scored = scoredPredictions(predictions);
+const last = scored[0]!;
+const lastRace = races.get(last.race_id)!;
+const lastTop = driversByWinProbability(last).slice(0, 3);
+const actualById = new Map(last.result!.drivers.map((d) => [d.driverId, d]));
+
+const wins = scored.filter((p) => p.result!.winner_hit).length;
+const podiums = scored.reduce((a, p) => a + p.result!.podium_hits, 0);
+const meanLogLoss = scored.reduce((a, p) => a + p.result!.log_loss, 0) / scored.length;
+
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Sector 4",
+    url: "https://sector4.dev/",
+    description: "Probabilistic Formula 1 race predictions, scored in public.",
+  },
+];
+---
+
+<BaseLayout
+  title="Sector 4 — F1 race predictions, scored in public"
+  description={`Win, podium and top-ten probabilities for the ${next.season} ${next.name}, plus an auditable record of how every past prediction turned out.`}
+  jsonLd={jsonLd}
+>
+  <section class="band band-dark">
+    <div class="wrap hero">
+      <div>
+        <p class="eyebrow">Next race · Round {next.round}</p>
+        <h1>{next.name}</h1>
+        <p class="sub">
+          {circuits.get(next.circuit_id)?.name}, {circuits.get(next.circuit_id)?.country}
+        </p>
+        <Countdown startsAt={next.starts_at} />
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Most likely winner</h2>
+          <p class="snap">
+            {nextPred.snapshot === "post_qualifying" ? "Post-qualifying" : "Pre-weekend"} snapshot
+          </p>
+        </div>
+        <ol class="contenders">
+          {
+            contenders.map((c) => {
+              const d = drivers.get(c.driverId)!;
+              const t = teams.get(c.team_entity_id)!;
+              return (
+                <li>
+                  <TeamMarker colour={t.colour} name={t.name} />
+                  <span class="cname">
+                    {driverName(d)}
+                    <span class="cteam">{t.short_name}</span>
+                  </span>
+                  <span class="cbar"><ProbabilityBar value={c.p_win} columnMax={maxWin} /></span>
+                  <span class="num cpct">{percent(c.p_win)}</span>
+                </li>
+              );
+            })
+          }
+        </ol>
+        <a class="cta" href={`/races/${nextRace.season}/${nextRace.slug}/`}>
+          Full field and factors
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap">
+      <p class="eyebrow">Last race</p>
+      <h2>{lastRace.name} — predicted against actual</h2>
+      <div class="receipt">
+        <table>
+          <caption class="sr-only">
+            The three drivers given the highest podium probability, and where each finished.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Predicted top 3</th>
+              <th scope="col" class="n">Win prob.</th>
+              <th scope="col" class="n">Finished</th>
+              <th scope="col" class="n">Outcome</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              lastTop.map((c) => {
+                const d = drivers.get(c.driverId)!;
+                const a = actualById.get(c.driverId);
+                const pos = a?.actual_position ?? null;
+                const hit = pos !== null && pos <= 3;
+                return (
+                  <tr>
+                    <th scope="row">{driverName(d)}</th>
+                    <td class="n num">{percent(c.p_win)}</td>
+                    <td class="n num">{pos === null ? "—" : `P${pos}`}</td>
+                    <td class:list={["n", "outcome", hit ? "hit" : "miss"]}>
+                      {hit ? "Podium hit" : "Miss"}
+                    </td>
+                  </tr>
+                );
+              })
+            }
+          </tbody>
+        </table>
+        <dl class="scores">
+          <div><dt>Log loss</dt><dd class="num">{score(last.result!.log_loss)}</dd></div>
+          <div><dt>Brier</dt><dd class="num">{score(last.result!.brier)}</dd></div>
+          <div>
+            <dt>Winner</dt>
+            <dd class:list={["outcome", last.result!.winner_hit ? "hit" : "miss"]}>
+              {last.result!.winner_hit ? "Hit" : "Miss"}
+            </dd>
+          </div>
+          <div><dt>Podium</dt><dd class="num">{last.result!.podium_hits} of 3</dd></div>
+        </dl>
+      </div>
+      <p class="more">
+        <a href={`/races/${lastRace.season}/${lastRace.slug}/`}>See the full {lastRace.name} result</a>
+      </p>
+    </div>
+  </section>
+
+  <section class="band band-soft">
+    <div class="wrap">
+      <p class="eyebrow">Season so far</p>
+      <h2>{scored.length} races scored</h2>
+      <dl class="summary">
+        <div><dt>Winner called</dt><dd class="num">{wins} of {scored.length}</dd></div>
+        <div><dt>Podium places</dt><dd class="num">{podiums} of {scored.length * 3}</dd></div>
+        <div><dt>Mean log loss</dt><dd class="num">{score(meanLogLoss)}</dd></div>
+        <div>
+          <dt>Data freshness</dt>
+          <dd><time datetime={meta.generated_at}>{formatUtc(meta.generated_at)}</time></dd>
+        </div>
+      </dl>
+      <p class="more"><a href="/track-record/">Every prediction, including the misses</a></p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .hero {
+    display: grid;
+    gap: var(--space-xxl);
+    align-items: start;
+  }
+  @media (min-width: 900px) {
+    .hero {
+      grid-template-columns: 1.1fr 1fr;
+    }
+  }
+  .sub {
+    color: var(--colour-on-dark-soft);
+    margin: var(--space-sm) 0 var(--space-lg);
+  }
+  .panel {
+    background: var(--colour-surface-dark-elevated);
+    border-radius: var(--radius-xl);
+    padding: var(--space-xl);
+  }
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+  }
+  .panel h2 {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .snap {
+    font-size: 12px;
+    color: var(--colour-on-dark-soft);
+  }
+  .contenders {
+    list-style: none;
+    margin: 0 0 var(--space-lg);
+    padding: 0;
+    display: grid;
+    gap: var(--space-base);
+  }
+  .contenders li {
+    display: grid;
+    grid-template-columns: 4px 1fr 1fr auto;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+  .cname {
+    color: var(--colour-on-dark);
+    font-size: 15px;
+  }
+  .cteam {
+    display: block;
+    font-size: 12px;
+    color: var(--colour-on-dark-soft);
+  }
+  .cpct {
+    color: var(--colour-on-dark);
+    font-size: 15px;
+  }
+  /* Derived from a token rather than a new hex: the track is decorative and
+     only needs to sit under a white fill on the dark panel. */
+  .cbar :global(.track) {
+    background: color-mix(in srgb, var(--colour-on-dark) 14%, transparent);
+  }
+  .cbar :global(.fill) {
+    background: var(--colour-on-dark);
+  }
+  .cta {
+    display: inline-block;
+    background: var(--colour-action);
+    color: var(--colour-on-action);
+    font-weight: 600;
+    padding: 12px 20px;
+    border-radius: var(--radius-pill);
+  }
+  .cta:hover {
+    background: var(--colour-action-active);
+    text-decoration: none;
+  }
+
+  .receipt {
+    display: grid;
+    gap: var(--space-xl);
+    margin-top: var(--space-lg);
+  }
+  @media (min-width: 900px) {
+    .receipt {
+      grid-template-columns: 2fr 1fr;
+    }
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th,
+  td {
+    text-align: left;
+    padding: var(--space-sm) var(--space-xs);
+    font-weight: 400;
+  }
+  thead th {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--colour-muted);
+    border-bottom: 1px solid var(--colour-hairline);
+  }
+  tbody tr {
+    border-bottom: 1px solid var(--colour-hairline);
+  }
+  tbody th {
+    color: var(--colour-ink);
+    font-weight: 600;
+  }
+  .n {
+    text-align: right;
+  }
+  .outcome {
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .hit {
+    color: var(--colour-positive);
+  }
+  .miss {
+    color: var(--colour-negative);
+  }
+  .scores,
+  .summary {
+    display: grid;
+    gap: var(--space-base);
+    margin: var(--space-lg) 0 0;
+  }
+  .summary {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+  .scores div,
+  .summary div {
+    border-top: 1px solid var(--colour-hairline);
+    padding-top: var(--space-xs);
+  }
+  dt {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--colour-muted);
+  }
+  dd {
+    margin: var(--space-xxs) 0 0;
+    font-size: 18px;
+    color: var(--colour-ink);
+  }
+  .more {
+    margin-top: var(--space-lg);
+    font-size: 14px;
+  }
+</style>

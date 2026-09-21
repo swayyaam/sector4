@@ -1,0 +1,619 @@
+---
+import BaseLayout from "../../../components/layout/BaseLayout.astro";
+import ProbabilityTable from "../../../components/prediction/ProbabilityTable.astro";
+import TeamMarker from "../../../components/prediction/TeamMarker.astro";
+import CircuitCard from "../../../components/race/CircuitCard.astro";
+import Countdown from "../../../components/race/Countdown.astro";
+import {
+  circuitById,
+  driverById,
+  driversByWinProbability,
+  loadDataset,
+  predictionsForRace,
+  raceById,
+  teamById,
+} from "../../../lib/data";
+import { driverName, percent, position, score } from "../../../lib/format";
+import { formatUtc, isPast } from "../../../lib/time";
+import type { Prediction } from "../../../lib/schema";
+
+export async function getStaticPaths() {
+  const { reference, predictions } = loadDataset();
+  const withPredictions = new Set(predictions.map((p) => p.race_id));
+  return reference.races
+    .filter((r) => withPredictions.has(r.race_id))
+    .map((r) => ({
+      params: { season: String(r.season), slug: r.slug },
+      props: { raceId: r.race_id },
+    }));
+}
+
+const { raceId } = Astro.props;
+const { reference, predictions, meta } = loadDataset();
+const drivers = driverById(reference);
+const teams = teamById(reference);
+const circuits = circuitById(reference);
+const race = raceById(reference).get(raceId)!;
+const circuit = circuits.get(race.circuit_id)!;
+
+// Post-qualifying first when it exists: it is the sharper of the two, and the
+// one a reader arriving on race day wants.
+const snapshots = predictionsForRace(predictions, raceId);
+const shown = snapshots[0]!;
+const scoredWith = snapshots.find((s) => s.result !== null) ?? null;
+const result = scoredWith?.result ?? null;
+const now = new Date();
+const started = isPast(race.starts_at, now);
+
+const SNAPSHOT_LABEL: Record<Prediction["snapshot"], string> = {
+  pre_weekend: "Pre-weekend",
+  post_qualifying: "Post-qualifying",
+};
+const SNAPSHOT_BLURB: Record<Prediction["snapshot"], string> = {
+  pre_weekend: "Before any running: form, circuit history and car pace only.",
+  post_qualifying: "After qualifying, with the grid known.",
+};
+
+const actualById = new Map((result?.drivers ?? []).map((d) => [d.driverId, d]));
+const finalOrder = scoredWith
+  ? [...scoredWith.drivers].sort((a, b) => {
+      const pa = actualById.get(a.driverId)?.actual_position ?? 99;
+      const pb = actualById.get(b.driverId)?.actual_position ?? 99;
+      return pa - pb || b.p_win - a.p_win;
+    })
+  : [];
+
+const title = `${race.season} ${race.name} — win and podium probabilities`;
+const description = result
+  ? `How Sector 4's ${race.season} ${race.name} prediction turned out: log loss ${score(result.log_loss)}, ` +
+    `${result.podium_hits} of 3 podium places, winner ${result.winner_hit ? "called" : "missed"}.`
+  : `Win, podium, top-ten and DNF probabilities for all ${shown.drivers.length} drivers at the ` +
+    `${race.season} ${race.name}, with the factors behind each.`;
+
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "SportsEvent",
+    name: `${race.season} ${race.name}`,
+    startDate: race.starts_at,
+    eventStatus: "https://schema.org/EventScheduled",
+    location: {
+      "@type": "Place",
+      name: circuit.name,
+      address: { "@type": "PostalAddress", addressLocality: circuit.locality, addressCountry: circuit.country },
+      geo: { "@type": "GeoCoordinates", latitude: circuit.lat, longitude: circuit.lng },
+    },
+  },
+];
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  jsonLd={jsonLd}
+  breadcrumbs={[
+    { name: "Track record", path: "/track-record/" },
+    { name: `${race.season} ${race.name}`, path: `/races/${race.season}/${race.slug}/` },
+  ]}
+>
+  <section class="band band-dark">
+    <div class="wrap head">
+      <div>
+        <p class="eyebrow">{race.season} · Round {race.round}</p>
+        <h1>{race.name}</h1>
+        <p class="where">{circuit.name} — {circuit.locality}, {circuit.country}</p>
+      </div>
+      <div class="when">
+        {
+          started ? (
+            <p class="cd">
+              <span class="num">Race complete</span>
+              <span class="at">
+                <time datetime={race.starts_at}>{formatUtc(race.starts_at)}</time>
+              </span>
+            </p>
+          ) : (
+            <Countdown startsAt={race.starts_at} />
+          )
+        }
+      </div>
+    </div>
+  </section>
+
+  {
+    result && scoredWith && (
+      <section class="band">
+        <div class="wrap">
+          <p class="eyebrow">Result</p>
+          <h2>Predicted against actual</h2>
+          <p class="lede">
+            Scored on the {SNAPSHOT_LABEL[scoredWith.snapshot].toLowerCase()} snapshot, the one
+            published before the race started. Nothing here is recalculated after the fact.
+          </p>
+          <dl class="scores">
+            <div>
+              <dt>Log loss</dt>
+              <dd class="num">{score(result.log_loss)}</dd>
+            </div>
+            <div>
+              <dt>Brier</dt>
+              <dd class="num">{score(result.brier)}</dd>
+            </div>
+            <div>
+              <dt>Winner</dt>
+              <dd class:list={["outcome", result.winner_hit ? "hit" : "miss"]}>
+                {result.winner_hit ? "Called" : "Missed"}
+              </dd>
+            </div>
+            <div>
+              <dt>Podium places</dt>
+              <dd class="num">{result.podium_hits} of 3</dd>
+            </div>
+          </dl>
+
+          <div class="scroller">
+            <table class="grid">
+              <caption class="sr-only">
+                Every driver's finishing position beside the probability given before the race.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col" class="pos">Pos</th>
+                  <th scope="col">Driver</th>
+                  <th scope="col" class="n">Win prob.</th>
+                  <th scope="col" class="n">Podium prob.</th>
+                  <th scope="col" class="n">Expected</th>
+                  <th scope="col" class="n">Delta</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {finalOrder.map((row) => {
+                  const d = drivers.get(row.driverId);
+                  const t = teams.get(row.team_entity_id);
+                  const a = actualById.get(row.driverId);
+                  const pos = a?.actual_position ?? null;
+                  const delta = pos === null ? null : row.expected_position - pos;
+                  return (
+                    <tr>
+                      <td class="pos num">{pos === null ? "—" : pos}</td>
+                      <th scope="row">
+                        <span class="who">
+                          {t && <TeamMarker colour={t.colour} name={t.name} />}
+                          <span>
+                            <span class="name">{d ? driverName(d) : `Driver ${row.driverId}`}</span>
+                            <span class="team">{t?.short_name ?? "Unknown team"}</span>
+                          </span>
+                        </span>
+                      </th>
+                      <td class="n num">{percent(row.p_win)}</td>
+                      <td class="n num">{percent(row.p_podium)}</td>
+                      <td class="n num dim">{position(row.expected_position)}</td>
+                      <td
+                        class:list={[
+                          "n",
+                          "num",
+                          delta === null ? "dim" : delta > 0.5 ? "hit" : delta < -0.5 ? "miss" : "dim",
+                        ]}
+                      >
+                        {delta === null ? "—" : `${delta > 0 ? "+" : ""}${position(delta)}`}
+                      </td>
+                      <td class="status">{a?.status ?? "Unknown"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p class="note">
+            Delta is expected position minus actual: positive means the driver beat the prediction.
+            A driver who did not finish has no position, so no delta.
+          </p>
+        </div>
+      </section>
+    )
+  }
+
+  <section class="band band-soft">
+    <div class="wrap">
+      <p class="eyebrow">Prediction</p>
+      <h2>Full field</h2>
+
+      {
+        snapshots.length > 1 && (
+          <fieldset class="switch">
+            <legend>Snapshot</legend>
+            {snapshots.map((s, i) => (
+              <>
+                <input
+                  type="radio"
+                  name="snapshot"
+                  id={`snap-${s.snapshot}`}
+                  value={s.snapshot}
+                  checked={i === 0}
+                />
+                <label for={`snap-${s.snapshot}`}>{SNAPSHOT_LABEL[s.snapshot]}</label>
+              </>
+            ))}
+          </fieldset>
+        )
+      }
+
+      <div class="panels">
+        {
+          snapshots.map((s) => {
+            const rows = driversByWinProbability(s);
+            return (
+              <div class="panel" data-snap={s.snapshot}>
+                <p class="meta">
+                  <strong>{SNAPSHOT_LABEL[s.snapshot]}.</strong> {SNAPSHOT_BLURB[s.snapshot]}{" "}
+                  Generated <time datetime={s.generated_at}>{formatUtc(s.generated_at)}</time> ·
+                  model {s.model_version} · data {s.data_version} ·{" "}
+                  <span class="num">{s.commit_sha.slice(0, 7)}</span>
+                </p>
+                <div class="scroller">
+                  <ProbabilityTable
+                    rows={rows}
+                    drivers={drivers}
+                    teams={teams}
+                    caption={`${SNAPSHOT_LABEL[s.snapshot]} probabilities for all ${rows.length} drivers, most likely winner first.`}
+                  />
+                </div>
+
+                <h3 class="fh">What is driving each number</h3>
+                <ul class="factors">
+                  {rows.map((r, i) => {
+                    const d = drivers.get(r.driverId);
+                    const t = teams.get(r.team_entity_id);
+                    return (
+                      <li>
+                        <details open={i < 3}>
+                          <summary>
+                            <span class="fname">{d ? driverName(d) : `Driver ${r.driverId}`}</span>
+                            <span class="fteam">{t?.short_name ?? "Unknown team"}</span>
+                            <span class="num fpct">{percent(r.p_win)}</span>
+                          </summary>
+                          {r.top_factors.length === 0 ? (
+                            <p class="empty">No factor above the reporting threshold.</p>
+                          ) : (
+                            <ul class="flist">
+                              {r.top_factors.map((f) => (
+                                <li>
+                                  <span class="flabel">{f.label}</span>
+                                  <span class="fmag" aria-hidden="true">
+                                    <span
+                                      class:list={["fbar", f.direction]}
+                                      style={`width:${Math.round(f.magnitude * 100)}%`}
+                                    />
+                                  </span>
+                                  <span class:list={["fdir", f.direction]}>
+                                    {f.direction === "positive" ? "helps" : "hurts"}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </details>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap circuit">
+      <div>
+        <p class="eyebrow">Circuit</p>
+        <h2>{circuit.name}</h2>
+        <p class="lede">
+          {circuit.locality}, {circuit.country}. Regulations era {race.regs_era}, which bounds the
+          history the model treats as comparable.
+        </p>
+        <p class="note">
+          Data version {meta.data_version}, generated{" "}
+          <time datetime={meta.generated_at}>{formatUtc(meta.generated_at)}</time>.
+        </p>
+      </div>
+      <CircuitCard circuit={circuit} />
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .head {
+    display: grid;
+    gap: var(--space-lg);
+  }
+  @media (min-width: 900px) {
+    .head {
+      grid-template-columns: 1fr auto;
+      align-items: end;
+    }
+  }
+  .where {
+    color: var(--colour-on-dark-soft);
+    margin-top: var(--space-sm);
+  }
+  .cd {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+  }
+  .cd .num {
+    font-size: 22px;
+    color: var(--colour-on-dark);
+  }
+  .cd .at {
+    font-size: 13px;
+    color: var(--colour-on-dark-soft);
+  }
+  .lede {
+    max-width: 62ch;
+    color: var(--colour-body);
+    margin-top: var(--space-sm);
+  }
+
+  .scores {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--space-base);
+    margin: var(--space-xl) 0;
+  }
+  .scores div {
+    border-top: 1px solid var(--colour-hairline);
+    padding-top: var(--space-xs);
+  }
+  dt {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--colour-muted);
+  }
+  dd {
+    margin: var(--space-xxs) 0 0;
+    font-size: 20px;
+    color: var(--colour-ink);
+  }
+  .outcome {
+    font-weight: 600;
+  }
+  .hit {
+    color: var(--colour-positive);
+  }
+  .miss {
+    color: var(--colour-negative);
+  }
+
+  /* Wide tables scroll rather than shrink the type. */
+  .scroller {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .grid {
+    width: 100%;
+    min-width: 640px;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .grid th,
+  .grid td {
+    text-align: left;
+    padding: var(--space-sm) var(--space-xs);
+    font-weight: 400;
+    white-space: nowrap;
+  }
+  .grid thead th {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--colour-muted);
+    border-bottom: 1px solid var(--colour-hairline);
+  }
+  .grid tbody tr {
+    border-bottom: 1px solid var(--colour-hairline);
+  }
+  .grid .pos {
+    width: 3ch;
+    color: var(--colour-muted);
+  }
+  .grid .n {
+    text-align: right;
+  }
+  .grid .dim {
+    color: var(--colour-muted);
+  }
+  .grid .status {
+    color: var(--colour-muted);
+  }
+  .who {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+  .name {
+    display: block;
+    color: var(--colour-ink);
+    font-weight: 600;
+  }
+  .team {
+    display: block;
+    font-size: 12px;
+    color: var(--colour-muted);
+  }
+  .note {
+    margin-top: var(--space-base);
+    font-size: 13px;
+    color: var(--colour-muted);
+    max-width: 62ch;
+  }
+
+  /* Snapshot toggle: two radios and a :has() rule. No JavaScript, and it keeps
+     working with the keyboard for free. */
+  .switch {
+    border: 0;
+    padding: 0;
+    margin: var(--space-lg) 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+  .switch legend {
+    float: left;
+    width: 100%;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--colour-muted);
+    margin-bottom: var(--space-xs);
+  }
+  .switch input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+  .switch label {
+    border: 1px solid var(--colour-muted);
+    border-radius: var(--radius-pill);
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--colour-body);
+    cursor: pointer;
+  }
+  .switch input:checked + label {
+    background: var(--colour-action);
+    border-color: var(--colour-action);
+    color: var(--colour-on-action);
+  }
+  .switch input:focus-visible + label {
+    outline: 2px solid var(--colour-action);
+    outline-offset: 2px;
+  }
+  .wrap:has(#snap-post_qualifying:checked) .panel[data-snap="pre_weekend"],
+  .wrap:has(#snap-pre_weekend:checked) .panel[data-snap="post_qualifying"] {
+    display: none;
+  }
+
+  .meta {
+    font-size: 13px;
+    color: var(--colour-muted);
+    margin-bottom: var(--space-base);
+    max-width: 78ch;
+  }
+  .meta strong {
+    color: var(--colour-ink);
+  }
+
+  .fh {
+    margin: var(--space-xxl) 0 var(--space-base);
+    font-size: 18px;
+  }
+  .factors {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--colour-hairline);
+  }
+  .factors > li {
+    border-bottom: 1px solid var(--colour-hairline);
+  }
+  summary {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-xs);
+    cursor: pointer;
+    font-size: 14px;
+  }
+  summary:focus-visible {
+    outline: 2px solid var(--colour-action);
+    outline-offset: -2px;
+  }
+  .fname {
+    font-weight: 600;
+    color: var(--colour-ink);
+  }
+  .fteam {
+    font-size: 12px;
+    color: var(--colour-muted);
+  }
+  .fpct {
+    font-size: 14px;
+    color: var(--colour-body);
+    min-width: 6ch;
+    text-align: right;
+  }
+  .flist {
+    list-style: none;
+    margin: 0 0 var(--space-base);
+    padding: 0 var(--space-xs);
+    display: grid;
+    gap: var(--space-xs);
+  }
+  .flist li {
+    display: grid;
+    grid-template-columns: 1fr 100px 5ch;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 13px;
+  }
+  .flabel {
+    color: var(--colour-body);
+  }
+  .fmag {
+    display: block;
+    height: 6px;
+    border-radius: var(--radius-xs);
+    background: var(--colour-surface-strong);
+    overflow: hidden;
+  }
+  .fbar {
+    display: block;
+    height: 100%;
+    border-radius: var(--radius-xs);
+  }
+  .fbar.positive {
+    background: var(--colour-positive);
+  }
+  .fbar.negative {
+    background: var(--colour-negative);
+  }
+  .fdir {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .fdir.positive {
+    color: var(--colour-positive);
+  }
+  .fdir.negative {
+    color: var(--colour-negative);
+  }
+  .empty {
+    padding: 0 var(--space-xs) var(--space-base);
+    font-size: 13px;
+    color: var(--colour-muted);
+  }
+
+  .circuit {
+    display: grid;
+    gap: var(--space-xxl);
+    align-items: start;
+  }
+  @media (min-width: 900px) {
+    .circuit {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>
