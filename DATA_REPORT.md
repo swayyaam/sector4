@@ -577,3 +577,57 @@ Five races drawn at random across 2024–2026 (seed 4), each compared **row by r
 | 2025 Qatar GP | 20 | ✅ Exact, incl. Stroll and Hadjar classified 17th/18th despite retiring, and two NC |
 
 **100 of 100 rows match.** The only discrepancy anywhere in the five was the DSQ lap-count issue recorded above, which official cannot adjudicate.
+
+---
+
+# Final state at `v0.1-data`
+
+## Coverage
+
+| Season range | Source | Races |
+|---|---|---:|
+| 1950–2024 | Kaggle (Ergast dump) + 135 reviewed corrections | 1,125 |
+| 2025 | Jolpica | 24 |
+| 2026 (to R14, Spanish GP, 2026-09-13) | Jolpica | 14 |
+| **Total** | | **1,163** |
+
+## Row counts
+
+| Table | Rows |
+|---|---:|
+| `lap_times` | 631,961 |
+| `driver_standings` | 35,672 |
+| `results` | 27,546 |
+| `constructor_standings` | 13,785 |
+| `constructor_results` | 13,019 |
+| `pit_stops` | 12,747 |
+| `qualifying` | 11,276 |
+| `driver_seasons` | 3,600 |
+| `races` | 1,163 |
+| `drivers` | 865 |
+| `sprint_results` | 590 |
+| `team_entities` | 240 |
+| `constructors` | 214 |
+| `status` | 141 |
+| `seasons` | 77 |
+| `circuits` | 78 |
+| `team_lineage` | 33 |
+| `constructor_identity_breaks` | 21 |
+
+Supporting files: `corrections_applied.csv` (135), `pit_lane_starts.csv` (808), `unresolved_conflicts.csv` (**0**), `lap_data_suspect_2018plus.csv` (1).
+
+## Fetch cost
+
+1,097 network requests, 291 cache hits, 403 retries after HTTP 429, **95 rate-limit sleeps**, zero give-ups and zero unhandled errors. The client self-throttled to stay under the documented 500 requests/hour.
+
+## Verification summary
+
+- **59 of 59 validation checks pass.** 96 unit tests pass.
+- **0 unresolved source conflicts.**
+- 135 corrections applied: **122 verified against formula1.com**, 13 proven from the data itself.
+- Every 2024, 2025 and 2026 championship total reconciles three ways: fetched standings, recomputation from results + sprint, and the official classification.
+- Five random full-race classifications checked row by row: **100 of 100 rows match**.
+
+## Remaining known issue
+
+One driver-race inside the 2018+ modelling window still disagrees with itself: **2026 British GP, Sainz** — `results.laps` is 51 while `lap_times` holds 52 contiguous laps. Flagged via `lap_data_suspect`, listed in `lap_data_suspect_2018plus.csv`, and left as recorded. The five DSQ rows that carried `laps = 0` were filled from `lap_times` where the sequence was contiguous; notably the three 2025 Chinese GP disqualifications come out at 56 laps, exactly the winner's distance, confirming they completed the race before exclusion.

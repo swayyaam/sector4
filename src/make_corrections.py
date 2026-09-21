@@ -223,7 +223,11 @@ def main() -> int:
         if src_path.exists():
             lt_parts.append(pd.read_csv(src_path, keep_default_na=False, na_values=[r"\N", ""]))
     if lt_parts:
-        lt = pd.concat(lt_parts, ignore_index=True)
+        # 2024 exists in BOTH lap-time sources, so a naive concat double-counts
+        # every 2024 lap and makes the contiguity test fail. The merge uses
+        # Kaggle for 2024, so keep the Kaggle row when both are present.
+        lt = (pd.concat(lt_parts, ignore_index=True)
+                .drop_duplicates(["raceId", "driverId", "lap"], keep="first"))
         # 2024 appears in both sources; dedupe so a row is corrected once.
         allres = pd.concat([k, j], ignore_index=True).drop_duplicates(["raceId", "driverId"])
         dsq = allres[(allres["positionText"] == "D") & (allres["laps"] == 0)]
