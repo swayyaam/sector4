@@ -36,6 +36,22 @@ ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
 
 
+def reserve_key(year: int, name: str | None, race_id: int, session: str, number) -> str:
+    """Stable key for a practice-only participant.
+
+    Practice-only drivers never enter the drivers table (it stays race drivers
+    only, as Ergast has it), so they need their own identity. A named reserve is
+    keyed on season + normalised name; an entry FastF1 gives no name for is
+    keyed on where it appeared, which keeps two different unnamed drivers from
+    colliding on a shared car number.
+    """
+    n = norm(name) if name else ""
+    if n and n not in ("nan", "none"):
+        return f"{int(year)}_{n.replace(' ', '_')}"
+    sess = norm(session).replace(" ", "")
+    return f"unknown_{int(year)}_r{int(race_id)}_{sess}_{number}"
+
+
 def norm(s) -> str:
     s = unicodedata.normalize("NFKD", str(s))
     return "".join(c for c in s if not unicodedata.combining(c)).lower().strip()

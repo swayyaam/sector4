@@ -35,7 +35,7 @@ warnings.filterwarnings("ignore")
 import pandas as pd  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ff1_map import IdMapper  # noqa: E402
+from ff1_map import IdMapper, reserve_key  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "data" / "raw" / "fastf1"
@@ -97,6 +97,7 @@ def extract(s, race_id: int, year: int, session_name: str, mapper: IdMapper) -> 
     num_is_race: dict[str, bool] = {}
     num_to_ref: dict[str, str] = {}
     num_via: dict[str, str] = {}
+    num_reserve: dict[str, str] = {}
     for _, r in s.results.iterrows():
         num = str(r["DriverNumber"])
         ref = r.get("DriverId")
@@ -107,13 +108,18 @@ def extract(s, race_id: int, year: int, session_name: str, mapper: IdMapper) -> 
                 "name": f"{r.get('FirstName')} {r.get('LastName')}".strip(),
                 "teamRef": r.get("TeamId"), "team": r.get("TeamName")}
         if m.driver_id is None:
-            unmapped.append({**base, "kind": "new_driver", "reason": m.reason})
+            # Practice-only participant: keyed separately, never given a driverId.
+            rk = reserve_key(year, base["name"], race_id, session_name, num)
+            num_reserve[num] = rk
+            unmapped.append({**base, "kind": "practice_participant",
+                             "reserve_key": rk, "reason": m.reason})
             continue
         num_to_id[num] = m.driver_id
         num_is_race[num] = m.is_race_driver
         num_via[num] = m.via
         if m.number_mismatch:
-            unmapped.append({**base, "kind": "number_mismatch", "reason": m.number_mismatch})
+            unmapped.append({**base, "kind": "number_mismatch", "reserve_key": None,
+                             "reason": m.number_mismatch})
 
     # ---- laps
     laps = pd.DataFrame()
@@ -126,6 +132,8 @@ def extract(s, race_id: int, year: int, session_name: str, mapper: IdMapper) -> 
         laps["driverRef"] = laps["driverNumber"].map(num_to_ref)
         laps["is_race_driver"] = laps["driverNumber"].map(num_is_race).astype("boolean")
         laps["id_matched_via"] = laps["driverNumber"].map(num_via)
+        laps["reserve_key"] = laps["driverNumber"].map(num_reserve)
+        laps["is_race_driver"] = laps["is_race_driver"].fillna(False).astype("boolean")
         for c in LAP_COLS:
             if c not in L.columns:
                 laps[c] = pd.NA
@@ -160,6 +168,8 @@ def extract(s, race_id: int, year: int, session_name: str, mapper: IdMapper) -> 
         results["driverRef"] = R["DriverId"].values
         results["is_race_driver"] = results["driverNumber"].map(num_is_race).astype("boolean")
         results["id_matched_via"] = results["driverNumber"].map(num_via)
+        results["reserve_key"] = results["driverNumber"].map(num_reserve)
+        results["is_race_driver"] = results["is_race_driver"].fillna(False).astype("boolean")
         results["teamRef"] = R["TeamId"].values
         results["teamName"] = R["TeamName"].values
         cids = []
@@ -170,7 +180,8 @@ def extract(s, race_id: int, year: int, session_name: str, mapper: IdMapper) -> 
                 unmapped.append({"raceId": race_id, "year": year, "session": session_name,
                                  "number": num, "driverRef": num_to_ref.get(num), "abbrev": None,
                                  "name": None, "teamRef": tref, "team": None,
-                                 "kind": "unmapped_team", "reason": why})
+                                 "kind": "unmapped_team", "reserve_key": num_reserve.get(num),
+                                 "reason": why})
         results["constructorId"] = pd.array(cids, dtype="Int64")
         for c in ["Abbreviation", "Position", "ClassifiedPosition", "GridPosition",
                   "Status", "Points", "Laps"]:
