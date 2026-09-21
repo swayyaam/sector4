@@ -33,6 +33,7 @@ data/corrections/         # reviewed corrections, with evidence (committed)
 data/ground_truth/        # official standings used for validation (committed)
 data/processed/           # merged output, 1950 -> latest race (gitignored)
 data/processed/id_maps/   # string-ID -> integer-ID maps (committed; small and auditable)
+data/raw/f1_grids/        # cached official starting-grid pages (gitignored)
 src/                      # client, fetcher, transform, merge, validation
 tests/                    # pytest suite
 ```
@@ -65,10 +66,22 @@ Regenerate the corrections file from the reviewed overlap diff:
 ./.venv/bin/python src/make_corrections.py
 ```
 
+Scrape official starting grids (settles `pit_lane_start`, which Jolpica cannot express):
+
+```bash
+./.venv/bin/python src/scrape_grids.py
+```
+
 Merge Kaggle + Jolpica into `data/processed/`:
 
 ```bash
 ./.venv/bin/python src/merge.py
+```
+
+Build the team lineage and identity-break tables:
+
+```bash
+./.venv/bin/python src/team_lineage.py
 ```
 
 Validate the merged dataset:
@@ -87,8 +100,29 @@ Run the tests:
 
 `src/fetch_jolpica.py --dry-run` shows what would be fetched without pulling data. `--skip-laps` omits lap times, which are roughly 75% of all requests. `--seasons 2026` restricts to one season.
 
+## What the merged output contains
+
+Beyond the 14 Kaggle-schema tables, `data/processed/` carries:
+
+| File | What it is |
+|---|---|
+| `driver_seasons.csv` | driverId x year x constructorId x car number x races — the per-season truth `drivers.number` cannot express |
+| `team_lineage.csv` | 33 verified successions (rebrand / takeover / new_entry). **No IDs are merged** |
+| `constructor_identity_breaks.csv` | The opposite hazard: 21 constructorIds covering unrelated teams (Aston Martin 1959-60 vs 2021-26, Mercedes 1954-55 vs 2010-26) |
+| `pit_lane_starts.csv` | Per-driver pit-lane fact scraped from 39 official starting grids |
+| `corrections_applied.csv` | Audit log of every correction with its evidence |
+| `unresolved_conflicts.csv` | Source disagreements still open (currently empty) |
+| `lap_data_suspect_2018plus.csv` | Lap-count disagreements inside the likely modelling window |
+| `race_sessions_extra.csv` | Sidecar for fields the Kaggle schema cannot hold (Sprint Qualifying) |
+
+Derived columns added to the standard tables: `source`, `regs_era`, `grid_slot`, `pit_lane_start`, `elapsed_ms`, `lap_data_suspect`, `red_flag_affected`, `counts_as_official_stop`, `official_stop_number`, `championship_points`, `conflict_unresolved`.
+
 ## Notes for modelling
 
 - **Standings are post-race snapshots.** The row for `raceId = R` already includes race R's points. A model predicting race R must use round R−1 or a recomputed pre-race total. See the leakage section of the report.
 - **Retirement cause is unavailable from 2025.** Jolpica collapses every retirement to "Retired"; the granular Ergast taxonomy only exists up to 2024.
 - **2026 is a regulation reset** (new power units, active aero, Audi and Cadillac entering), so pre-2026 car performance is a weak prior. `races.regs_era` carries the boundary.
+- **`constructorId` is not a stable team identity.** Aston Martin's ID spans 1959-60 and 2021-26 — officially unrelated teams. Check `constructor_identity_breaks.csv` before using it as a categorical.
+- **`drivers.number` means "most recent permanent number"**, not the number used in a given season. Use `results.number` or `driver_seasons.csv`.
+- **Use `official_stop_number`, not `stop`,** for pit-stop counts: the raw index counts red-flag pit-lane holds.
+- The report's **"Known era boundaries"** section lists 18 recording artefacts that are not real signal. Read it before feature engineering.
