@@ -547,3 +547,19 @@ Kaggle is the base for 1950–2024; **130 reviewed corrections** (83 `official`,
 | `time`/`milliseconds` for lapped and retired drivers | **Neither** — moved to `elapsed_ms` | Would otherwise change what the raw columns mean |
 
 **Unresolved conflicts: 0.**
+
+## Open issue found during spot-checking: DSQ lap counts
+
+Five driver-races carry `laps = 0` for a driver who demonstrably completed most of the race:
+
+| Season | Race | Driver | `laps` | Source | Reality |
+|---|---|---|---:|---|---|
+| 2024 | São Paulo | Hülkenberg | 0 | kaggle | Started P18, classified DSQ |
+| 2025 | China | Leclerc | 0 | jolpica | Finished 5th on track, then disqualified |
+| 2025 | China | Hamilton | 0 | jolpica | Finished 6th on track, then disqualified |
+| 2025 | China | Gasly | 0 | jolpica | Finished on track, then disqualified |
+| 2025 | Bahrain | Hülkenberg | 0 | jolpica | Disqualified post-race |
+
+This is **not** a clean convention change — Jolpica is inconsistent with itself. The 2025 Las Vegas disqualifications (Norris, Piastri) correctly carry `laps = 50`, and Kaggle records real lap counts for 141 of its 151 historical DSQ rows (Russell's 2024 Belgian DSQ is `laps = 44`).
+
+formula1.com cannot settle it: its classification shows "–" for a disqualified driver's laps. **The `lap_times` table can** — counting a driver's lap rows gives the figure directly, from data already in the set. The derived `lap_data_suspect` flag catches exactly these rows once lap times are loaded. No value has been filled; the rows are flagged and left as recorded.
