@@ -91,23 +91,29 @@ def extract(s, race_id: int, year: int, session_name: str, mapper: IdMapper) -> 
     """Pull the four tables out of a loaded session, keyed to our IDs."""
     unmapped: list[dict] = []
 
-    # number -> driverId for this session, using the session's own team names
+    # FastF1's DriverId is the Ergast driverRef, so this is an exact join and
+    # works for FP1-only reserves who have no result row and often no number.
     num_to_id: dict[str, int] = {}
+    num_is_race: dict[str, bool] = {}
+    num_to_ref: dict[str, str] = {}
+    num_via: dict[str, str] = {}
     for _, r in s.results.iterrows():
-        did, why = mapper.driver_id(year, r["DriverNumber"], r.get("TeamName"))
-        if did is None:
-            unmapped.append({"raceId": race_id, "year": year, "session": session_name,
-                             "number": str(r["DriverNumber"]), "abbrev": r.get("Abbreviation"),
-                             "name": f"{r.get('FirstName')} {r.get('LastName')}".strip(),
-                             "team": r.get("TeamName"), "reason": why})
-        else:
-            num_to_id[str(r["DriverNumber"])] = did
-            if not mapper.verify_name(did, r.get("LastName", "")):
-                unmapped.append({"raceId": race_id, "year": year, "session": session_name,
-                                 "number": str(r["DriverNumber"]), "abbrev": r.get("Abbreviation"),
-                                 "name": str(r.get("LastName")), "team": r.get("TeamName"),
-                                 "reason": f"number matched driverId {did} but surname disagrees "
-                                           f"({mapper.drivers.loc[did, 'surname']!r})"})
+        num = str(r["DriverNumber"])
+        ref = r.get("DriverId")
+        num_to_ref[num] = ref
+        m = mapper.driver(race_id, year, ref, r["DriverNumber"], r.get("LastName"))
+        base = {"raceId": race_id, "year": year, "session": session_name, "number": num,
+                "driverRef": ref, "abbrev": r.get("Abbreviation"),
+                "name": f"{r.get('FirstName')} {r.get('LastName')}".strip(),
+                "teamRef": r.get("TeamId"), "team": r.get("TeamName")}
+        if m.driver_id is None:
+            unmapped.append({**base, "kind": "new_driver", "reason": m.reason})
+            continue
+        num_to_id[num] = m.driver_id
+        num_is_race[num] = m.is_race_driver
+        num_via[num] = m.via
+        if m.number_mismatch:
+            unmapped.append({**base, "kind": "number_mismatch", "reason": m.number_mismatch})
 
     # ---- laps
     laps = pd.DataFrame()
@@ -117,11 +123,14 @@ def extract(s, race_id: int, year: int, session_name: str, mapper: IdMapper) -> 
         laps["raceId"], laps["year"], laps["session"] = race_id, year, session_name
         laps["driverNumber"] = L["DriverNumber"].astype(str).values
         laps["driverId"] = laps["driverNumber"].map(num_to_id).astype("Int64")
+        laps["driverRef"] = laps["driverNumber"].map(num_to_ref)
+        laps["is_race_driver"] = laps["driverNumber"].map(num_is_race).astype("boolean")
+        laps["id_matched_via"] = laps["driverNumber"].map(num_via)
         for c in LAP_COLS:
             if c not in L.columns:
                 laps[c] = pd.NA
             elif pd.api.types.is_timedelta64_dtype(L[c]):
-                laps[c] = td_ms(L[c])
+                laps[c] = td_ms(L[c]).values
             else:
                 laps[c] = L[c].values
         laps = laps.rename(columns={c: (c + "Ms") for c in
@@ -148,19 +157,21 @@ def extract(s, race_id: int, year: int, session_name: str, mapper: IdMapper) -> 
         results["raceId"], results["year"], results["session"] = race_id, year, session_name
         results["driverNumber"] = R["DriverNumber"].astype(str).values
         results["driverId"] = results["driverNumber"].map(num_to_id).astype("Int64")
+        results["driverRef"] = R["DriverId"].values
+        results["is_race_driver"] = results["driverNumber"].map(num_is_race).astype("boolean")
+        results["id_matched_via"] = results["driverNumber"].map(num_via)
+        results["teamRef"] = R["TeamId"].values
         results["teamName"] = R["TeamName"].values
-        _cids, _cwhy = [], []
-        for _, rr_ in R.iterrows():
-            did_ = num_to_id.get(str(rr_["DriverNumber"]))
-            cid_, why_ = mapper.constructor_id(race_id, did_, year, rr_.get("TeamName"))
-            _cids.append(cid_)
-            if cid_ is None:
-                _cwhy.append({"raceId": race_id, "year": year, "session": session_name,
-                              "number": str(rr_["DriverNumber"]), "abbrev": rr_.get("Abbreviation"),
-                              "name": str(rr_.get("LastName")), "team": rr_.get("TeamName"),
-                              "reason": "constructor: " + why_})
-        results["constructorId"] = pd.array(_cids, dtype="Int64")
-        unmapped.extend(_cwhy)
+        cids = []
+        for num, tref in zip(results["driverNumber"], results["teamRef"]):
+            cid, why = mapper.constructor(race_id, num_to_id.get(num), tref)
+            cids.append(cid)
+            if cid is None:
+                unmapped.append({"raceId": race_id, "year": year, "session": session_name,
+                                 "number": num, "driverRef": num_to_ref.get(num), "abbrev": None,
+                                 "name": None, "teamRef": tref, "team": None,
+                                 "kind": "unmapped_team", "reason": why})
+        results["constructorId"] = pd.array(cids, dtype="Int64")
         for c in ["Abbreviation", "Position", "ClassifiedPosition", "GridPosition",
                   "Status", "Points", "Laps"]:
             results[c] = R[c].values if c in R.columns else pd.NA
@@ -254,9 +265,12 @@ def main() -> int:
             got = []
             for sn in names:
                 key = f"{year}|{int(rr.round)}|{sn}"
-                if key in done and not args.dry_run:
-                    got.append(f"{sn}=cached")
-                    continue
+                # Deliberately NOT skipped when already in the manifest: the
+                # season CSV is rewritten whole each run, so skipping a cached
+                # session would silently drop its rows from the output. The
+                # FastF1 cache makes a re-read ~0.3s, which is the right place
+                # for that cost to land.
+                already = key in done
                 if args.dry_run:
                     got.append(sn)
                     continue
@@ -267,8 +281,9 @@ def main() -> int:
                     done[key] = {"raceId": int(rr.raceId), "laps": len(out["laps"]),
                                  "unmapped": len(out["unmapped"])}
                     manifest["failures"].pop(key, None)
-                    got.append(f"{sn}({len(out['laps'])})")
-                    total_sessions += 1
+                    got.append(f"{sn}({len(out['laps'])}{'c' if already else ''})")
+                    if not already:
+                        total_sessions += 1
                 except Exception as e:
                     log.warning("    %s / %s FAILED: %s: %s", rr.name, sn, type(e).__name__,
                                 str(e)[:110])
@@ -280,7 +295,6 @@ def main() -> int:
             if args.limit_sessions and total_sessions >= args.limit_sessions:
                 break
         if not args.dry_run:
-            # Re-read any cached sessions for this season so the season file is complete.
             counts = write_season(int(year), frames)
             log.info("  season %d written: %s", year, counts)
         save_manifest(manifest)
