@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 import { AA_LARGE, AA_NORMAL, AAA_NORMAL, contrastRatio, wcagLevel } from "../src/lib/contrast";
 import {
   loadTokens,
+  type DocumentedPairing,
   normaliseTokenName,
   parseContrastTable,
   parseCssColours,
@@ -38,6 +39,34 @@ function resolve(name: string): string {
     );
   }
   return hex;
+}
+
+const LIGHT_SURFACES = ["canvas", "surface-soft", "surface-strong"];
+const DARK_SURFACES = ["surface-dark", "surface-dark-elevated"];
+
+/**
+ * Surfaces a documented foreground is missing a measurement against.
+ *
+ * The table is only as good as its coverage. Lighthouse found muted text
+ * failing on the soft band while the table said "muted on canvas: AA" and
+ * stopped there. A foreground measured on one surface of a group must be
+ * measured on all of them, because every surface in a group is used as a
+ * section background.
+ */
+function missingCoverage(rows: DocumentedPairing[], group: string[]): string[] {
+  const documented = new Map<string, Set<string>>();
+  for (const p of rows) {
+    if (!group.includes(p.background)) continue;
+    if (!documented.has(p.foreground)) documented.set(p.foreground, new Set());
+    documented.get(p.foreground)!.add(p.background);
+  }
+  const gaps: string[] = [];
+  for (const [fg, surfaces] of documented) {
+    for (const bg of group) {
+      if (!surfaces.has(bg)) gaps.push(`${fg} on ${bg}`);
+    }
+  }
+  return gaps.sort();
 }
 
 describe("design tokens", () => {
@@ -80,6 +109,22 @@ describe("documented contrast pairings", () => {
     }
   });
 
+  /**
+   * The table is only as good as its coverage. Lighthouse found muted text
+   * failing on the soft band while the table said "muted on canvas: AA" and
+   * stopped there. These two rules make that omission impossible: a foreground
+   * measured on one light surface must be measured on all three, and one
+   * measured on the dark band must be measured on the elevated dark surface
+   * too, because both are used as section backgrounds.
+   */
+  it("documents every light-surface pairing, not just the canvas", () => {
+    expect(missingCoverage(pairings, LIGHT_SURFACES), "undocumented light pairing").toEqual([]);
+  });
+
+  it("documents every dark-surface pairing, not just the flat dark band", () => {
+    expect(missingCoverage(pairings, DARK_SURFACES), "undocumented dark pairing").toEqual([]);
+  });
+
   it.each(pairings)("$foreground on $background matches its documented ratio", (p) => {
     const actual = contrastRatio(resolve(p.foreground), resolve(p.background));
     expect(
@@ -96,11 +141,11 @@ describe("rules the system states in prose", () => {
     );
   });
 
-  it("outcome colours clear AA on every surface they can appear on", () => {
+  it("text colours clear AA on every light surface they can appear on", () => {
     // A hit or miss label sits in a table row, which hovers to surface-soft,
     // and may sit inside a badge on surface-strong. Checking only the canvas
     // missed a real failure once already.
-    for (const semantic of ["positive", "negative"]) {
+    for (const semantic of ["positive", "negative", "muted", "body", "action"]) {
       for (const surface of ["canvas", "surface-soft", "surface-strong"]) {
         const r = contrastRatio(resolve(semantic), resolve(surface));
         expect(r, `${semantic} on ${surface} is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(
@@ -157,6 +202,17 @@ describe("the guard itself fails when it should", () => {
     expect(rows).toHaveLength(1);
     const actual = contrastRatio(resolve("action"), resolve("canvas"));
     expect(Math.abs(actual - rows[0]!.ratio)).toBeGreaterThan(0.01);
+  });
+
+  it("detects a foreground measured on one surface but not its siblings", () => {
+    const rows = parseContrastTable(
+      "## Accessibility\n\n| Pairing | Ratio | Meets |\n|---|---|---|\n" +
+        "| `{colors.muted}` on canvas | 5.54:1 | AA |\n",
+    );
+    expect(missingCoverage(rows, LIGHT_SURFACES)).toEqual([
+      "muted on surface-soft",
+      "muted on surface-strong",
+    ]);
   });
 
   it("normalises both token label forms", () => {

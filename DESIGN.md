@@ -11,7 +11,7 @@ colors:
   ink: "#0a0b0d"
   body: "#5b616e"
   body-strong: "#0a0b0d"
-  muted: "#6f757e"
+  muted: "#636971"
   muted-soft: "#a8acb3"
   hairline: "#dee1e6"
   hairline-soft: "#eef0f3"
@@ -152,7 +152,7 @@ Type pairs **Inter** for display with **Inter** for body, navigation and caption
 ### Text
 - **Ink** (`{colors.ink}` — #0a0b0d): Headings, emphasis, and the default fill for data bars.
 - **Body** (`{colors.body}` — #5b616e): Running text. 6.21:1 on white.
-- **Muted** (`{colors.muted}` — #6f757e): Sub-titles, axis labels, breadcrumbs. 4.64:1 — meets AA for normal text.
+- **Muted** (`{colors.muted}` — #636971): Sub-titles, axis labels, breadcrumbs. 5.54:1 on canvas, 4.85:1 on the strongest surface it sits on — AA for normal text everywhere it appears.
 - **Muted Soft** (`{colors.muted-soft}` — #a8acb3): Disabled text only. **Fails AA on white**; never use for content that must be read.
 - **On Action / On Dark** (#ffffff), **On Dark Soft** (`{colors.on-dark-soft}` — #a8acb3, 8.64:1 on the dark band).
 
@@ -371,24 +371,40 @@ Touch targets: primary pill 44px, hero pill 56px, table row 56px (48px mobile), 
 
 ## Accessibility
 
-Contrast is a constraint on the tokens, not a later check. Every pairing below was measured, and text colours are checked against **every surface they can sit on** — not only the canvas, because row hover and badges change the background beneath them:
+Contrast is a constraint on the tokens, not a later check. Every pairing below was measured, and text colours are checked against **every surface they can sit on** — not only the canvas, because bands, row hover and badges change the background beneath them. `tests/contrast.test.ts` enforces that completeness as well as the numbers: a foreground documented against the canvas must also be documented against both other light surfaces, and one documented against the dark band must also be documented against the elevated dark surface. Adding a text colour without measuring it everywhere fails the build.
 
 | Pairing | Ratio | Meets |
 |---|---|---|
-| `{colors.action}` on canvas | 7.10:1 | AA, AAA |
-| on-action on `{colors.action}` | 7.10:1 | AA, AAA |
-| `{colors.action-on-dark}` on surface-dark | 8.56:1 | AA, AAA |
+| `{colors.ink}` on canvas | 19.69:1 | AA, AAA |
+| `{colors.ink}` on surface-soft | 18.38:1 | AA, AAA |
+| `{colors.ink}` on surface-strong | 17.25:1 | AA, AAA |
 | `{colors.body}` on canvas | 6.21:1 | AA |
-| `{colors.muted}` on canvas | 4.64:1 | AA |
+| `{colors.body}` on surface-soft | 5.80:1 | AA |
+| `{colors.body}` on surface-strong | 5.44:1 | AA |
+| `{colors.muted}` on canvas | 5.54:1 | AA |
+| `{colors.muted}` on surface-soft | 5.17:1 | AA |
+| `{colors.muted}` on surface-strong | 4.85:1 | AA |
+| `{colors.action}` on canvas | 7.10:1 | AA, AAA |
+| `{colors.action}` on surface-soft | 6.63:1 | AA |
+| `{colors.action}` on surface-strong | 6.22:1 | AA |
 | `{colors.positive}` on canvas | 5.46:1 | AA |
 | `{colors.positive}` on surface-soft | 5.09:1 | AA |
 | `{colors.positive}` on surface-strong | 4.78:1 | AA |
 | `{colors.negative}` on canvas | 6.95:1 | AA |
 | `{colors.negative}` on surface-soft | 6.48:1 | AA |
 | `{colors.negative}` on surface-strong | 6.08:1 | AA |
-| `{colors.positive-on-dark}` on surface-dark | 11.14:1 | AA, AAA |
-| `{colors.negative-on-dark}` on surface-dark | 7.15:1 | AA, AAA |
+| `{colors.caution}` on caution-surface | 5.49:1 | AA |
+| `{colors.on-action}` on action | 7.10:1 | AA, AAA |
+| `{colors.on-dark}` on surface-dark | 19.69:1 | AA, AAA |
+| `{colors.on-dark}` on surface-dark-elevated | 17.77:1 | AA, AAA |
 | `{colors.on-dark-soft}` on surface-dark | 8.64:1 | AA, AAA |
+| `{colors.on-dark-soft}` on surface-dark-elevated | 7.80:1 | AA, AAA |
+| `{colors.action-on-dark}` on surface-dark | 8.56:1 | AA, AAA |
+| `{colors.action-on-dark}` on surface-dark-elevated | 7.73:1 | AA, AAA |
+| `{colors.positive-on-dark}` on surface-dark | 11.14:1 | AA, AAA |
+| `{colors.positive-on-dark}` on surface-dark-elevated | 10.06:1 | AA, AAA |
+| `{colors.negative-on-dark}` on surface-dark | 7.15:1 | AA, AAA |
+| `{colors.negative-on-dark}` on surface-dark-elevated | 6.45:1 | AA |
 
 AAA in this table means AAA for normal-size text (7:1). Several pairings sit between 4.5 and 7 and are therefore AA: they clear AAA only at large sizes, and the table does not claim that.
 
