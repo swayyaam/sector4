@@ -1,0 +1,40 @@
+{
+  "_source": "https://www.formula1.com/en/results/{year}/{drivers|team}",
+  "_retrieved_utc": "2026-09-21",
+  "_note": "2026 is mid-season: standings are after round 14 (Spanish GP, 2026-09-13).",
+  "2024": {
+    "final": true,
+    "drivers": [["Max Verstappen",437],["Lando Norris",374],["Charles Leclerc",356],["Oscar Piastri",292],
+                ["Carlos Sainz",290],["George Russell",245],["Lewis Hamilton",223],["Sergio Perez",152],
+                ["Fernando Alonso",70],["Pierre Gasly",42],["Nico Hulkenberg",41],["Yuki Tsunoda",30],
+                ["Lance Stroll",24],["Esteban Ocon",23],["Kevin Magnussen",16],["Alexander Albon",12],
+                ["Daniel Ricciardo",12],["Oliver Bearman",7],["Franco Colapinto",5],["Guanyu Zhou",4],
+                ["Liam Lawson",4],["Valtteri Bottas",0],["Logan Sargeant",0],["Jack Doohan",0]],
+    "constructors": [["McLaren",666],["Ferrari",652],["Red Bull",589],["Mercedes",468],["Aston Martin",94],
+                     ["Alpine",65],["Haas F1 Team",58],["RB F1 Team",46],["Williams",17],["Sauber",4]]
+  },
+  "2025": {
+    "final": true,
+    "drivers": [["Lando Norris",423],["Max Verstappen",421],["Oscar Piastri",410],["George Russell",319],
+                ["Charles Leclerc",242],["Lewis Hamilton",156],["Kimi Antonelli",150],["Alexander Albon",73],
+                ["Carlos Sainz",64],["Fernando Alonso",56],["Nico Hulkenberg",51],["Isack Hadjar",51],
+                ["Oliver Bearman",41],["Liam Lawson",38],["Esteban Ocon",38],["Lance Stroll",33],
+                ["Yuki Tsunoda",33],["Pierre Gasly",22],["Gabriel Bortoleto",19],["Franco Colapinto",0],
+                ["Jack Doohan",0]],
+    "constructors": [["McLaren",833],["Mercedes",469],["Red Bull",451],["Ferrari",398],["Williams",137],
+                     ["Racing Bulls",92],["Aston Martin",89],["Haas F1 Team",79],["Kick Sauber",70],["Alpine",22]]
+  },
+  "2026": {
+    "final": false,
+    "after_round": 14,
+    "drivers": [["Kimi Antonelli",292],["George Russell",211],["Lewis Hamilton",191],["Lando Norris",186],
+                ["Charles Leclerc",167],["Max Verstappen",145],["Oscar Piastri",120],["Isack Hadjar",71],
+                ["Liam Lawson",59],["Pierre Gasly",41],["Arvid Lindblad",31],["Franco Colapinto",27],
+                ["Oliver Bearman",18],["Gabriel Bortoleto",10],["Nico Hulkenberg",7],["Carlos Sainz",6],
+                ["Alexander Albon",5],["Esteban Ocon",3],["Fernando Alonso",3],["Yuki Tsunoda",1],
+                ["Lance Stroll",0],["Valtteri Bottas",0],["Sergio Perez",0]],
+    "constructors": [["Mercedes",503],["Ferrari",358],["McLaren",306],["Red Bull",230],["Racing Bulls",77],
+                     ["Alpine",68],["Haas F1 Team",21],["Audi",17],["Williams",11],["Aston Martin",3],
+                     ["Cadillac",0]]
+  }
+}
