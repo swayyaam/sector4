@@ -23,7 +23,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import pandas as pd  # noqa: E402
 
+import datetime as dt  # noqa: E402
+
 from eras import era_for  # noqa: E402
+from fetch_jolpica import is_finished  # noqa: E402
 from id_maps import IDMAP_DIR, audit, write_maps  # noqa: E402
 from jolpica_client import JolpicaClient  # noqa: E402
 from load import load_table  # noqa: E402
@@ -49,6 +52,15 @@ def build(seasons: list[int]) -> dict[str, list[dict]]:
     client = JolpicaClient()
     a = audit(seasons)
     write_maps(a)
+    now = dt.datetime.now(dt.timezone.utc)
+
+    # Only races that have actually been run. Scheduled future rounds are left
+    # out entirely rather than emitted as empty rows.
+    completed: dict[int, set[int]] = {}
+    for year in seasons:
+        completed[year] = {int(r["round"]) for r in client.get_all(f"{year}/races") if is_finished(r, now)}
+        log.info("  %d: %d of %d rounds completed", year,
+                 len(completed[year]), len(client.get_all(f"{year}/races")))
 
     dmap, cmap, cirmap = a["drivers"]["map"], a["constructors"]["map"], a["circuits"]["map"]
 
@@ -57,6 +69,8 @@ def build(seasons: list[int]) -> dict[str, list[dict]]:
     race_id = {(int(r.year), int(r.round)): int(r.raceId) for r in k_races.itertuples()}
     nxt = int(k_races["raceId"].max()) + 1
     for r in a["races"]["new"]:
+        if r["round"] not in completed[r["year"]]:
+            continue
         race_id[(r["year"], r["round"])] = nxt
         nxt += 1
 
@@ -67,6 +81,8 @@ def build(seasons: list[int]) -> dict[str, list[dict]]:
     for year in seasons:
         for race in client.get_all(f"{year}/races"):
             rnd = int(race["round"])
+            if rnd not in completed[year]:
+                continue
             rid = race_id[(year, rnd)]
             row = {"raceId": rid, "year": year, "round": rnd,
                    "circuitId": cirmap[race["Circuit"]["circuitId"]], "name": race["raceName"],
@@ -115,6 +131,8 @@ def build(seasons: list[int]) -> dict[str, list[dict]]:
     rid_seq = 1
     for year in seasons:
         for race in client.get_all(f"{year}/results"):
+            if int(race["round"]) not in completed[year]:
+                continue
             rid = race_id[(year, int(race["round"]))]
             for r in race.get("Results", []):
                 pos, ptext, order = encode_position(r.get("position"), r.get("positionText"))
@@ -138,6 +156,8 @@ def build(seasons: list[int]) -> dict[str, list[dict]]:
     q_seq = 1
     for year in seasons:
         for race in client.get_all(f"{year}/qualifying"):
+            if int(race["round"]) not in completed[year]:
+                continue
             rid = race_id[(year, int(race["round"]))]
             for r in race.get("QualifyingResults", []):
                 out["qualifying"].append({
@@ -151,6 +171,8 @@ def build(seasons: list[int]) -> dict[str, list[dict]]:
     s_seq = 1
     for year in seasons:
         for race in client.get_all(f"{year}/sprint"):
+            if int(race["round"]) not in completed[year]:
+                continue
             rid = race_id[(year, int(race["round"]))]
             for r in race.get("SprintResults", []):
                 pos, ptext, order = encode_position(r.get("position"), r.get("positionText"))
@@ -169,7 +191,7 @@ def build(seasons: list[int]) -> dict[str, list[dict]]:
     # ------------------------------------------------- per-round: standings
     ds_seq = cs_seq = 1
     for year in seasons:
-        rounds = sorted({r["round"] for r in a["entities"]["races"] if r["year"] == year})
+        rounds = sorted(completed[year])
         for rnd in rounds:
             rid = race_id[(year, rnd)]
             try:
@@ -197,7 +219,7 @@ def build(seasons: list[int]) -> dict[str, list[dict]]:
 
     # ---------------------------------------------- per-round: pits and laps
     for year in seasons:
-        rounds = sorted({r["round"] for r in a["entities"]["races"] if r["year"] == year})
+        rounds = sorted(completed[year])
         for rnd in rounds:
             rid = race_id[(year, rnd)]
             try:

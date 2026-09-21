@@ -32,7 +32,7 @@ def collect_entities(client: JolpicaClient, seasons: list[int]) -> dict:
     constructors: dict[str, dict] = {}
     circuits: dict[str, dict] = {}
     statuses: dict[int, str] = {}
-    fp_only_drivers: dict[str, dict] = {}
+    listed: dict[str, dict] = {}
     races: list[dict] = []
 
     for year in seasons:
@@ -50,13 +50,15 @@ def collect_entities(client: JolpicaClient, seasons: list[int]) -> dict:
                     constructors[row["Constructor"]["constructorId"]] = row["Constructor"]
         for s in client.get_all(f"{year}/status"):
             statuses[int(s["statusId"])] = s["status"]
-        # Anyone listed for the season but never classified = practice/test only.
         for d in client.get_all(f"{year}/drivers"):
-            if d["driverId"] not in drivers:
-                fp_only_drivers[d["driverId"]] = d
+            listed[d["driverId"]] = d
 
+    # Listed for a season but never classified in any of them = practice/test only.
+    # Computed after the loop: a driver can be FP-only in one season and race the next
+    # (Antonelli in 2024 vs 2025), and must not be counted as FP-only then.
+    fp_only = {k: v for k, v in listed.items() if k not in drivers}
     return {"drivers": drivers, "constructors": constructors, "circuits": circuits,
-            "statuses": statuses, "races": races, "fp_only_drivers": fp_only_drivers}
+            "statuses": statuses, "races": races, "fp_only_drivers": fp_only}
 
 
 def audit(seasons: list[int] = (2024, 2025, 2026)) -> dict:
