@@ -7,7 +7,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "astro sync && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",
@@ -22,6 +22,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@resvg/resvg-js": "^2.6.2",
+    "@types/node": "^22.20.4",
     "prettier": "^3.9.8",
     "prettier-plugin-astro": "^1.0.1",
     "satori": "^0.33.4",
