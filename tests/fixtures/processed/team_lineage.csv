@@ -1,0 +1,34 @@
+constructorId,constructorRef,predecessor_constructorId,predecessor_constructorRef,effective_year,relationship,note,evidence_source
+22,benetton,53.0,toleman,1986,takeover,Benetton Group bought Toleman,https://en.wikipedia.org/wiki/Alpine_F1_Team
+16,bar,25.0,tyrrell,1999,takeover,BAR bought Tyrrell,https://en.wikipedia.org/wiki/Mercedes-Benz_in_Formula_One
+19,jaguar,24.0,stewart,2000,takeover,Ford bought Stewart and rebranded it Jaguar,https://en.wikipedia.org/wiki/Red_Bull_Racing
+4,renault,22.0,benetton,2002,takeover,"Renault bought the Enstone team in 2000 and renamed it for 2002. A different entity from the 1977-85 Renault works team, which shares this constructorId",https://en.wikipedia.org/wiki/Alpine_F1_Team
+9,red_bull,19.0,jaguar,2005,takeover,Red Bull bought Jaguar from Ford,https://en.wikipedia.org/wiki/Red_Bull_Racing
+2,bmw_sauber,15.0,sauber,2006,takeover,BMW bought the Sauber team at the end of 2005,https://en.wikipedia.org/wiki/Sauber_Motorsport
+11,honda,16.0,bar,2006,takeover,"Honda took full ownership of BAR. A different entity from the 1964-68 Honda works team, which shares this constructorId",https://en.wikipedia.org/wiki/Mercedes-Benz_in_Formula_One
+13,mf1,17.0,jordan,2006,takeover,Midland bought Jordan,https://en.wikipedia.org/wiki/Aston_Martin_in_Formula_One
+14,spyker_mf1,13.0,mf1,2006,rebrand,Mid-2006 renaming to Spyker MF1,https://en.wikipedia.org/wiki/Aston_Martin_in_Formula_One
+5,toro_rosso,18.0,minardi,2006,takeover,Red Bull bought Minardi,https://en.wikipedia.org/wiki/Racing_Bulls
+12,spyker,14.0,spyker_mf1,2007,rebrand,Full Spyker branding,https://en.wikipedia.org/wiki/Aston_Martin_in_Formula_One
+10,force_india,12.0,spyker,2008,takeover,Vijay Mallya's consortium bought Spyker,https://en.wikipedia.org/wiki/Aston_Martin_in_Formula_One
+23,brawn,11.0,honda,2009,takeover,Ross Brawn's management buyout after Honda withdrew,https://en.wikipedia.org/wiki/Mercedes-Benz_in_Formula_One
+164,hrt,,,2010,new_entry,"Hispania Racing, one of the 2010 new entrants",https://en.wikipedia.org/wiki/HRT_Formula_1_Team
+205,lotus_racing,,,2010,new_entry,"Team Lotus (Fernandes), one of the 2010 new entrants",https://en.wikipedia.org/wiki/Team_Lotus_(2010-11)
+131,mercedes,23.0,brawn,2010,takeover,"Mercedes bought Brawn GP. NOT related to the 1954-55 Mercedes works team, which shares this constructorId",https://en.wikipedia.org/wiki/Mercedes-Benz_in_Formula_One
+15,sauber,2.0,bmw_sauber,2010,takeover,BMW withdrew; the team reverted to Sauber ownership,https://en.wikipedia.org/wiki/Sauber_Motorsport
+166,virgin,,,2010,new_entry,"Virgin Racing, one of the 2010 new entrants",https://en.wikipedia.org/wiki/Virgin_Racing
+207,caterham,205.0,lotus_racing,2012,rebrand,Tony Fernandes' team renamed from Lotus to Caterham,https://en.wikipedia.org/wiki/Caterham_F1
+208,lotus_f1,4.0,renault,2012,rebrand,"Genii Capital ownership, Lotus branding",https://en.wikipedia.org/wiki/Alpine_F1_Team
+206,marussia,166.0,virgin,2012,rebrand,Marussia took majority ownership of Virgin Racing,https://en.wikipedia.org/wiki/Marussia_F1
+209,manor,206.0,marussia,2015,takeover,Team re-entered under Manor after administration,https://en.wikipedia.org/wiki/Manor_Motorsport
+210,haas,,,2016,new_entry,"New American constructor, no predecessor",https://www.formula1.com/en/teams
+4,renault,208.0,lotus_f1,2016,takeover,Renault bought the Enstone team back,https://en.wikipedia.org/wiki/Alpine_F1_Team
+51,alfa,15.0,sauber,2019,rebrand,Alfa Romeo title sponsorship; same Hinwil entity,https://en.wikipedia.org/wiki/Sauber_Motorsport
+211,racing_point,10.0,force_india,2019,takeover,Lawrence Stroll's consortium bought the team out of administration; the 59 points scored as Force India in 2018 were forfeited,https://en.wikipedia.org/wiki/Aston_Martin_in_Formula_One
+213,alphatauri,5.0,toro_rosso,2020,rebrand,Renamed to promote Red Bull's AlphaTauri brand,https://en.wikipedia.org/wiki/Racing_Bulls
+214,alpine,4.0,renault,2021,rebrand,Renamed to promote Renault's Alpine sports-car brand,https://en.wikipedia.org/wiki/Alpine_F1_Team
+117,aston_martin,211.0,racing_point,2021,rebrand,"Commercial rebranding under the same ownership. NOT related to the 1959-60 Aston Martin team, which shares this constructorId",https://en.wikipedia.org/wiki/Aston_Martin_in_Formula_One
+215,rb,213.0,alphatauri,2024,rebrand,"Rebranded to Visa Cash App RB, then Racing Bulls from 2025",https://en.wikipedia.org/wiki/Racing_Bulls
+15,sauber,51.0,alfa,2024,rebrand,Alfa Romeo branding ended; ran as Stake F1 Team Kick Sauber,https://en.wikipedia.org/wiki/Sauber_Motorsport
+216,audi,15.0,sauber,2026,rebrand,Audi acquired Sauber in 2024 and rebranded the SAME legal entity for 2026 - not a new team,https://en.wikipedia.org/wiki/Sauber_Motorsport
+217,cadillac,,,2026,new_entry,General Motors' Cadillac entered as the 11th team for 2026,https://www.formula1.com/en/teams
