@@ -32,16 +32,42 @@ def _race(n: int, winner: int = 0) -> tuple[list[int], int, set[int]]:
 
 
 # --------------------------------------------------------------- the scorer
-def test_a_uniform_predictor_scores_exactly_one_over_n():
-    """The number the two tie-break bugs got wrong."""
+@pytest.mark.parametrize("n", [4, 10, 20, 22, 26])
+def test_uniform_scores_exactly_one_over_n(n):
+    """Scorer sanity check, permanent and in CI.
+
+    A uniform predictor over N drivers must score exactly 1/N on the winner and
+    3/N on the podium, and log(N) in log loss. There is no modelling judgement
+    in this -- it is arithmetic, and if it drifts the scorer is broken and every
+    model number measured with it is worthless.
+    """
     s = B.Score()
-    ids, winner, podium = _race(20)
-    for i in range(100):
-        s.add(pd.Series(1 / 20, index=ids), winner, podium, i)
+    ids, winner, podium = _race(n)
+    for i in range(200):
+        s.add(pd.Series(1 / n, index=ids), winner, podium, i)
     got = s.as_dict("uniform")
-    assert got["winner_hit_rate"] == pytest.approx(1 / 20)
-    assert got["podium_rate"] == pytest.approx(3 / 20)
-    assert got["log_loss"] == pytest.approx(math.log(20))
+    assert got["winner_hit_rate"] == pytest.approx(1 / n)
+    assert got["podium_rate"] == pytest.approx(3 / n)
+    assert got["log_loss"] == pytest.approx(math.log(n))
+
+
+@pytest.mark.parametrize("n", [4, 10, 20, 22, 26])
+def test_a_perfect_oracle_scores_one_hundred_percent(n):
+    """The other end of the scorer. An oracle that puts all its mass on the
+    actual winner and podium must score 100% on both, and ~0 log loss."""
+    s = B.Score()
+    ids = list(range(n))
+    winner, podium = ids[0], {ids[0], ids[1], ids[2]}
+    for i in range(50):
+        p = pd.Series(1e-12, index=ids)
+        for d in podium:
+            p[d] = 0.1
+        p[winner] = 1.0
+        s.add(p, winner, podium, i)
+    got = s.as_dict("oracle")
+    assert got["winner_hit_rate"] == pytest.approx(1.0)
+    assert got["podium_rate"] == pytest.approx(1.0)
+    assert got["log_loss"] < 0.3
 
 
 def test_row_order_cannot_influence_the_score():
