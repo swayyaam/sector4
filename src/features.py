@@ -392,6 +392,9 @@ def _standing_before(tables: dict[str, pd.DataFrame], race: pd.Series, table: st
 
 # ------------------------------------------------------------------ practice
 LONG_RUN_MIN_LAPS = 5
+# Reserve and FP1-only runners are out of team practice pace by default. Part D
+# flips this to test whether the default is right; see MODEL_REPORT.md.
+INCLUDE_RESERVES_IN_PRACTICE = False
 _SOFTEST_FIRST = ("SOFT", "MEDIUM", "HARD")
 
 
@@ -415,7 +418,7 @@ def practice_frame(tables: dict[str, pd.DataFrame], race: pd.Series) -> pd.DataF
     if f.empty:
         return empty
     f["driverId"] = f["driverId"].astype(int)
-    if "is_race_driver" in f.columns:
+    if "is_race_driver" in f.columns and not INCLUDE_RESERVES_IN_PRACTICE:
         f = f[f["is_race_driver"].astype(str).str.lower().isin(["true", "1"])]
     if f.empty:
         return empty
