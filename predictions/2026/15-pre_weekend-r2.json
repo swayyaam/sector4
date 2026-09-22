@@ -5,25 +5,25 @@
   "race_id_is_provisional": true,
   "race_name": "Azerbaijan Grand Prix",
   "snapshot": "pre_weekend",
-  "generated_at": "2026-09-22T20:14:47Z",
+  "generated_at": "2026-09-22T22:58:41Z",
   "model_version": "minimal4-share-v1",
   "model_features": [
     "driver_standing_points",
     "driver_vs_team_points_share_5"
   ],
-  "model_note": "Reduction of the shipped specification to the features available before the cars run. Qualifying position and practice pace do not exist yet, so this is a weaker model and was not separately validated. See MODEL_REPORT.md.",
+  "model_note": "Reduction of the shipped specification to the features available before the cars run. Qualifying position and practice pace do not exist yet, so this is a weaker model and was not separately validated. The DNF probability is a separate logistic on the same features. See MODEL_REPORT.md.",
   "data_version": "v0.1.1-data+20260921",
-  "commit_sha": "91af2235ffb7",
+  "commit_sha": "7b5ca5ba49dc",
   "is_mock": false,
   "training_races": 187,
   "drivers": [
     {
       "driverId": 863,
-      "team_entity_id": "",
+      "team_entity_id": "131-2010",
       "p_win": 0.280291,
       "p_podium": 0.65438,
       "p_top10": 0.992509,
-      "p_dnf": 0.0,
+      "p_dnf": 0.060958,
       "expected_position": 3.140446,
       "position_distribution": [
         0.280292,
@@ -64,11 +64,11 @@
     },
     {
       "driverId": 846,
-      "team_entity_id": "",
+      "team_entity_id": "1-1968",
       "p_win": 0.115323,
       "p_podium": 0.344821,
       "p_top10": 0.911747,
-      "p_dnf": 0.0,
+      "p_dnf": 0.084146,
       "expected_position": 5.419339,
       "position_distribution": [
         0.115323,
@@ -109,11 +109,11 @@
     },
     {
       "driverId": 847,
-      "team_entity_id": "",
+      "team_entity_id": "131-2010",
       "p_win": 0.103786,
       "p_podium": 0.317501,
       "p_top10": 0.893767,
-      "p_dnf": 0.0,
+      "p_dnf": 0.078689,
       "expected_position": 5.738937,
       "position_distribution": [
         0.103786,
@@ -154,11 +154,11 @@
     },
     {
       "driverId": 1,
-      "team_entity_id": "",
+      "team_entity_id": "6-1950",
       "p_win": 0.092998,
       "p_podium": 0.295375,
       "p_top10": 0.871841,
-      "p_dnf": 0.0,
+      "p_dnf": 0.083355,
       "expected_position": 6.044551,
       "position_distribution": [
         0.092998,
@@ -199,11 +199,11 @@
     },
     {
       "driverId": 844,
-      "team_entity_id": "",
+      "team_entity_id": "6-1950",
       "p_win": 0.074368,
       "p_podium": 0.252223,
       "p_top10": 0.833134,
-      "p_dnf": 0.0,
+      "p_dnf": 0.089386,
       "expected_position": 6.613625,
       "position_distribution": [
         0.074368,
@@ -244,11 +244,11 @@
     },
     {
       "driverId": 830,
-      "team_entity_id": "",
+      "team_entity_id": "9-2005",
       "p_win": 0.069723,
       "p_podium": 0.230197,
       "p_top10": 0.797922,
-      "p_dnf": 0.0,
+      "p_dnf": 0.095187,
       "expected_position": 6.956748,
       "position_distribution": [
         0.069723,
@@ -289,11 +289,11 @@
     },
     {
       "driverId": 857,
-      "team_entity_id": "",
+      "team_entity_id": "1-1968",
       "p_win": 0.039407,
       "p_podium": 0.12746,
       "p_top10": 0.577465,
-      "p_dnf": 0.0,
+      "p_dnf": 0.103338,
       "expected_position": 9.506543,
       "position_distribution": [
         0.039407,
@@ -334,11 +334,11 @@
     },
     {
       "driverId": 859,
-      "team_entity_id": "",
+      "team_entity_id": "9-2005",
       "p_win": 0.021626,
       "p_podium": 0.075117,
       "p_top10": 0.365348,
-      "p_dnf": 0.0,
+      "p_dnf": 0.123299,
       "expected_position": 12.310259,
       "position_distribution": [
         0.021626,
@@ -379,11 +379,11 @@
     },
     {
       "driverId": 864,
-      "team_entity_id": "",
+      "team_entity_id": "215-2024",
       "p_win": 0.021526,
       "p_podium": 0.07272,
       "p_top10": 0.364649,
-      "p_dnf": 0.0,
+      "p_dnf": 0.132793,
       "expected_position": 12.386725,
       "position_distribution": [
         0.021526,
@@ -424,11 +424,11 @@
     },
     {
       "driverId": 842,
-      "team_entity_id": "",
+      "team_entity_id": "214-2021",
       "p_win": 0.021277,
       "p_podium": 0.067226,
       "p_top10": 0.335881,
-      "p_dnf": 0.0,
+      "p_dnf": 0.129571,
       "expected_position": 12.72725,
       "position_distribution": [
         0.021277,
@@ -469,11 +469,11 @@
     },
     {
       "driverId": 4,
-      "team_entity_id": "",
+      "team_entity_id": "117-2021",
       "p_win": 0.020527,
       "p_podium": 0.07272,
       "p_top10": 0.376086,
-      "p_dnf": 0.0,
+      "p_dnf": 0.142769,
       "expected_position": 12.170462,
       "position_distribution": [
         0.020527,
@@ -514,11 +514,11 @@
     },
     {
       "driverId": 861,
-      "team_entity_id": "",
+      "team_entity_id": "214-2021",
       "p_win": 0.01783,
       "p_podium": 0.061582,
       "p_top10": 0.321596,
-      "p_dnf": 0.0,
+      "p_dnf": 0.134521,
       "expected_position": 12.967486,
       "position_distribution": [
         0.01783,
@@ -559,11 +559,11 @@
     },
     {
       "driverId": 860,
-      "team_entity_id": "",
+      "team_entity_id": "210-2016",
       "p_win": 0.015533,
       "p_podium": 0.05459,
       "p_top10": 0.29058,
-      "p_dnf": 0.0,
+      "p_dnf": 0.138165,
       "expected_position": 13.589102,
       "position_distribution": [
         0.015533,
@@ -599,11 +599,11 @@
     },
     {
       "driverId": 807,
-      "team_entity_id": "",
+      "team_entity_id": "216-2026",
       "p_win": 0.014534,
       "p_podium": 0.051893,
       "p_top10": 0.289631,
-      "p_dnf": 0.0,
+      "p_dnf": 0.142153,
       "expected_position": 13.57232,
       "position_distribution": [
         0.014534,
@@ -644,11 +644,11 @@
     },
     {
       "driverId": 832,
-      "team_entity_id": "",
+      "team_entity_id": "3-1975",
       "p_win": 0.013885,
       "p_podium": 0.048497,
       "p_top10": 0.255119,
-      "p_dnf": 0.0,
+      "p_dnf": 0.142926,
       "expected_position": 14.252872,
       "position_distribution": [
         0.013885,
@@ -684,11 +684,11 @@
     },
     {
       "driverId": 839,
-      "team_entity_id": "",
+      "team_entity_id": "210-2016",
       "p_win": 0.013585,
       "p_podium": 0.045999,
       "p_top10": 0.246579,
-      "p_dnf": 0.0,
+      "p_dnf": 0.144137,
       "expected_position": 14.423934,
       "position_distribution": [
         0.013585,
@@ -724,11 +724,11 @@
     },
     {
       "driverId": 815,
-      "team_entity_id": "",
+      "team_entity_id": "217-2026",
       "p_win": 0.012137,
       "p_podium": 0.040555,
       "p_top10": 0.238038,
-      "p_dnf": 0.0,
+      "p_dnf": 0.145357,
       "expected_position": 14.598142,
       "position_distribution": [
         0.012137,
@@ -764,11 +764,11 @@
     },
     {
       "driverId": 865,
-      "team_entity_id": "",
+      "team_entity_id": "216-2026",
       "p_win": 0.011937,
       "p_podium": 0.043802,
       "p_top10": 0.234292,
-      "p_dnf": 0.0,
+      "p_dnf": 0.141693,
       "expected_position": 14.634202,
       "position_distribution": [
         0.011937,
@@ -809,11 +809,11 @@
     },
     {
       "driverId": 848,
-      "team_entity_id": "",
+      "team_entity_id": "3-1975",
       "p_win": 0.011687,
       "p_podium": 0.04565,
       "p_top10": 0.25447,
-      "p_dnf": 0.0,
+      "p_dnf": 0.143328,
       "expected_position": 14.283438,
       "position_distribution": [
         0.011687,
@@ -849,11 +849,11 @@
     },
     {
       "driverId": 822,
-      "team_entity_id": "",
+      "team_entity_id": "217-2026",
       "p_win": 0.011138,
       "p_podium": 0.042753,
       "p_top10": 0.235641,
-      "p_dnf": 0.0,
+      "p_dnf": 0.145357,
       "expected_position": 14.592548,
       "position_distribution": [
         0.011138,
@@ -889,11 +889,11 @@
     },
     {
       "driverId": 852,
-      "team_entity_id": "",
+      "team_entity_id": "215-2024",
       "p_win": 0.008591,
       "p_podium": 0.02697,
       "p_top10": 0.157377,
-      "p_dnf": 0.0,
+      "p_dnf": 0.146238,
       "expected_position": 16.468684,
       "position_distribution": [
         0.008591,
@@ -934,11 +934,11 @@
     },
     {
       "driverId": 840,
-      "team_entity_id": "",
+      "team_entity_id": "117-2021",
       "p_win": 0.008291,
       "p_podium": 0.027969,
       "p_top10": 0.156328,
-      "p_dnf": 0.0,
+      "p_dnf": 0.146745,
       "expected_position": 16.602387,
       "position_distribution": [
         0.008291,
@@ -979,6 +979,7 @@
     }
   ],
   "result": null,
-  "superseded_by": "15-pre_weekend-r2.json",
-  "superseded_reason": "Revision 1 was published with two defects. Every driver's team_entity_id was empty, because the team was never joined back onto the feature frame, so the file could not be rendered. Every p_dnf was 0.0, because the model classes used fit only the win and podium targets, which claimed no car could retire. Win, podium and top-10 probabilities and expected positions are identical between the two revisions to six decimal places; only team_entity_id and p_dnf differ. This revision was generated at 2026-09-22T22:58:41Z, before the first session at 2026-09-24T08:30Z. It was first committed by overwriting revision 1 in place on an unmerged branch, which broke the append-only rule; that was undone, revision 1 is restored exactly as published, and this is published beside it."
+  "revision": 2,
+  "supersedes": "15-pre_weekend.json",
+  "revision_reason": "Revision 1 was published with two defects. Every driver's team_entity_id was empty, because the team was never joined back onto the feature frame, so the file could not be rendered. Every p_dnf was 0.0, because the model classes used fit only the win and podium targets, which claimed no car could retire. Win, podium and top-10 probabilities and expected positions are identical between the two revisions to six decimal places; only team_entity_id and p_dnf differ. This revision was generated at 2026-09-22T22:58:41Z, before the first session at 2026-09-24T08:30Z. It was first committed by overwriting revision 1 in place on an unmerged branch, which broke the append-only rule; that was undone, revision 1 is restored exactly as published, and this is published beside it."
 }
