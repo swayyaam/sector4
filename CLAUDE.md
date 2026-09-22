@@ -23,6 +23,9 @@ whether the process is alive or not.
   descriptions.
 - Small conventional commits (`feat:`, `fix:`, `docs:`, `test:`, `ci:`,
   `chore:`). Push after each.
+- **Never `git add -A`.** Stage every path explicitly. A blanket add once
+  committed an unrelated design document that happened to be sitting untracked
+  in the worktree, and only CI's format check noticed.
 - **Never commit to `main`.** Branch, push, open a PR, let CI run.
 
 ## Data accuracy
@@ -49,6 +52,22 @@ calls, so hitting the cap makes the next attempt worse.
 - The budget is `RateBudget` in `src/fetch_fastf1.py`. It counts where FastF1
   counts. Do not replace it with a proxy.
 
+## Web
+
+- **Run `npm run typecheck` in `web/` before pushing any web change.**
+  `astro check` only reads `.astro` files and vitest does not typecheck at all,
+  so a broken import in a `.ts` file passes both and fails in CI.
+- **Measure Lighthouse against the production preview, identified by port:**
+
+  ```bash
+  lsof -nP -iTCP:4323 -sTCP:LISTEN -t     # never a process-name pattern
+  ```
+
+  Then confirm the served HTML contains no Vite client before trusting any
+  score. An `astro dev` server holding the port once produced a Performance
+  score of 83 with a 326 KB `@vite/client` in the trace, where the production
+  build scored 100. A dev-server score is not a number, it is a mistake.
+
 ## Checkpoints
 
 Stop and ask at every **STOP** in a phase prompt, and before any decision that
@@ -64,5 +83,10 @@ mapping one identifier onto another.
 | Phase 2 modelling: baselines, models, diagnostics, what to ship | [`MODEL_REPORT.md`](MODEL_REPORT.md) |
 | Web design system: tokens, contrast, components | [`DESIGN.md`](DESIGN.md) |
 | Licensing: code, data, and what may be published | [`DATA_LICENSE.md`](DATA_LICENSE.md) |
+
+**`DESIGN.md` exists exactly once, at the repository root.** A second copy
+anywhere — `web/DESIGN.md`, another worktree, a branch — is a drift hazard:
+whichever one a reader opens first wins, and the contrast test parses only the
+root file. The same rule removed a duplicate prettier config earlier.
 
 Update the document in the same PR as the change it describes.
