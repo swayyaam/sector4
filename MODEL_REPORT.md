@@ -10,6 +10,11 @@ Reproduce with `src/baselines.py`, `src/model.py`, `src/diagnose.py` and
 
 ---
 
+> **Read §6 before quoting any margin from this document.** Every comparison in
+> §§1–5 was made by reading an evaluation window that included 2026. That is
+> selection on the test set. On a clean 2026 holdout the chosen model does
+> **not** beat the baseline, and the site does not claim that it does.
+
 ## The finding
 
 **Qualifying position is close to a sufficient statistic for this problem, and
@@ -30,6 +35,10 @@ wrong way for anyone hoping a richer feature set helps:
 The value a model adds here is **the probability, not the ordering**. The
 baseline calls more winners than most of the models; what the model does better
 is say how likely each one was, which is what the site publishes.
+
+That last sentence is the whole claim. On a clean 2026 holdout the model does
+not beat the baseline on log loss either (§6); what survives out of sample is
+the calibration, not the margin.
 
 ---
 
@@ -244,23 +253,101 @@ feature that has not been written rather than as something that does work now.
 
 ---
 
-## 6. What to ship
+---
 
-**`minimal 4` at the post-qualifying snapshot**: a spline on qualifying
-position plus practice best-lap gap, driver championship points and team
-championship points.
+## 6. The 2026 holdout, and what it costs the headline
 
-- It beats the qualifying-order baseline on both windows, significantly.
-- It is the best calibrated model tested, at ECE 0.0099 on p_win.
-- It has four inputs, so the methodology page can state exactly what it uses,
-  and a factor breakdown on a race page will be honest rather than decorative.
-- It is a logistic regression, so the published coefficients *are* the model.
+Everything above chose between models by reading an evaluation window that
+included 2026. The spline, the feature subsets and the minimal four were all
+picked that way, so the margins in §4 are optimistic by an unknown amount.
+This section is the correction.
 
-The site should not claim more than that. On the last fifty races the model
-scores 1.1864 against the baseline's 1.3235: a **10.4% lower log loss**, from
-four features, and the baseline still calls more winners.
+The procedure was fixed before looking: re-run the selection with 2026 removed,
+freeze one specification, score it on 2026 once. No tuning afterwards.
 
-## 7. What would actually move this
+### Step 1 — the selection is contaminated
+
+Redone on 2019–2025 alone, the answer changes.
+
+**Only three coefficients are significant, not four.** `team_standing_points`
+(z = −2.45 with 2026 included) drops out. The other three hold:
+`quali_position` z = −7.31, `driver_standing_points` z = +3.22,
+`practice_best_lap_gap_ms` z = −2.25.
+
+And the finalist ranking flips (152 races, baseline 1.4572):
+
+| Model | Log loss | vs bar |
+|---|---:|---|
+| **Spline + 19** | **1.2489** | −0.2083, significant |
+| Spline + 22 | 1.2884 | −0.1688, significant |
+| Minimal 4 | 1.2993 | −0.1579, significant |
+| Minimal 4, share | 1.3069 | −0.1503, significant |
+| Spline + 33 | 1.3331 | −0.1241, not significant |
+| *Baseline* | *1.4572* | — |
+
+**An uncontaminated selection would have chosen spline + 19, not minimal 4.**
+The "fewer features win" ordering in §4 was partly an artefact of including
+2026 in the comparison.
+
+### Step 2 — the holdout, scored once
+
+14 races. The frozen primary is the share variant, chosen for explainability.
+
+| Model | Log loss | 95% CI | vs bar | Verdict | ECE (win) |
+|---|---:|---|---|---|---:|
+| **Minimal 4 (share) — primary** | 1.0901 | [0.7052, 1.5576] | −0.0917 [−0.3078, +0.1179] | **indistinguishable** | 0.0188 |
+| Minimal 4 (team points) | 1.0594 | [0.6900, 1.5069] | −0.1223 [−0.3323, +0.0678] | indistinguishable | 0.0146 |
+| *Baseline: qualifying order* | *1.1817* | [0.8076, 1.7592] | — | — | — |
+
+**The model does not beat the baseline out of sample.** The point estimate
+favours it by 0.09 in log loss, and the interval comfortably contains zero.
+
+Two caveats that cut in both directions. 2026 is a **regulation reset**, so
+prior seasons are weaker evidence about it than usual — which handicaps the
+model more than the baseline, since the baseline only needs the grid to keep
+meaning what it meant. And **fourteen races is very little**: the baseline's own
+interval spans 0.81 to 1.76, so almost nothing could have been resolved here.
+
+### What is not being done
+
+Spline + 19 is the model an honest selection would have picked, and it has
+**not** been scored on 2026. Its predictions exist, but looking at them now —
+after seeing that minimal 4 failed to clear the bar — would repeat exactly the
+error this section exists to correct. It stays unevaluated until there is a
+fresh holdout, which means 2027.
+
+### What the site may say
+
+- It **may** say the model is well calibrated, and show the reliability table.
+- It **may** publish the margin over the baseline on 2019–2025 as an in-sample
+  figure, labelled as one.
+- It **may not** claim to beat qualifying order. There is no out-of-sample
+  evidence for that claim.
+
+## 7. What to ship
+
+**`minimal 4 (share)` at the post-qualifying snapshot**: a spline on qualifying
+position, practice best-lap gap, driver championship points, and the driver's
+share of the team's points.
+
+The share term replaces `team_standing_points` deliberately. The two score
+within noise of each other, the direct version is explainable in one sentence
+on the methodology page, and the term it replaces turned out not to be
+significant once 2026 was removed from the fit — so it was the weaker of the
+two on every ground that matters.
+
+- It is well calibrated: ECE 0.0099 on p_win over the last fifty races, 0.0188
+  on the holdout, the best of anything tested.
+- Four inputs, so the methodology page can state exactly what the model uses
+  and a race-page factor breakdown will be honest rather than decorative.
+- A logistic regression, so the published coefficients *are* the model.
+
+**It does not beat qualifying order out of sample, and the site will not say it
+does.** See §6. What the model offers over the baseline is a calibrated
+probability rather than an ordering — the baseline calls more winners, and only
+the model says how likely each one was.
+
+## 8. What would actually move this
 
 Ranked by what the diagnostics suggest, not by what sounds interesting:
 
