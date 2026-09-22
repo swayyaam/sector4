@@ -3,3 +3,4 @@ dist
 .astro
 package-lock.json
 src/data/mock
+src/data/live

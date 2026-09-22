@@ -28,15 +28,20 @@ const nextPred = preferredSnapshot(predictions, next.race_id)!;
 const contenders = driversByWinProbability(nextPred).slice(0, 5);
 const maxWin = contenders[0]!.p_win;
 
-const scored = scoredPredictions(predictions);
-const last = scored[0]!;
-const lastRace = races.get(last.race_id)!;
-const lastTop = driversByWinProbability(last).slice(0, 3);
-const actualById = new Map(last.result!.drivers.map((d) => [d.driverId, d]));
+// Only post-qualifying races are summarised here. The two snapshots are
+// different models measured against different baselines, so an average over
+// both would describe neither; the track record keeps them apart too.
+const scored = scoredPredictions(predictions).filter((p) => p.snapshot === "post_qualifying");
+const last = scored[0];
+const lastRace = last ? races.get(last.race_id) : undefined;
+const lastTop = last ? driversByWinProbability(last).slice(0, 3) : [];
+const actualById = new Map((last?.result?.drivers ?? []).map((d) => [d.driverId, d]));
 
 const wins = scored.filter((p) => p.result!.winner_hit).length;
 const podiums = scored.reduce((a, p) => a + p.result!.podium_hits, 0);
-const meanLogLoss = scored.reduce((a, p) => a + p.result!.log_loss, 0) / scored.length;
+const meanLogLoss = scored.length
+  ? scored.reduce((a, p) => a + p.result!.log_loss, 0) / scored.length
+  : 0;
 
 const jsonLd = [
   {
@@ -98,81 +103,83 @@ const jsonLd = [
     </div>
   </section>
 
-  <section class="band">
-    <div class="wrap">
-      <p class="eyebrow">Last race</p>
-      <h2>{lastRace.name} — predicted against actual</h2>
-      <div class="receipt">
-        <table>
-          <caption class="sr-only">
-            The three drivers given the highest podium probability, and where each finished.
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col">Predicted top 3</th>
-              <th scope="col" class="n">
-                Win prob.
-              </th>
-              <th scope="col" class="n">
-                Finished
-              </th>
-              <th scope="col" class="n">
-                Outcome
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {lastTop.map((c) => {
-              const d = drivers.get(c.driverId)!;
-              const a = actualById.get(c.driverId);
-              const pos = a?.actual_position ?? null;
-              const hit = pos !== null && pos <= 3;
-              return (
-                <tr>
-                  <th scope="row">{driverName(d)}</th>
-                  <td class="n num">{percent(c.p_win)}</td>
-                  <td class="n num">{pos === null ? "—" : `P${pos}`}</td>
-                  <td class:list={["n", "outcome", hit ? "hit" : "miss"]}>
-                    {hit ? "Podium hit" : "Miss"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        <dl class="scores">
-          <div>
-            <dt>Log loss</dt>
-            <dd class="num">{score(last.result!.log_loss)}</dd>
-          </div>
-          <div>
-            <dt>Brier</dt>
-            <dd class="num">{score(last.result!.brier)}</dd>
-          </div>
-          <div>
-            <dt>Winner</dt>
-            <dd class:list={["outcome", last.result!.winner_hit ? "hit" : "miss"]}>
-              {last.result!.winner_hit ? "Hit" : "Miss"}
-            </dd>
-          </div>
-          <div>
-            <dt>Podium</dt>
-            <dd class="num">{last.result!.podium_hits} of 3</dd>
-          </div>
-        </dl>
+  {last && lastRace && (
+    <section class="band">
+      <div class="wrap">
+        <p class="eyebrow">Last race</p>
+        <h2>{lastRace.name} — predicted against actual</h2>
+        <div class="receipt">
+          <table>
+            <caption class="sr-only">
+              The three drivers given the highest podium probability, and where each finished.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Predicted top 3</th>
+                <th scope="col" class="n">
+                  Win prob.
+                </th>
+                <th scope="col" class="n">
+                  Finished
+                </th>
+                <th scope="col" class="n">
+                  Outcome
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {lastTop.map((c) => {
+                const d = drivers.get(c.driverId)!;
+                const a = actualById.get(c.driverId);
+                const pos = a?.actual_position ?? null;
+                const hit = pos !== null && pos <= 3;
+                return (
+                  <tr>
+                    <th scope="row">{driverName(d)}</th>
+                    <td class="n num">{percent(c.p_win)}</td>
+                    <td class="n num">{pos === null ? "—" : `P${pos}`}</td>
+                    <td class:list={["n", "outcome", hit ? "hit" : "miss"]}>
+                      {hit ? "Podium hit" : "Miss"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <dl class="scores">
+            <div>
+              <dt>Log loss</dt>
+              <dd class="num">{score(last.result!.log_loss)}</dd>
+            </div>
+            <div>
+              <dt>Brier</dt>
+              <dd class="num">{score(last.result!.brier)}</dd>
+            </div>
+            <div>
+              <dt>Winner</dt>
+              <dd class:list={["outcome", last.result!.winner_hit ? "hit" : "miss"]}>
+                {last.result!.winner_hit ? "Hit" : "Miss"}
+              </dd>
+            </div>
+            <div>
+              <dt>Podium</dt>
+              <dd class="num">{last.result!.podium_hits} of 3</dd>
+            </div>
+          </dl>
+        </div>
+        <p class="more">
+          <a href={`/races/${lastRace.season}/${lastRace.slug}/`}>
+            See the full {lastRace.name} result
+          </a>
+        </p>
       </div>
-      <p class="more">
-        <a href={`/races/${lastRace.season}/${lastRace.slug}/`}>
-          See the full {lastRace.name} result
-        </a>
-      </p>
-    </div>
-  </section>
+    </section>
+  )}
 
   <section class="band band-soft">
     <div class="wrap">
       <p class="eyebrow">Season so far</p>
-      <h2>{scored.length} races scored</h2>
+      <h2>{scored.length === 0 ? "Nothing scored yet" : `${scored.length} races scored`}</h2>
       <dl class="summary">
         <div>
           <dt>Winner called</dt>

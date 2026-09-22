@@ -1,12 +1,12 @@
 ---
 import BaseLayout from "../components/layout/BaseLayout.astro";
-import { loadDataset, raceById, scoredPredictions, predictionsForRace } from "../lib/data";
-import { percent, score } from "../lib/format";
+import { loadDataset, raceById, predictionsForRace } from "../lib/data";
+import { score } from "../lib/format";
 import { formatUtc } from "../lib/time";
+import type { Prediction } from "../lib/schema";
 
 const { reference, predictions, meta } = loadDataset();
 const races = raceById(reference);
-const scored = scoredPredictions(predictions);
 
 // Predicted but not yet run. Listed so the record cannot be read as a
 // selection of the races that happened to go well.
@@ -15,34 +15,55 @@ const pending = predictions
   .filter((p, i, all) => all.findIndex((q) => q.race_id === p.race_id) === i)
   .sort((a, b) => a.season - b.season || a.round - b.round);
 
-const wins = scored.filter((p) => p.result!.winner_hit).length;
-const podiums = scored.reduce((a, p) => a + p.result!.podium_hits, 0);
-const meanLogLoss = scored.reduce((a, p) => a + p.result!.log_loss, 0) / scored.length;
-const meanBrier = scored.reduce((a, p) => a + p.result!.brier, 0) / scored.length;
+/**
+ * The two snapshots are kept apart, always.
+ *
+ * They are different models judged against different baselines: post-qualifying
+ * sees the grid and practice pace and is measured against qualifying order;
+ * pre-weekend sees neither and is measured against championship order. Pooling
+ * them would produce an average that describes neither, and would flatter the
+ * weaker of the two by mixing it with the stronger.
+ */
+function series(snapshot: Prediction["snapshot"]) {
+  const scored = predictions
+    .filter((p) => p.snapshot === snapshot && p.result !== null)
+    .sort((a, b) => b.season - a.season || b.round - a.round);
+  const n = scored.length;
+  const withBase = scored.filter((p) => p.result!.baseline !== null);
+  const meanField = n ? scored.reduce((a, p) => a + p.drivers.length, 0) / n : 0;
+  return {
+    snapshot,
+    scored,
+    races: n,
+    wins: scored.filter((p) => p.result!.winner_hit).length,
+    podiums: scored.reduce((a, p) => a + p.result!.podium_hits, 0),
+    meanLogLoss: n ? scored.reduce((a, p) => a + p.result!.log_loss, 0) / n : 0,
+    meanBrier: n ? scored.reduce((a, p) => a + p.result!.brier, 0) / n : 0,
+    baselineName: withBase[0]?.result!.baseline!.name ?? null,
+    baselineRaces: withBase.length,
+    meanBaseline: withBase.length
+      ? withBase.reduce((a, p) => a + p.result!.baseline!.log_loss, 0) / withBase.length
+      : 0,
+    modelBetter: withBase.filter((p) => p.result!.log_loss < p.result!.baseline!.log_loss).length,
+    // What a uniform pick over the same field would score: the floor, printed
+    // because a log loss on its own says nothing about whether this is any good.
+    uniformLogLoss: meanField > 1 ? Math.log(meanField) : 0,
+  };
+}
 
-// The baseline beside the model on every race, and in aggregate. A log loss
-// with nothing to compare it against tells a reader nothing at all.
-const withBaseline = scored.filter((p) => p.result!.baseline !== null);
-const baselineRaces = withBaseline.length;
-const meanBaseline = baselineRaces
-  ? withBaseline.reduce((a, p) => a + p.result!.baseline!.log_loss, 0) / baselineRaces
-  : 0;
-const modelBetter = withBaseline.filter(
-  (p) => p.result!.log_loss < p.result!.baseline!.log_loss,
-).length;
-
-// A field of n drivers picked uniformly at random gives -ln(1/n) per race.
-// Printed beside the model's own number because a log loss on its own says
-// nothing about whether the model is any good.
-const meanField = scored.reduce((a, p) => a + p.drivers.length, 0) / scored.length;
-const uniformLogLoss = Math.log(meanField);
+const allSeries = [series("post_qualifying"), series("pre_weekend")];
+const totalScored = allSeries.reduce((a, s) => a + s.races, 0);
 
 const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qualifying" } as const;
 ---
 
 <BaseLayout
   title="Track record"
-  description={`Every Sector 4 prediction scored against the result: ${wins} of ${scored.length} winners called, ${podiums} of ${scored.length * 3} podium places, mean log loss ${score(meanLogLoss)}.`}
+  description={
+    totalScored
+      ? "Every Sector 4 prediction scored against the result, with the baseline's score beside it on every race."
+      : "Predictions published in advance. Nothing scored yet — the first race is still to come."
+  }
   image="/og/track-record.png"
   breadcrumbs={[{ name: "Track record", path: "/track-record/" }]}
 >
@@ -52,128 +73,150 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
       <h1>Every prediction, including the misses</h1>
       <p class="sub">
         Each race is scored against the snapshot published before it started. Nothing is
-        recalculated afterwards, and no race is left out.
+        recalculated afterwards, and no race is left out. The baseline's score for the same race
+        sits beside the model's, so you can judge whether the model is adding anything.
       </p>
     </div>
   </section>
 
-  <section class="band">
-    <div class="wrap">
-      <h2>{scored.length} races scored</h2>
-      <dl class="summary">
-        <div>
-          <dt>Winner called</dt>
-          <dd class="num">
-            {wins} of {scored.length}
-          </dd>
-        </div>
-        <div>
-          <dt>Podium places</dt>
-          <dd class="num">
-            {podiums} of {scored.length * 3}
-          </dd>
-        </div>
-        <div>
-          <dt>Mean log loss</dt>
-          <dd class="num">{score(meanLogLoss)}</dd>
-        </div>
-        <div>
-          <dt>Mean Brier</dt>
-          <dd class="num">{score(meanBrier)}</dd>
-        </div>
-      </dl>
-      <p class="note">
-        Picking a winner uniformly at random from a {meanField.toFixed(0)}-driver field scores a log
-        loss of {score(uniformLogLoss)}. Lower is better, and beating that number is the floor, not
-        the goal.
-      </p>
-      <dl class="summary">
-        <div>
-          <dt>Model, mean log loss</dt>
-          <dd class="num">{score(meanLogLoss)}</dd>
-        </div>
-        <div>
-          <dt>Baseline, mean log loss</dt>
-          <dd class="num">{baselineRaces ? score(meanBaseline) : "—"}</dd>
-        </div>
-        <div>
-          <dt>Races the model won</dt>
-          <dd class="num">
-            {modelBetter} of {baselineRaces}
-          </dd>
-        </div>
-      </dl>
-      <p class="note">
-        The baseline is <strong>qualifying order</strong>: the historical chance of winning from
-        each grid slot, and nothing else. It is shown on every race below so you can judge for
-        yourself whether the model is adding anything.{" "}
-        <strong>There is no out-of-sample evidence that it beats this baseline.</strong>{" "}
-        <a href="/methodology/">Why, and what that means</a>.
-      </p>
-    </div>
-  </section>
-
-  <section class="band band-soft">
-    <div class="wrap">
-      <h2>Race by race</h2>
-      <div class="scroller">
-        <table>
-          <caption class="sr-only">
-            Every scored race, most recent first, with the snapshot used and the resulting scores.
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col" class="pos">
-                Rd
-              </th>
-              <th scope="col">Race</th>
-              <th scope="col">Snapshot</th>
-              <th scope="col">Winner</th>
-              <th scope="col" class="n">
-                Podium
-              </th>
-              <th scope="col" class="n">
-                Log loss
-              </th>
-              <th scope="col" class="n">
-                Brier
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {scored.map((p) => {
-              const race = races.get(p.race_id)!;
-              const r = p.result!;
-              return (
-                <tr>
-                  <td class="pos num">{p.round}</td>
-                  <th scope="row">
-                    <a href={`/races/${race.season}/${race.slug}/`}>{race.name}</a>
-                    <span class="season num">{race.season}</span>
-                  </th>
-                  <td class="snap" data-label="Snapshot">
-                    {SNAPSHOT_LABEL[p.snapshot]}
-                  </td>
-                  <td class:list={["outcome", r.winner_hit ? "hit" : "miss"]} data-label="Winner">
-                    {r.winner_hit ? "Hit" : "Miss"}
-                  </td>
-                  <td class="n num" data-label="Podium">
-                    {r.podium_hits} of 3
-                  </td>
-                  <td class="n num" data-label="Log loss">
-                    {score(r.log_loss)}
-                  </td>
-                  <td class="n num" data-label="Brier">
-                    {score(r.brier)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+  {totalScored === 0 && (
+    <section class="band">
+      <div class="wrap">
+        <h2>Nothing scored yet</h2>
+        <p class="note">
+          Predictions are published before the session they predict and scored afterwards, in a
+          separate step, so the record cannot be edited once a result is known. The first race has
+          not run. When it does, its scores appear here — whichever way they go.
+        </p>
       </div>
-    </div>
-  </section>
+    </section>
+  )}
+
+  {allSeries.map((s, i) => (
+    <section class:list={["band", i % 2 === 1 ? "band-soft" : ""]}>
+      <div class="wrap">
+        <p class="eyebrow">{SNAPSHOT_LABEL[s.snapshot]}</p>
+        <h2>
+          {s.races === 0
+            ? `${SNAPSHOT_LABEL[s.snapshot]} — no races scored yet`
+            : `${s.races} ${s.races === 1 ? "race" : "races"} scored`}
+        </h2>
+        <p class="note">
+          {s.snapshot === "post_qualifying"
+            ? "Published after qualifying, so it sees the grid and this weekend's practice pace. Measured against qualifying order."
+            : "Published before any car runs. It cannot see qualifying or practice, so it uses two features and is measured against championship order — judging it against qualifying order would score it on information it does not have."}
+        </p>
+
+        {s.races > 0 && (
+          <Fragment>
+            <dl class="summary">
+              <div>
+                <dt>Winner called</dt>
+                <dd class="num">
+                  {s.wins} of {s.races}
+                </dd>
+              </div>
+              <div>
+                <dt>Podium places</dt>
+                <dd class="num">
+                  {s.podiums} of {s.races * 3}
+                </dd>
+              </div>
+              <div>
+                <dt>Model, mean log loss</dt>
+                <dd class="num">{score(s.meanLogLoss)}</dd>
+              </div>
+              <div>
+                <dt>{s.baselineName ?? "Baseline"}, mean</dt>
+                <dd class="num">{s.baselineRaces ? score(s.meanBaseline) : "—"}</dd>
+              </div>
+              <div>
+                <dt>Races the model won</dt>
+                <dd class="num">
+                  {s.modelBetter} of {s.baselineRaces}
+                </dd>
+              </div>
+            </dl>
+            <p class="note">
+              A uniform pick over the same field would score {score(s.uniformLogLoss)}. Lower is
+              better, and beating that is the floor rather than the goal.{" "}
+              <a href="/methodology/">How the scores are computed</a>.
+            </p>
+
+            <div class="scroller">
+              <table>
+                <caption class="sr-only">
+                  {SNAPSHOT_LABEL[s.snapshot]} predictions, most recent first, with the baseline's
+                  score for the same race.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col" class="pos">
+                      Rd
+                    </th>
+                    <th scope="col">Race</th>
+                    <th scope="col">Winner</th>
+                    <th scope="col" class="n">
+                      Podium
+                    </th>
+                    <th scope="col" class="n">
+                      Log loss
+                    </th>
+                    <th scope="col" class="n">
+                      Baseline
+                    </th>
+                    <th scope="col" class="n">
+                      Brier
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {s.scored.map((p) => {
+                    const race = races.get(p.race_id)!;
+                    const r = p.result!;
+                    return (
+                      <tr>
+                        <td class="pos num">{p.round}</td>
+                        <th scope="row">
+                          <a href={`/races/${race.season}/${race.slug}/`}>{race.name}</a>
+                          <span class="season num">{race.season}</span>
+                        </th>
+                        <td
+                          class:list={["outcome", r.winner_hit ? "hit" : "miss"]}
+                          data-label="Winner"
+                        >
+                          {r.winner_hit ? "Hit" : "Miss"}
+                        </td>
+                        <td class="n num" data-label="Podium">
+                          {r.podium_hits} of 3
+                        </td>
+                        <td class="n num" data-label="Log loss">
+                          {score(r.log_loss)}
+                        </td>
+                        <td
+                          class:list={[
+                            "n",
+                            "num",
+                            r.baseline && r.log_loss < r.baseline.log_loss ? "hit" : "dim",
+                          ]}
+                          data-label="Baseline"
+                        >
+                          {r.baseline ? score(r.baseline.log_loss) : "—"}
+                        </td>
+                        <td class="n num" data-label="Brier">
+                          {score(r.brier)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Fragment>
+        )}
+      </div>
+    </section>
+  ))}
 
   {pending.length > 0 && (
     <section class="band">
@@ -207,13 +250,10 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
     <div class="wrap">
       <p class="note">
         Data version <span class="num">{meta.data_version}</span>, generated{" "}
-        <time datetime={meta.generated_at}>{formatUtc(meta.generated_at)}</time>. Percentages on
-        this page are rounded for display only; the scores are computed from the stored values.
-        Example: the best single win probability in this record is{" "}
-        <span class="num">
-          {percent(Math.max(...scored.flatMap((p) => p.drivers.map((d) => d.p_win))))}
-        </span>
-        .
+        <time datetime={meta.generated_at}>{formatUtc(meta.generated_at)}</time>. Scores are
+        computed from the stored probabilities, not from the rounded figures shown here. The two
+        snapshots are never pooled: they are different models measured against different baselines,
+        and an average across them would describe neither.
       </p>
     </div>
   </section>

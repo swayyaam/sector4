@@ -1,0 +1,979 @@
+{
+  "race_id": 1183,
+  "season": 2026,
+  "round": 15,
+  "snapshot": "pre_weekend",
+  "generated_at": "2026-09-22T22:58:41Z",
+  "model_version": "minimal4-share-v1",
+  "data_version": "v0.1.1-data+20260921",
+  "commit_sha": "7b5ca5ba49dc",
+  "is_mock": false,
+  "model_features": [
+    "driver_standing_points",
+    "driver_vs_team_points_share_5"
+  ],
+  "model_note": "Reduction of the shipped specification to the features available before the cars run. Qualifying position and practice pace do not exist yet, so this is a weaker model and was not separately validated. The DNF probability is a separate logistic on the same features. See MODEL_REPORT.md.",
+  "drivers": [
+    {
+      "driverId": 863,
+      "team_entity_id": "131-2010",
+      "p_win": 0.280291,
+      "p_podium": 0.65438,
+      "p_top10": 0.992509,
+      "p_dnf": 0.060958,
+      "expected_position": 3.140446,
+      "position_distribution": [
+        0.280292,
+        0.212566,
+        0.161522,
+        0.119618,
+        0.080761,
+        0.056887,
+        0.03681,
+        0.024173,
+        0.013485,
+        0.006393,
+        0.003746,
+        0.002148,
+        0.000749,
+        0.00035,
+        0.00015,
+        5e-05,
+        5e-05,
+        5e-05,
+        5e-05,
+        5e-05,
+        5e-05,
+        5e-05
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "positive",
+          "magnitude": 0.854486
+        },
+        {
+          "label": "Share of team points",
+          "direction": "positive",
+          "magnitude": 0.273778
+        }
+      ]
+    },
+    {
+      "driverId": 846,
+      "team_entity_id": "1-1968",
+      "p_win": 0.115323,
+      "p_podium": 0.344821,
+      "p_top10": 0.911747,
+      "p_dnf": 0.084146,
+      "expected_position": 5.419339,
+      "position_distribution": [
+        0.115323,
+        0.11717,
+        0.112326,
+        0.10918,
+        0.108281,
+        0.098092,
+        0.085156,
+        0.069024,
+        0.05494,
+        0.042254,
+        0.031116,
+        0.023574,
+        0.013835,
+        0.00949,
+        0.005444,
+        0.002297,
+        0.001349,
+        0.000649,
+        0.0003,
+        0.0001,
+        5e-05,
+        5e-05
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "positive",
+          "magnitude": 0.447903
+        },
+        {
+          "label": "Share of team points",
+          "direction": "positive",
+          "magnitude": 0.318588
+        }
+      ]
+    },
+    {
+      "driverId": 847,
+      "team_entity_id": "131-2010",
+      "p_win": 0.103786,
+      "p_podium": 0.317501,
+      "p_top10": 0.893767,
+      "p_dnf": 0.078689,
+      "expected_position": 5.738937,
+      "position_distribution": [
+        0.103786,
+        0.104585,
+        0.10913,
+        0.105584,
+        0.105484,
+        0.092848,
+        0.086405,
+        0.074168,
+        0.061832,
+        0.049945,
+        0.03656,
+        0.025422,
+        0.01833,
+        0.011387,
+        0.007242,
+        0.002997,
+        0.002497,
+        0.000949,
+        0.000549,
+        0.0002,
+        5e-05,
+        5e-05
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "positive",
+          "magnitude": 0.543795
+        },
+        {
+          "label": "Share of team points",
+          "direction": "negative",
+          "magnitude": 0.223821
+        }
+      ]
+    },
+    {
+      "driverId": 1,
+      "team_entity_id": "6-1950",
+      "p_win": 0.092998,
+      "p_podium": 0.295375,
+      "p_top10": 0.871841,
+      "p_dnf": 0.083355,
+      "expected_position": 6.044551,
+      "position_distribution": [
+        0.092998,
+        0.09964,
+        0.102738,
+        0.098741,
+        0.09989,
+        0.095045,
+        0.086305,
+        0.075867,
+        0.065528,
+        0.055089,
+        0.041554,
+        0.029518,
+        0.022575,
+        0.014234,
+        0.00924,
+        0.006043,
+        0.003147,
+        0.000899,
+        0.000499,
+        0.00035,
+        5e-05,
+        5e-05
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "positive",
+          "magnitude": 0.467082
+        },
+        {
+          "label": "Share of team points",
+          "direction": "negative",
+          "magnitude": 0.045454
+        }
+      ]
+    },
+    {
+      "driverId": 844,
+      "team_entity_id": "6-1950",
+      "p_win": 0.074368,
+      "p_podium": 0.252223,
+      "p_top10": 0.833134,
+      "p_dnf": 0.089386,
+      "expected_position": 6.613625,
+      "position_distribution": [
+        0.074368,
+        0.087554,
+        0.090301,
+        0.092945,
+        0.089751,
+        0.090201,
+        0.088153,
+        0.084607,
+        0.07292,
+        0.062331,
+        0.048347,
+        0.035711,
+        0.028469,
+        0.021177,
+        0.015333,
+        0.00904,
+        0.004695,
+        0.002198,
+        0.001199,
+        0.00045,
+        0.0002,
+        5e-05
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "positive",
+          "magnitude": 0.375025
+        },
+        {
+          "label": "Share of team points",
+          "direction": "positive",
+          "magnitude": 0.09541
+        }
+      ]
+    },
+    {
+      "driverId": 830,
+      "team_entity_id": "9-2005",
+      "p_win": 0.069723,
+      "p_podium": 0.230197,
+      "p_top10": 0.797922,
+      "p_dnf": 0.095187,
+      "expected_position": 6.956748,
+      "position_distribution": [
+        0.069723,
+        0.079263,
+        0.081211,
+        0.088153,
+        0.092347,
+        0.09065,
+        0.084657,
+        0.079812,
+        0.070373,
+        0.061732,
+        0.053142,
+        0.042953,
+        0.03651,
+        0.025022,
+        0.017281,
+        0.012636,
+        0.007442,
+        0.004345,
+        0.001798,
+        0.0004,
+        0.00045,
+        0.0001
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "positive",
+          "magnitude": 0.29064
+        },
+        {
+          "label": "Share of team points",
+          "direction": "positive",
+          "magnitude": 0.273251
+        }
+      ]
+    },
+    {
+      "driverId": 857,
+      "team_entity_id": "1-1968",
+      "p_win": 0.039407,
+      "p_podium": 0.12746,
+      "p_top10": 0.577465,
+      "p_dnf": 0.103338,
+      "expected_position": 9.506543,
+      "position_distribution": [
+        0.039407,
+        0.040555,
+        0.047498,
+        0.05464,
+        0.058636,
+        0.060483,
+        0.064729,
+        0.071621,
+        0.068325,
+        0.071571,
+        0.067925,
+        0.066227,
+        0.061732,
+        0.055089,
+        0.047448,
+        0.038358,
+        0.030017,
+        0.023075,
+        0.016032,
+        0.010339,
+        0.004395,
+        0.001898
+      ],
+      "top_factors": [
+        {
+          "label": "Share of team points",
+          "direction": "negative",
+          "magnitude": 0.268631
+        },
+        {
+          "label": "Championship position",
+          "direction": "positive",
+          "magnitude": 0.194748
+        }
+      ]
+    },
+    {
+      "driverId": 859,
+      "team_entity_id": "9-2005",
+      "p_win": 0.021626,
+      "p_podium": 0.075117,
+      "p_top10": 0.365348,
+      "p_dnf": 0.123299,
+      "expected_position": 12.310259,
+      "position_distribution": [
+        0.021626,
+        0.024223,
+        0.029268,
+        0.030117,
+        0.034462,
+        0.03681,
+        0.039656,
+        0.042254,
+        0.050195,
+        0.056738,
+        0.059335,
+        0.062082,
+        0.058935,
+        0.065678,
+        0.063131,
+        0.066676,
+        0.060034,
+        0.056288,
+        0.048247,
+        0.042303,
+        0.032364,
+        0.019578
+      ],
+      "top_factors": [
+        {
+          "label": "Share of team points",
+          "direction": "negative",
+          "magnitude": 0.195708
+        },
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.039229
+        }
+      ]
+    },
+    {
+      "driverId": 864,
+      "team_entity_id": "215-2024",
+      "p_win": 0.021526,
+      "p_podium": 0.07272,
+      "p_top10": 0.364649,
+      "p_dnf": 0.132793,
+      "expected_position": 12.386725,
+      "position_distribution": [
+        0.021526,
+        0.023324,
+        0.027869,
+        0.029667,
+        0.032914,
+        0.03606,
+        0.041954,
+        0.0454,
+        0.050445,
+        0.055489,
+        0.056538,
+        0.057886,
+        0.062781,
+        0.063981,
+        0.06328,
+        0.062781,
+        0.061632,
+        0.055988,
+        0.051993,
+        0.043502,
+        0.035761,
+        0.019229
+      ],
+      "top_factors": [
+        {
+          "label": "Share of team points",
+          "direction": "positive",
+          "magnitude": 0.214138
+        },
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.146628
+        }
+      ]
+    },
+    {
+      "driverId": 842,
+      "team_entity_id": "214-2021",
+      "p_win": 0.021277,
+      "p_podium": 0.067226,
+      "p_top10": 0.335881,
+      "p_dnf": 0.129571,
+      "expected_position": 12.72725,
+      "position_distribution": [
+        0.021277,
+        0.021327,
+        0.024623,
+        0.028069,
+        0.028768,
+        0.034612,
+        0.038657,
+        0.044251,
+        0.045949,
+        0.048347,
+        0.055139,
+        0.062431,
+        0.06393,
+        0.063131,
+        0.06398,
+        0.06348,
+        0.062731,
+        0.062681,
+        0.055839,
+        0.047747,
+        0.039207,
+        0.023824
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.108271
+        },
+        {
+          "label": "Share of team points",
+          "direction": "negative",
+          "magnitude": 0.057779
+        }
+      ]
+    },
+    {
+      "driverId": 4,
+      "team_entity_id": "117-2021",
+      "p_win": 0.020527,
+      "p_podium": 0.07272,
+      "p_top10": 0.376086,
+      "p_dnf": 0.142769,
+      "expected_position": 12.170462,
+      "position_distribution": [
+        0.020527,
+        0.024623,
+        0.02757,
+        0.030716,
+        0.032314,
+        0.038707,
+        0.041804,
+        0.049396,
+        0.052143,
+        0.058286,
+        0.061333,
+        0.062731,
+        0.066227,
+        0.06388,
+        0.062531,
+        0.062581,
+        0.055189,
+        0.05474,
+        0.04565,
+        0.038608,
+        0.033413,
+        0.017031
+      ],
+      "top_factors": [
+        {
+          "label": "Share of team points",
+          "direction": "positive",
+          "magnitude": 0.687039
+        },
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.254027
+        }
+      ]
+    },
+    {
+      "driverId": 861,
+      "team_entity_id": "214-2021",
+      "p_win": 0.01783,
+      "p_podium": 0.061582,
+      "p_top10": 0.321596,
+      "p_dnf": 0.134521,
+      "expected_position": 12.967486,
+      "position_distribution": [
+        0.01783,
+        0.020078,
+        0.023674,
+        0.026471,
+        0.029418,
+        0.033663,
+        0.03676,
+        0.039207,
+        0.04545,
+        0.049046,
+        0.056987,
+        0.060434,
+        0.06333,
+        0.06388,
+        0.063031,
+        0.065027,
+        0.061333,
+        0.060084,
+        0.056937,
+        0.052742,
+        0.044951,
+        0.029667
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.16197
+        },
+        {
+          "label": "Share of team points",
+          "direction": "positive",
+          "magnitude": 0.107736
+        }
+      ]
+    },
+    {
+      "driverId": 860,
+      "team_entity_id": "210-2016",
+      "p_win": 0.015533,
+      "p_podium": 0.05459,
+      "p_top10": 0.29058,
+      "p_dnf": 0.138165,
+      "expected_position": 13.589102,
+      "position_distribution": [
+        0.015533,
+        0.01793,
+        0.021127,
+        0.023274,
+        0.025372,
+        0.029717,
+        0.031665,
+        0.037109,
+        0.041504,
+        0.047348,
+        0.051393,
+        0.053891,
+        0.059185,
+        0.059135,
+        0.06388,
+        0.06353,
+        0.062931,
+        0.065678,
+        0.066178,
+        0.062681,
+        0.057137,
+        0.043802
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.196492
+        }
+      ]
+    },
+    {
+      "driverId": 807,
+      "team_entity_id": "216-2026",
+      "p_win": 0.014534,
+      "p_podium": 0.051893,
+      "p_top10": 0.289631,
+      "p_dnf": 0.142153,
+      "expected_position": 13.57232,
+      "position_distribution": [
+        0.014534,
+        0.017481,
+        0.019878,
+        0.022975,
+        0.02762,
+        0.026621,
+        0.034312,
+        0.03621,
+        0.044251,
+        0.04575,
+        0.053291,
+        0.05424,
+        0.058236,
+        0.059535,
+        0.06368,
+        0.064729,
+        0.069123,
+        0.065478,
+        0.064579,
+        0.060084,
+        0.055689,
+        0.041704
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.238684
+        },
+        {
+          "label": "Share of team points",
+          "direction": "positive",
+          "magnitude": 0.20554
+        }
+      ]
+    },
+    {
+      "driverId": 832,
+      "team_entity_id": "3-1975",
+      "p_win": 0.013885,
+      "p_podium": 0.048497,
+      "p_top10": 0.255119,
+      "p_dnf": 0.142926,
+      "expected_position": 14.252872,
+      "position_distribution": [
+        0.013885,
+        0.016632,
+        0.01798,
+        0.021376,
+        0.022475,
+        0.025272,
+        0.029018,
+        0.029717,
+        0.03616,
+        0.042603,
+        0.043802,
+        0.047548,
+        0.053791,
+        0.059535,
+        0.061482,
+        0.064729,
+        0.067925,
+        0.069873,
+        0.068425,
+        0.072621,
+        0.071371,
+        0.06378
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.24252
+        }
+      ]
+    },
+    {
+      "driverId": 839,
+      "team_entity_id": "210-2016",
+      "p_win": 0.013585,
+      "p_podium": 0.045999,
+      "p_top10": 0.246579,
+      "p_dnf": 0.144137,
+      "expected_position": 14.423934,
+      "position_distribution": [
+        0.013585,
+        0.015233,
+        0.017181,
+        0.01783,
+        0.020627,
+        0.023824,
+        0.02762,
+        0.031965,
+        0.038008,
+        0.040705,
+        0.044551,
+        0.050644,
+        0.050494,
+        0.057187,
+        0.057537,
+        0.065878,
+        0.066826,
+        0.066777,
+        0.075517,
+        0.076766,
+        0.074718,
+        0.066527
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.254027
+        }
+      ]
+    },
+    {
+      "driverId": 815,
+      "team_entity_id": "217-2026",
+      "p_win": 0.012137,
+      "p_podium": 0.040555,
+      "p_top10": 0.238038,
+      "p_dnf": 0.145357,
+      "expected_position": 14.598142,
+      "position_distribution": [
+        0.012137,
+        0.013385,
+        0.015033,
+        0.019229,
+        0.019279,
+        0.024623,
+        0.028519,
+        0.032215,
+        0.035211,
+        0.038408,
+        0.0455,
+        0.046599,
+        0.050594,
+        0.05449,
+        0.062431,
+        0.059135,
+        0.067775,
+        0.069623,
+        0.077415,
+        0.074868,
+        0.079462,
+        0.074069
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.265534
+        }
+      ]
+    },
+    {
+      "driverId": 865,
+      "team_entity_id": "216-2026",
+      "p_win": 0.011937,
+      "p_podium": 0.043802,
+      "p_top10": 0.234292,
+      "p_dnf": 0.141693,
+      "expected_position": 14.634202,
+      "position_distribution": [
+        0.011937,
+        0.015333,
+        0.016532,
+        0.018779,
+        0.020677,
+        0.024823,
+        0.02767,
+        0.029867,
+        0.033813,
+        0.034862,
+        0.043352,
+        0.047198,
+        0.051044,
+        0.056088,
+        0.060084,
+        0.063081,
+        0.065228,
+        0.068874,
+        0.071521,
+        0.080561,
+        0.083209,
+        0.075467
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.227177
+        },
+        {
+          "label": "Share of team points",
+          "direction": "negative",
+          "magnitude": 0.155583
+        }
+      ]
+    },
+    {
+      "driverId": 848,
+      "team_entity_id": "3-1975",
+      "p_win": 0.011687,
+      "p_podium": 0.04565,
+      "p_top10": 0.25447,
+      "p_dnf": 0.143328,
+      "expected_position": 14.283438,
+      "position_distribution": [
+        0.011687,
+        0.016582,
+        0.017381,
+        0.019778,
+        0.022925,
+        0.02712,
+        0.028619,
+        0.033064,
+        0.03631,
+        0.041005,
+        0.042903,
+        0.049845,
+        0.055639,
+        0.060134,
+        0.059385,
+        0.060134,
+        0.065678,
+        0.07282,
+        0.069124,
+        0.070472,
+        0.076664,
+        0.062731
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.246355
+        }
+      ]
+    },
+    {
+      "driverId": 822,
+      "team_entity_id": "217-2026",
+      "p_win": 0.011138,
+      "p_podium": 0.042753,
+      "p_top10": 0.235641,
+      "p_dnf": 0.145357,
+      "expected_position": 14.592548,
+      "position_distribution": [
+        0.011138,
+        0.015333,
+        0.016282,
+        0.019928,
+        0.020527,
+        0.023324,
+        0.025971,
+        0.031116,
+        0.035361,
+        0.03666,
+        0.043602,
+        0.049296,
+        0.052193,
+        0.05419,
+        0.060633,
+        0.066327,
+        0.066027,
+        0.067376,
+        0.075567,
+        0.074318,
+        0.078665,
+        0.076166
+      ],
+      "top_factors": [
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.265534
+        }
+      ]
+    },
+    {
+      "driverId": 852,
+      "team_entity_id": "215-2024",
+      "p_win": 0.008591,
+      "p_podium": 0.02697,
+      "p_top10": 0.157377,
+      "p_dnf": 0.146238,
+      "expected_position": 16.468684,
+      "position_distribution": [
+        0.008591,
+        0.008491,
+        0.009889,
+        0.012137,
+        0.013835,
+        0.015533,
+        0.01793,
+        0.018779,
+        0.023774,
+        0.028419,
+        0.031016,
+        0.03656,
+        0.036909,
+        0.043302,
+        0.046799,
+        0.051094,
+        0.058985,
+        0.065078,
+        0.076066,
+        0.095395,
+        0.115323,
+        0.186095
+      ],
+      "top_factors": [
+        {
+          "label": "Share of team points",
+          "direction": "negative",
+          "magnitude": 0.591422
+        },
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.261698
+        }
+      ]
+    },
+    {
+      "driverId": 840,
+      "team_entity_id": "117-2021",
+      "p_win": 0.008291,
+      "p_podium": 0.027969,
+      "p_top10": 0.156328,
+      "p_dnf": 0.146745,
+      "expected_position": 16.602387,
+      "position_distribution": [
+        0.008291,
+        0.00869,
+        0.010988,
+        0.010788,
+        0.013635,
+        0.015083,
+        0.017631,
+        0.020178,
+        0.024024,
+        0.02702,
+        0.028868,
+        0.033064,
+        0.034512,
+        0.039107,
+        0.045999,
+        0.049396,
+        0.059385,
+        0.066477,
+        0.076516,
+        0.095445,
+        0.116821,
+        0.198082
+      ],
+      "top_factors": [
+        {
+          "label": "Share of team points",
+          "direction": "negative",
+          "magnitude": 0.637082
+        },
+        {
+          "label": "Championship position",
+          "direction": "negative",
+          "magnitude": 0.265534
+        }
+      ]
+    }
+  ],
+  "result": null
+}

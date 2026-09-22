@@ -50,8 +50,9 @@ const SNAPSHOT_LABEL: Record<Prediction["snapshot"], string> = {
   post_qualifying: "Post-qualifying",
 };
 const SNAPSHOT_BLURB: Record<Prediction["snapshot"], string> = {
-  pre_weekend: "Before any running: form, circuit history and car pace only.",
-  post_qualifying: "After qualifying, with the grid known.",
+  pre_weekend: "Published before any car runs, so it cannot see qualifying or practice pace.",
+  post_qualifying:
+    "Published after qualifying. It adds qualifying position and this weekend's practice pace, which is most of what the model knows.",
 };
 
 const actualById = new Map((result?.drivers ?? []).map((d) => [d.driverId, d]));
@@ -264,6 +265,15 @@ const jsonLd = [
           const rows = driversByWinProbability(s);
           return (
             <div class="panel" data-snap={s.snapshot}>
+              {s.snapshot === "pre_weekend" && (
+                <p class="reduction">
+                  <strong>This snapshot uses two features.</strong> Qualifying position and practice
+                  pace do not exist yet, so it falls back to championship points and share of team
+                  points. It is a weaker model than the post-qualifying one, not a different view of
+                  the same thing — the <a href="/methodology/">methodology page</a> says what the
+                  full model uses.
+                </p>
+              )}
               <p class="meta">
                 <strong>{SNAPSHOT_LABEL[s.snapshot]}.</strong> {SNAPSHOT_BLURB[s.snapshot]}{" "}
                 Generated <time datetime={s.generated_at}>{formatUtc(s.generated_at)}</time> · model{" "}
@@ -523,6 +533,20 @@ const jsonLd = [
     display: none;
   }
 
+  .reduction {
+    border-left: 3px solid var(--colour-caution);
+    background: var(--colour-caution-surface);
+    padding: var(--space-sm) var(--space-base);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--colour-body);
+    max-width: 68ch;
+    margin-bottom: var(--space-base);
+  }
+  .reduction strong {
+    color: var(--colour-ink);
+  }
   .meta {
     font-size: 13px;
     color: var(--colour-muted);

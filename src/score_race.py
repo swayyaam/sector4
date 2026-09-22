@@ -60,22 +60,32 @@ def _season_of(race_id: int) -> int:
     return int(races.loc[races["raceId"] == race_id, "year"].iloc[0])
 
 
-def baseline_probabilities(race_id: int) -> pd.Series:
-    """The qualifying-order baseline, fitted only on races before this one.
+# Each snapshot is judged against a baseline that sees what it sees. Scoring a
+# pre-weekend prediction against qualifying order would measure it on
+# information it does not have; championship order is the fair comparison for a
+# model that is, in effect, a standings model.
+BASELINE_FOR = {F.PRE: "championship order", F.POST: "qualifying order"}
 
-    Recomputed from scratch each time rather than cached, so the number beside
-    the model on the track record is produced by exactly the code in
+
+def baseline_probabilities(race_id: int) -> dict[str, dict]:
+    """Every baseline's score on this race, fitted only on races before it.
+
+    Recomputed from scratch each time rather than cached, so the numbers beside
+    the model on the track record are produced by exactly the code in
     src/baselines.py and cannot drift from it.
     """
     # eval_from only controls which races are scored, never what the prior has
     # observed -- run() walks the whole history in order either way. Scoring
     # one season is the cheap way to reach this race's number.
     _, extra = B.run(eval_from=_season_of(race_id))
-    prior = extra["scores"]
-    for row in prior["qualifying order"]._rows:
-        if int(row["raceId"]) == race_id:
-            return row
-    raise SystemExit(f"the baseline did not score raceId {race_id}")
+    out = {}
+    for name, score in extra["scores"].items():
+        for row in score._rows:
+            if int(row["raceId"]) == race_id:
+                out[name] = row
+    if not out:
+        raise SystemExit(f"no baseline scored raceId {race_id}")
+    return out
 
 
 def score_one(p: pd.Series, winner: int, podium: set[int], race_id: int) -> dict:
@@ -112,7 +122,7 @@ def main() -> int:
 
     ledger = json.loads(LEDGER.read_text()) if LEDGER.exists() else {"races": []}
     already = {(r["season"], r["round"], r["snapshot"]) for r in ledger["races"]}
-    bar = baseline_probabilities(race_id)
+    bars = baseline_probabilities(race_id)
     written = 0
 
     for snapshot in (F.PRE, F.POST):
@@ -142,11 +152,21 @@ def main() -> int:
             "data_version": pred["data_version"],
             "prediction_sha256": before,
             "model": model_score,
-            "baseline_qualifying_order": {
-                "log_loss": round(float(bar["log_loss"]), 6),
-                "brier": round(float(bar["brier"]), 6),
-                "winner_hit": round(float(bar["winner_hit"]), 4),
-                "podium_hits": round(float(bar["podium_hits"]), 4),
+            "baseline": {
+                "name": BASELINE_FOR[snapshot],
+                "log_loss": round(float(bars[BASELINE_FOR[snapshot]]["log_loss"]), 6),
+                "brier": round(float(bars[BASELINE_FOR[snapshot]]["brier"]), 6),
+                "winner_hit": round(float(bars[BASELINE_FOR[snapshot]]["winner_hit"]), 4),
+                "podium_hits": round(float(bars[BASELINE_FOR[snapshot]]["podium_hits"]), 4),
+            },
+            # Every baseline, so the track record can show more than one and a
+            # later question does not need a rescore.
+            "all_baselines": {
+                name: {"log_loss": round(float(r["log_loss"]), 6),
+                       "brier": round(float(r["brier"]), 6),
+                       "winner_hit": round(float(r["winner_hit"]), 4),
+                       "podium_hits": round(float(r["podium_hits"]), 4)}
+                for name, r in bars.items()
             },
             "winner_driverId": winner, "podium_driverIds": sorted(podium),
             "starters": int(len(rows)),
@@ -170,7 +190,7 @@ def main() -> int:
         if before != after:
             raise SystemExit(f"FATAL: {path} changed during scoring. Predictions are immutable.")
         print(f"  {snapshot}: model log loss {model_score['log_loss']:.4f}  "
-              f"baseline {entry['baseline_qualifying_order']['log_loss']:.4f}")
+              f"vs {entry['baseline']['name']} {entry['baseline']['log_loss']:.4f}")
 
     if written:
         ledger["races"].sort(key=lambda r: (r["season"], r["round"], r["snapshot"]))

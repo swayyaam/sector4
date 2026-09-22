@@ -63,6 +63,15 @@ def test_probabilities_satisfy_the_published_schema(prediction):
 
 
 @needs_data
+def test_every_driver_has_a_team(prediction):
+    """Without it there is no team name, no colour and nothing to group a
+    garage by, and the site's validator rejects the file outright."""
+    _, _, pred = prediction
+    for d in pred["drivers"]:
+        assert d["team_entity_id"], f"driver {d['driverId']} has no team"
+
+
+@needs_data
 def test_provenance_is_recorded(prediction):
     """A reader a year from now has to be able to tell which model made this."""
     _, _, pred = prediction
@@ -120,8 +129,12 @@ def test_the_ledger_records_the_baseline_beside_the_model(prediction, monkeypatc
     ledger = json.loads((out / "track_record.json").read_text())
     assert ledger["races"], "nothing was appended"
     entry = ledger["races"][0]
-    for side in ("model", "baseline_qualifying_order"):
-        assert set(entry[side]) == {"log_loss", "brier", "winner_hit", "podium_hits"}
+    assert set(entry["model"]) == {"log_loss", "brier", "winner_hit", "podium_hits"}
+    assert set(entry["baseline"]) == {"name", "log_loss", "brier", "winner_hit", "podium_hits"}
+    # Each snapshot is judged against a baseline that sees what it sees.
+    import score_race as S2
+    assert entry["baseline"]["name"] == S2.BASELINE_FOR[entry["snapshot"]]
+    assert "championship order" in entry["all_baselines"]
     assert entry["prediction_sha256"]
     assert entry["predicted_at"] < entry["scored_at"], "scored before it was predicted"
 
@@ -156,3 +169,14 @@ def test_predictions_are_never_overwritten(prediction, monkeypatch):
     with pytest.raises(SystemExit, match="never overwritten"):
         P.main()
     assert path.exists()
+
+
+@needs_data
+def test_dnf_is_a_real_probability(prediction):
+    """A published zero would claim no car can retire. The diagnostic model
+    classes fit only the targets the scorer needs and returned exactly that."""
+    _, _, pred = prediction
+    dnf = [d["p_dnf"] for d in pred["drivers"]]
+    assert max(dnf) > 0.01, "every DNF probability is zero"
+    assert sum(dnf) > 0.5, f"the whole field sums to {sum(dnf):.3f} retirements"
+    assert all(d < 0.9 for d in dnf)
