@@ -26,3 +26,6 @@ web/node_modules/
 web/dist/
 web/.astro/
 .DS_Store
+
+# Feature frames (derived from data/processed + data/enriched, rebuildable)
+data/features/

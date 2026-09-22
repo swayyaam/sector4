@@ -143,8 +143,25 @@ export const driverPredictionSchema = z.object({
   top_factors: z.array(topFactorSchema).max(6),
 });
 
+/**
+ * What the qualifying-order baseline scored on the same race.
+ *
+ * Shown beside the model's own number on the track record, because a log loss
+ * with nothing to compare it against tells a reader nothing, and because the
+ * model has no out-of-sample evidence that it beats this baseline. Letting
+ * people see both is more honest than any sentence we could write.
+ */
+export const baselineScoreSchema = z.object({
+  name: z.string().min(1),
+  log_loss: z.number().min(0),
+  brier: z.number().min(0).max(2),
+  winner_hit: z.number().min(0).max(1),
+  podium_hits: z.number().min(0).max(3),
+});
+
 export const raceResultSchema = z.object({
   scored_at: isoDateTime,
+  baseline: baselineScoreSchema.nullable().default(null),
   drivers: z
     .array(
       z.object({
@@ -294,6 +311,7 @@ export type SiteMeta = z.infer<typeof siteMetaSchema>;
 export type Driver = z.infer<typeof driverSchema>;
 export type Team = z.infer<typeof teamSchema>;
 export type Race = z.infer<typeof raceSchema>;
+export type BaselineScore = z.infer<typeof baselineScoreSchema>;
 export type Circuit = z.infer<typeof circuitSchema>;
 
 /**

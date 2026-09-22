@@ -1111,6 +1111,13 @@
     }
   ],
   "result": {
+    "baseline": {
+      "name": "qualifying order",
+      "log_loss": 2.249576,
+      "brier": 0.841022,
+      "winner_hit": 0,
+      "podium_hits": 2
+    },
     "scored_at": "2026-08-23T16:00:00Z",
     "drivers": [
       {

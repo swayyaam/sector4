@@ -20,6 +20,17 @@ const podiums = scored.reduce((a, p) => a + p.result!.podium_hits, 0);
 const meanLogLoss = scored.reduce((a, p) => a + p.result!.log_loss, 0) / scored.length;
 const meanBrier = scored.reduce((a, p) => a + p.result!.brier, 0) / scored.length;
 
+// The baseline beside the model on every race, and in aggregate. A log loss
+// with nothing to compare it against tells a reader nothing at all.
+const withBaseline = scored.filter((p) => p.result!.baseline !== null);
+const baselineRaces = withBaseline.length;
+const meanBaseline = baselineRaces
+  ? withBaseline.reduce((a, p) => a + p.result!.baseline!.log_loss, 0) / baselineRaces
+  : 0;
+const modelBetter = withBaseline.filter(
+  (p) => p.result!.log_loss < p.result!.baseline!.log_loss,
+).length;
+
 // A field of n drivers picked uniformly at random gives -ln(1/n) per race.
 // Printed beside the model's own number because a log loss on its own says
 // nothing about whether the model is any good.
@@ -74,7 +85,30 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
       <p class="note">
         Picking a winner uniformly at random from a {meanField.toFixed(0)}-driver field scores a log
         loss of {score(uniformLogLoss)}. Lower is better, and beating that number is the floor, not
-        the goal. <a href="/methodology/">How the scores are computed</a>.
+        the goal.
+      </p>
+      <dl class="summary">
+        <div>
+          <dt>Model, mean log loss</dt>
+          <dd class="num">{score(meanLogLoss)}</dd>
+        </div>
+        <div>
+          <dt>Baseline, mean log loss</dt>
+          <dd class="num">{baselineRaces ? score(meanBaseline) : "—"}</dd>
+        </div>
+        <div>
+          <dt>Races the model won</dt>
+          <dd class="num">
+            {modelBetter} of {baselineRaces}
+          </dd>
+        </div>
+      </dl>
+      <p class="note">
+        The baseline is <strong>qualifying order</strong>: the historical chance of winning from
+        each grid slot, and nothing else. It is shown on every race below so you can judge for
+        yourself whether the model is adding anything.{" "}
+        <strong>There is no out-of-sample evidence that it beats this baseline.</strong>{" "}
+        <a href="/methodology/">Why, and what that means</a>.
       </p>
     </div>
   </section>

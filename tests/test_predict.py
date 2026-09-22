@@ -1,0 +1,158 @@
+"""Tests for the live prediction pipeline.
+
+The property that matters most is immutability. A track record is only worth
+reading if the predictions in it could not have been edited after the result
+was known, so the scorer is tested to leave the prediction file byte-identical
+and to refuse to score the same race twice.
+"""
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+import warnings
+from pathlib import Path
+
+import pytest
+
+warnings.filterwarnings("ignore")
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+DATA = ROOT / "data" / "processed"
+needs_data = pytest.mark.skipif(
+    not (DATA / "results.csv").exists(),
+    reason="the full dataset is gitignored; these run locally and before a release",
+)
+
+
+def _run(script: str, *args: str, out_dir: Path) -> subprocess.CompletedProcess:
+    env = {**dict(__import__("os").environ), "SECTOR4_PREDICTIONS": str(out_dir)}
+    return subprocess.run([sys.executable, str(ROOT / "src" / script), *args],
+                          cwd=ROOT, capture_output=True, text=True, env=env)
+
+
+@pytest.fixture(scope="module")
+def prediction(tmp_path_factory):
+    """A real prediction for a completed race, written into a temp directory."""
+    import predict as P
+
+    out = tmp_path_factory.mktemp("predictions")
+    P.OUT = out
+    pred = P.build(2026, 14, "post_qualifying")
+    path = P.path_for(2026, 14, "post_qualifying")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(pred, indent=2) + "\n")
+    return out, path, pred
+
+
+# ----------------------------------------------------------------- the shape
+@needs_data
+def test_probabilities_satisfy_the_published_schema(prediction):
+    _, _, pred = prediction
+    ds = pred["drivers"]
+    n = len(ds)
+    assert sum(d["p_win"] for d in ds) == pytest.approx(1.0, abs=1e-9)
+    assert sum(d["p_podium"] for d in ds) == pytest.approx(min(3, n), abs=1e-9)
+    assert sum(d["p_top10"] for d in ds) == pytest.approx(min(10, n), abs=1e-9)
+    for d in ds:
+        assert d["p_win"] <= d["p_podium"] <= d["p_top10"]
+        assert len(d["position_distribution"]) == n
+        assert sum(d["position_distribution"]) == pytest.approx(1.0, abs=1e-9)
+        assert 0.0 <= d["p_dnf"] <= 1.0
+
+
+@needs_data
+def test_provenance_is_recorded(prediction):
+    """A reader a year from now has to be able to tell which model made this."""
+    _, _, pred = prediction
+    for key in ("model_version", "model_features", "data_version", "commit_sha",
+                "generated_at", "model_note", "training_races"):
+        assert pred.get(key), f"{key} is missing or empty"
+    assert pred["commit_sha"] != "unknown"
+    assert pred["is_mock"] is False
+    assert pred["result"] is None, "a fresh prediction carries no result"
+
+
+@needs_data
+def test_top_factors_are_weights_not_timing_values(prediction):
+    """Republishing a gap in milliseconds would be redistributing F1 timing
+    data. A normalised magnitude is a model output. See DATA_LICENSE.md."""
+    _, _, pred = prediction
+    for d in pred["drivers"]:
+        for f in d["top_factors"]:
+            assert 0.0 <= f["magnitude"] <= 1.0
+            assert f["direction"] in ("positive", "negative")
+            assert "ms" not in f["label"].lower()
+
+
+# ------------------------------------------------------------- immutability
+@needs_data
+def test_scoring_leaves_the_prediction_byte_identical(prediction, monkeypatch):
+    import predict as P
+    import score_race as S
+
+    out, path, _ = prediction
+    monkeypatch.setattr(P, "OUT", out)
+    monkeypatch.setattr(S, "OUT", out)
+    monkeypatch.setattr(S, "LEDGER", out / "track_record.json")
+    monkeypatch.setattr(S, "RESULTS_DIR", out / "results")
+
+    before = path.read_bytes()
+    monkeypatch.setattr(sys, "argv", ["score_race.py", "--season", "2026", "--round", "14"])
+    assert S.main() == 0
+    assert path.read_bytes() == before, "the scorer modified a prediction file"
+
+
+@needs_data
+def test_the_ledger_records_the_baseline_beside_the_model(prediction, monkeypatch):
+    import predict as P
+    import score_race as S
+
+    out, _, _ = prediction
+    monkeypatch.setattr(P, "OUT", out)
+    monkeypatch.setattr(S, "OUT", out)
+    monkeypatch.setattr(S, "LEDGER", out / "track_record.json")
+    monkeypatch.setattr(S, "RESULTS_DIR", out / "results")
+    monkeypatch.setattr(sys, "argv", ["score_race.py", "--season", "2026", "--round", "14"])
+    S.main()
+
+    ledger = json.loads((out / "track_record.json").read_text())
+    assert ledger["races"], "nothing was appended"
+    entry = ledger["races"][0]
+    for side in ("model", "baseline_qualifying_order"):
+        assert set(entry[side]) == {"log_loss", "brier", "winner_hit", "podium_hits"}
+    assert entry["prediction_sha256"]
+    assert entry["predicted_at"] < entry["scored_at"], "scored before it was predicted"
+
+
+@needs_data
+def test_a_race_is_not_scored_twice(prediction, monkeypatch):
+    import predict as P
+    import score_race as S
+
+    out, _, _ = prediction
+    monkeypatch.setattr(P, "OUT", out)
+    monkeypatch.setattr(S, "OUT", out)
+    monkeypatch.setattr(S, "LEDGER", out / "track_record.json")
+    monkeypatch.setattr(S, "RESULTS_DIR", out / "results")
+    monkeypatch.setattr(sys, "argv", ["score_race.py", "--season", "2026", "--round", "14"])
+    S.main()
+    n_first = len(json.loads((out / "track_record.json").read_text())["races"])
+    S.main()
+    n_second = len(json.loads((out / "track_record.json").read_text())["races"])
+    assert n_first == n_second, "re-running the scorer appended a duplicate"
+
+
+@needs_data
+def test_predictions_are_never_overwritten(prediction, monkeypatch):
+    import predict as P
+
+    out, path, _ = prediction
+    monkeypatch.setattr(P, "OUT", out)
+    monkeypatch.setattr(sys, "argv",
+                        ["predict.py", "--season", "2026", "--round", "14",
+                         "--snapshot", "post_qualifying"])
+    with pytest.raises(SystemExit, match="never overwritten"):
+        P.main()
+    assert path.exists()

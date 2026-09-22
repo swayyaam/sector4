@@ -24,21 +24,56 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
     </div>
   </section>
 
+  <section class="band">
+    <div class="wrap prose">
+      <h2>What the model is, and what it is not</h2>
+      <p>
+        The model is a logistic regression with <strong>four inputs</strong>: where the driver
+        qualified, their best practice lap relative to the fastest car, their championship points,
+        and their share of their team's points. Qualifying position enters as a smooth curve rather
+        than a straight line, because the gap between first and second is not the gap between
+        fifteenth and sixteenth.
+      </p>
+      <p>
+        Four inputs is not a simplification made for the sake of the explanation. Larger versions
+        were built and measured — nineteen features, twenty-two, thirty-three — and every one of
+        them scored worse. Circuit history, tyre data and driver-against-teammate form were all
+        tried, and all three made the predictions less accurate rather than more.
+      </p>
+      <p class="flag">
+        <strong>The model has not been shown to beat a simple baseline.</strong> The baseline is
+        qualifying order: the historical chance of winning from each grid slot, and nothing else.
+        Across 2019–2025 the model scored better, but that comparison is what chose the model, so it
+        flatters it. The one clean out-of-sample test — the 2026 season, held back from every
+        decision and scored once — was <strong>inconclusive</strong>. The model was ahead on
+        average, and well inside the range that fourteen races of a regulation-reset season cannot
+        separate from chance.
+      </p>
+      <p>
+        So this site does not claim that the model beats qualifying order. What it does claim is
+        that the probabilities are well calibrated — when it says 20%, that happens about one time
+        in five — and <a href="/track-record/">the track record</a> prints the baseline's score
+        beside the model's on every race, so the question is yours to settle rather than ours.
+      </p>
+    </div>
+  </section>
+
   {isMock && (
-    <section class="band">
+    <section class="band band-soft">
       <div class="wrap prose">
         <h2>What is running right now</h2>
         <p class="flag">
-          <strong>There is no model yet.</strong> Every probability on this site is sample data,
-          generated to exercise the layout. It is produced by a Plackett–Luce draw over a plausible
-          field and scored against invented results. It says nothing about any real race, past or
-          future.
+          <strong>The numbers on these pages are sample data, not the model's output.</strong> The
+          model described above exists and has been measured, but this site is still showing
+          probabilities generated to exercise the layout — a Plackett–Luce draw over a plausible
+          field, scored against invented results. They say nothing about any real race.
         </p>
         <p>
-          What does exist is the data foundation described below, and the scoring machinery that
-          will judge the model once there is one. This page describes both: what is built, and what
-          the predictions will be when they are real. The banner at the top of every page and the
-          label on every link preview come from the same flag, so neither can be forgotten.
+          Real predictions are being written one race at a time, each committed before the session
+          it predicts and scored afterwards in a separate step, so the record cannot be edited once
+          the result is known. This page will lose this notice when those reach the site. The banner
+          at the top of every page and the label on every link preview come from the same flag, so
+          neither can be forgotten.
         </p>
       </div>
     </section>
@@ -176,8 +211,9 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
       <p>
         A log loss means nothing without a reference, so{" "}
         <a href="/track-record/">the track record</a>
-        prints the score a uniform random pick over the same field would have got. Beating that is
-        the floor.
+        prints two of them: what a uniform random pick over the same field would have scored, which
+        is the floor, and what qualifying order scored, which is the bar. Both are computed the same
+        way as the model's own number, on the same race, from data available before it started.
       </p>
     </div>
   </section>

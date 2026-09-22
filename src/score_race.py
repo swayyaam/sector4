@@ -1,0 +1,186 @@
+"""Phase 2 Part E: score a committed prediction after the race.
+
+Run after a race completes and the incremental fetchers have brought in its
+result. It reads the prediction, scores it, scores the qualifying-order
+baseline on the same race, and appends both to the track record.
+
+**It never writes to a prediction file.** Results go to a separate file and to
+the ledger. A prediction that can be edited after the fact proves nothing, and
+the separation is visible in the git history: one commit before the session,
+one after.
+
+The prediction is matched on (season, round) rather than raceId, because an
+upcoming race has no raceId until it completes and the one recorded at
+prediction time is provisional.
+
+Usage:
+    python src/score_race.py --season 2026 --round 15
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import baselines as B  # noqa: E402
+import features as F  # noqa: E402
+from predict import OUT, ROOT, path_for  # noqa: E402
+
+LEDGER = OUT / "track_record.json"
+RESULTS_DIR = OUT / "results"
+
+
+def file_digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+
+
+def actual(season: int, rnd: int) -> tuple[int, pd.DataFrame]:
+    races = F._rd(F.PROCESSED / "races.csv")
+    got = races[(races["year"] == season) & (races["round"] == rnd)]
+    if got.empty:
+        raise SystemExit(f"{season} round {rnd} has no row in data/processed/races.csv yet. "
+                         "Run the incremental fetchers first.")
+    race_id = int(got.iloc[0]["raceId"])
+    res = F._rd(F.PROCESSED / "results.csv")
+    rows = res[(res["raceId"] == race_id) & (res["positionText"].astype(str) != "W")]
+    if rows.empty:
+        raise SystemExit(f"raceId {race_id} has no results yet")
+    return race_id, rows.sort_values("driverId").reset_index(drop=True)
+
+
+def _season_of(race_id: int) -> int:
+    races = F._rd(F.PROCESSED / "races.csv")
+    return int(races.loc[races["raceId"] == race_id, "year"].iloc[0])
+
+
+def baseline_probabilities(race_id: int) -> pd.Series:
+    """The qualifying-order baseline, fitted only on races before this one.
+
+    Recomputed from scratch each time rather than cached, so the number beside
+    the model on the track record is produced by exactly the code in
+    src/baselines.py and cannot drift from it.
+    """
+    # eval_from only controls which races are scored, never what the prior has
+    # observed -- run() walks the whole history in order either way. Scoring
+    # one season is the cheap way to reach this race's number.
+    _, extra = B.run(eval_from=_season_of(race_id))
+    prior = extra["scores"]
+    for row in prior["qualifying order"]._rows:
+        if int(row["raceId"]) == race_id:
+            return row
+    raise SystemExit(f"the baseline did not score raceId {race_id}")
+
+
+def score_one(p: pd.Series, winner: int, podium: set[int], race_id: int) -> dict:
+    s = B.Score()
+    s.add(p, winner, podium, race_id)
+    r = s._rows[0]
+    return {"log_loss": round(r["log_loss"], 6), "brier": round(r["brier"], 6),
+            "winner_hit": round(float(r["winner_hit"]), 4),
+            "podium_hits": round(float(r["podium_hits"]), 4)}
+
+
+def _display(path: Path) -> str:
+    """Repo-relative where possible, absolute otherwise. A temp directory in a
+    test is not under ROOT, and a cosmetic path should never crash a run."""
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--season", type=int, required=True)
+    ap.add_argument("--round", type=int, required=True)
+    args = ap.parse_args()
+
+    race_id, rows = actual(args.season, args.round)
+    won = rows[rows["positionText"].astype(str) == "1"]
+    if won.empty:
+        raise SystemExit("no classified winner; cannot score")
+    winner = int(won.iloc[0]["driverId"])
+    pos = pd.to_numeric(rows["positionOrder"], errors="coerce")
+    podium = set(rows.loc[pos <= 3, "driverId"].astype(int))
+
+    ledger = json.loads(LEDGER.read_text()) if LEDGER.exists() else {"races": []}
+    already = {(r["season"], r["round"], r["snapshot"]) for r in ledger["races"]}
+    bar = baseline_probabilities(race_id)
+    written = 0
+
+    for snapshot in (F.PRE, F.POST):
+        path = path_for(args.season, args.round, snapshot)
+        if not path.exists():
+            continue
+        key = (args.season, args.round, snapshot)
+        if key in already:
+            print(f"  {snapshot}: already scored, leaving it alone")
+            continue
+
+        before = file_digest(path)
+        pred = json.loads(path.read_text())
+        p = pd.Series({int(d["driverId"]): float(d["p_win"]) for d in pred["drivers"]})
+        # Drivers who were predicted but did not start are dropped, and the
+        # rest renormalised: scoring a driver who was never on the grid would
+        # punish the model for the entry list rather than for the prediction.
+        p = p[p.index.isin(rows["driverId"].astype(int))]
+        model_score = score_one(p, winner, podium, race_id)
+
+        entry = {
+            "season": args.season, "round": args.round, "race_id": race_id,
+            "race_name": pred.get("race_name"), "snapshot": snapshot,
+            "predicted_at": pred["generated_at"],
+            "scored_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "model_version": pred["model_version"], "commit_sha": pred["commit_sha"],
+            "data_version": pred["data_version"],
+            "prediction_sha256": before,
+            "model": model_score,
+            "baseline_qualifying_order": {
+                "log_loss": round(float(bar["log_loss"]), 6),
+                "brier": round(float(bar["brier"]), 6),
+                "winner_hit": round(float(bar["winner_hit"]), 4),
+                "podium_hits": round(float(bar["podium_hits"]), 4),
+            },
+            "winner_driverId": winner, "podium_driverIds": sorted(podium),
+            "starters": int(len(rows)),
+        }
+        ledger["races"].append(entry)
+        written += 1
+
+        RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+        (RESULTS_DIR / f"{args.season}-{args.round:02d}.json").write_text(
+            json.dumps({
+                "season": args.season, "round": args.round, "race_id": race_id,
+                "scored_at": entry["scored_at"],
+                "drivers": [{"driverId": int(r["driverId"]),
+                             "actual_position": None if str(r["positionText"]) == "R"
+                             else int(r["positionOrder"]),
+                             "status": str(r["positionText"])}
+                            for _, r in rows.iterrows()],
+            }, indent=2) + "\n")
+
+        after = file_digest(path)
+        if before != after:
+            raise SystemExit(f"FATAL: {path} changed during scoring. Predictions are immutable.")
+        print(f"  {snapshot}: model log loss {model_score['log_loss']:.4f}  "
+              f"baseline {entry['baseline_qualifying_order']['log_loss']:.4f}")
+
+    if written:
+        ledger["races"].sort(key=lambda r: (r["season"], r["round"], r["snapshot"]))
+        ledger["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        LEDGER.write_text(json.dumps(ledger, indent=2) + "\n")
+        print(f"  appended {written} entries -> {_display(LEDGER)}")
+    else:
+        print("  nothing new to score")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

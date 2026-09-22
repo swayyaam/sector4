@@ -61,6 +61,7 @@ mapping one identifier onto another.
 |---|---|
 | Phase 1 data: schema, coverage, era boundaries, corrections | [`DATA_REPORT.md`](DATA_REPORT.md) |
 | Phase 2 enrichment: FastF1 scope, cross-validation, gaps, tyre naming | [`ENRICHMENT_REPORT.md`](ENRICHMENT_REPORT.md) |
+| Phase 2 modelling: baselines, models, diagnostics, what to ship | [`MODEL_REPORT.md`](MODEL_REPORT.md) |
 | Web design system: tokens, contrast, components | [`DESIGN.md`](DESIGN.md) |
 | Licensing: code, data, and what may be published | [`DATA_LICENSE.md`](DATA_LICENSE.md) |
 
