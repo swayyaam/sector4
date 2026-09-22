@@ -279,10 +279,36 @@ const raceRefSchema = z.object({
   starts_at: isoDateTime,
 });
 
+/**
+ * Counts the methodology and data pages quote, produced by the pipeline.
+ *
+ * Here rather than written into a template because a figure typed by hand is a
+ * figure nobody notices going stale, and the project's rule is that every
+ * number on the site comes from validated data or the build fails.
+ */
+export const pipelineSummarySchema = z.object({
+  tables: z.record(
+    z.string(),
+    z.object({ rows: z.int().min(0), by_source: z.record(z.string(), z.int().min(0)) }),
+  ),
+  corrections: z.object({
+    total: z.int().min(0),
+    by_evidence: z.record(z.string(), z.int().min(0)),
+  }),
+  unresolved_conflicts: z.int().min(0),
+  validation: z.object({
+    passed: z.int().min(0).nullable(),
+    failed: z.int().min(0).nullable(),
+  }),
+  seasons: z.object({ first: z.int(), last: z.int() }),
+  enrichment_first_season: z.int(),
+});
+
 export const siteMetaSchema = z.object({
   data_version: z.string().min(1),
   generated_at: isoDateTime,
   is_mock: z.boolean(),
+  pipeline: pipelineSummarySchema.nullable().default(null),
   last_completed_race: raceRefSchema.nullable(),
   next_race: raceRefSchema
     .extend({
@@ -311,6 +337,7 @@ export type Reference = z.infer<typeof referenceSchema>;
 export type Prediction = z.infer<typeof predictionSchema>;
 export type DriverPrediction = z.infer<typeof driverPredictionSchema>;
 export type SiteMeta = z.infer<typeof siteMetaSchema>;
+export type PipelineSummary = z.infer<typeof pipelineSummarySchema>;
 export type Driver = z.infer<typeof driverSchema>;
 export type Team = z.infer<typeof teamSchema>;
 export type Race = z.infer<typeof raceSchema>;

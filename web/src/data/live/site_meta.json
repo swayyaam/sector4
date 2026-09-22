@@ -1,6 +1,6 @@
 {
   "data_version": "v0.1.1-data+20260921",
-  "generated_at": "2026-09-22T22:58:57Z",
+  "generated_at": "2026-09-22T23:07:29Z",
   "is_mock": false,
   "last_completed_race": null,
   "next_race": {
@@ -33,5 +33,61 @@
         "starts_at": "2026-09-26T11:00:00Z"
       }
     ]
+  },
+  "pipeline": {
+    "tables": {
+      "races": {
+        "rows": 1163,
+        "by_source": {
+          "kaggle": 1125,
+          "jolpica": 38
+        }
+      },
+      "results": {
+        "rows": 27546,
+        "by_source": {
+          "kaggle": 26759,
+          "jolpica": 787
+        }
+      },
+      "qualifying": {
+        "rows": 11276,
+        "by_source": {
+          "kaggle": 10494,
+          "jolpica": 782
+        }
+      },
+      "lap_times": {
+        "rows": 631961,
+        "by_source": {
+          "kaggle": 589081,
+          "jolpica": 42880
+        }
+      },
+      "pit_stops": {
+        "rows": 12747,
+        "by_source": {
+          "kaggle": 11371,
+          "jolpica": 1376
+        }
+      }
+    },
+    "corrections": {
+      "total": 135,
+      "by_evidence": {
+        "official": 122,
+        "internal": 13
+      }
+    },
+    "unresolved_conflicts": 0,
+    "validation": {
+      "passed": 69,
+      "failed": 0
+    },
+    "seasons": {
+      "first": 1950,
+      "last": 2026
+    },
+    "enrichment_first_season": 2018
   }
 }
