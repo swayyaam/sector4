@@ -6,16 +6,17 @@ description: An analysis of Mobbin's design language — a gallery-white, monoch
 colors:
   primary: "#141414"
   on-primary: "#ffffff"
+  on-primary-soft: "#adadad"
   ink: "#141414"
   ink-soft: "#262626"
-  text-muted: "#707070"
-  text-faint: "#adadad"
+  text-muted: "#5c5c5c"
+  text-faint: "#6b6b6b"
   canvas: "#ffffff"
   canvas-soft: "#f3f3f3"
   field: "#f0f0f0"
   hairline-soft: "#f0f0f0"
   hairline: "#e0e0e0"
-  accent: "#0066ff"
+  accent: "#0060f0"
 
 typography:
   display:
@@ -107,6 +108,17 @@ spacing:
   xxl: 48px
   section: 80px
   section-lg: 120px
+
+motion:
+  quick: 120ms
+  base: 200ms
+  enter: 360ms
+  fill: 700ms
+  stagger: 30ms
+  stagger-steps: 12
+  rise: 6px
+  ease-out: "cubic-bezier(0.2, 0, 0, 1)"
+  ease-standard: "cubic-bezier(0.4, 0, 0.2, 1)"
 
 components:
   nav-pill:
@@ -281,7 +293,7 @@ Mobbin is a reference library of real product interfaces, and its own interface 
 
 The geometry does the brand work that color refuses to do. Every interactive element is a stadium pill (`{rounded.full}`): the floating navigation bar, every button, the segmented billing toggle, the overlay badges. Containers sit at a calm `{rounded.md}` (24px), media tiles at `{rounded.sm}` (16px), and app icons render as iOS-style squircles at 30% corner radius. Type is set in Saans at deliberately non-standard variable weights — a chunky 652 for every heading, a bookish 456 for text, an airy 300 for hero subtitles — which gives the monochrome pages a strong typographic voice without a single decorative flourish.
 
-One color is allowed to interrupt: an electric blue accent (`{colors.accent}` — #0066ff), used exclusively for commercial signals — the "Popular" plan badge and the yearly-savings callout on pricing. Its scarcity is the point; when blue appears, it is asking for a decision.
+One color is allowed to interrupt: an electric blue accent (`{colors.accent}` — #0060f0), used exclusively for commercial signals — the "Popular" plan badge and the yearly-savings callout on pricing. Its scarcity is the point; when blue appears, it is asking for a decision.
 
 **Key Characteristics:**
 - Gallery-white monochrome palette — `{colors.ink}` on `{colors.canvas}`, zero brand chroma outside the single `{colors.accent}` blue
@@ -298,7 +310,7 @@ Source pages: home, pricing, awards, signup.
 
 ### Brand & Accent
 - **Ink Black** (`{colors.primary}` — #141414): The brand color. Fills every primary CTA pill, the footer band, and all display typography. Mobbin's identity is this near-black, softened just off pure black to sit comfortably next to photography.
-- **Electric Blue** (`{colors.accent}` — #0066ff): The only chromatic accent in the system. Reserved for commercial emphasis — the "Popular" pricing badge and savings callouts. Never used decoratively, never used for CTAs.
+- **Electric Blue** (`{colors.accent}` — #0060f0): The only chromatic accent in the system. Darkened from #0066ff, which fell to 4.24:1 on `{colors.field}`; the hue is unchanged. Reserved for commercial emphasis — the "Popular" pricing badge and savings callouts. Never used decoratively, never used for CTAs.
 
 ### Surface
 - **Canvas** (`{colors.canvas}` — #ffffff): Default page and card background across all pages.
@@ -310,8 +322,9 @@ Source pages: home, pricing, awards, signup.
 ### Text
 - **Ink** (`{colors.ink}` — #141414): Headings, body copy, and nav links.
 - **Soft Ink** (`{colors.ink-soft}` — #262626): Slightly lifted dark used for secondary lockups and the awards wordmark.
-- **Muted** (`{colors.text-muted}` — #707070): Secondary copy — supporting paragraphs, plan descriptions, vote counts, underlined inline links.
-- **Faint** (`{colors.text-faint}` — #adadad): Tertiary text — placeholders, de-emphasized footer links, fine print.
+- **Muted** (`{colors.text-muted}` — #5c5c5c): Darkened from #707070, which failed AA on both tints (4.46:1 on `{colors.canvas-soft}`, 4.35:1 on `{colors.field}`). Secondary copy — supporting paragraphs, plan descriptions, vote counts, underlined inline links.
+- **Faint** (`{colors.text-faint}` — #6b6b6b): Darkened from #adadad, which failed AA on every light surface (2.24:1 on `{colors.canvas}`). Tertiary text — placeholders and fine print on light surfaces. Still lighter than `{colors.text-muted}`, so the ladder keeps its order.
+- **Faint on ink** (`{colors.on-primary-soft}` — #adadad): The original faint value, kept for the one place it passed: de-emphasized text on the `{colors.ink}` footer (8.21:1). Darkening `{colors.text-faint}` for light surfaces would have broken it there, so the footer has its own token.
 
 ### Semantic
 - The system ships no dedicated success/warning/error palette on its marketing surfaces; state communication stays within the monochrome ladder, with `{colors.accent}` as the sole positive-emphasis signal.
@@ -502,7 +515,7 @@ The system is essentially shadow-free: no drop shadows appear on any card, butto
 
 **`compare-table`** — the pricing comparison grid: feature rows divided by 1px `{colors.canvas-soft}` rules, the recommended plan's column washed in `{colors.canvas-soft}` with an inset ring edge
 
-**`footer`** — full-width `{colors.ink}` band with `{rounded.md}` top corners: white wordmark at display scale, tagline in `{colors.text-faint}`, two columns of `{colors.text-faint}` links that read in `{colors.on-primary}` for emphasis rows
+**`footer`** — full-width `{colors.ink}` band with `{rounded.md}` top corners: white wordmark at display scale, tagline in `{colors.on-primary-soft}`, two columns of `{colors.on-primary-soft}` links that read in `{colors.on-primary}` for emphasis rows
 
 ### Examples (illustrative)
 
@@ -560,3 +573,108 @@ The system is essentially shadow-free: no drop shadows appear on any card, butto
 - Don't put borders on form fields at rest — inputs are `{colors.field}` tint fills; the border appears only as the 2px ink focus ring.
 - Don't let full-color photography of people into the curator/juror grids; portraits are strictly black-and-white.
 - Don't square off pill geometry at small sizes — badges, chips, and toggles stay stadium-shaped.
+
+## Motion
+
+The reference is silent on motion beyond its marquees, and Sector 4 has no marquees. These tokens are proposed for this site and follow the system's temperament: quiet, quick and flat. Motion confirms that something responded or arrived. It never decorates.
+
+| Token | Value | Use |
+|---|---|---|
+| `{motion.quick}` | 120ms | Colour, fill and underline changes on hover and focus |
+| `{motion.base}` | 200ms | Moving between two states: the segmented-control pill, a disclosure opening |
+| `{motion.enter}` | 360ms | Rows, list items and panels arriving |
+| `{motion.fill}` | 700ms | Probability bars filling to their value |
+| `{motion.stagger}` | 30ms | Delay between successive rows in a list or table |
+| `{motion.stagger-steps}` | 12 | Rows after the twelfth arrive together, so no list takes longer than 360ms to settle |
+| `{motion.rise}` | 6px | Distance an arriving element travels upward |
+| `{motion.ease-out}` | cubic-bezier(0.2, 0, 0, 1) | Anything arriving or responding |
+| `{motion.ease-standard}` | cubic-bezier(0.4, 0, 0.2, 1) | Anything moving between two resting states |
+
+### Rules
+- **CSS only.** The single script on the site is the countdown, which already has to run; it adds a class when a value changes so CSS can animate the change. No animation library.
+- **Composited properties only.** Opacity, transform, colour, background colour and border colour. Never width, height, margin, padding, top or left, so no animation can move layout or register as layout shift. A bar fills by sliding a fixed-width fill in with `transform`, not by growing its width.
+- **Never on the largest element.** Page headings and hero leads do not animate in, so the largest contentful paint is never waiting on an animation.
+- **Once.** Entrance animations run on arrival and do not repeat on scroll.
+- **Reduced motion.** Under `prefers-reduced-motion: reduce` every duration and stagger becomes 0 and the rise distance becomes 0. Content arrives in its final state.
+- **Performance is the gate.** A piece of motion that costs Lighthouse score or script budget does not ship.
+
+### Where it is used
+- **Rows and cards:** hover and focus-within wash to the next step of the tint ladder in `{motion.quick}`. Link cards lift 2px as well, which is the only depth the system allows besides fills and hairlines. There are no shadows.
+- **Links:** the underline darkens from `{colors.text-muted}` to `{colors.ink}` and thickens from 1px to 2px.
+- **Tables and lists:** rows rise `{motion.rise}` and fade in, `{motion.stagger}` apart.
+- **Probability bars:** fill from the left over `{motion.fill}`, after their row has arrived.
+- **Snapshot toggle:** the active pill slides between options in `{motion.base}`; the incoming panel's rows and numbers rise into place.
+- **Countdown:** the value that changed rises into place each minute.
+
+## Accessibility
+
+Every text colour is measured on every surface it can appear on, and every pairing clears WCAG AA for normal text (4.5:1), including 12px labels. No pairing relies on the large-text allowance. `tests/contrast.test.ts` in `web/` recomputes each row from the shipped tokens and fails the build if a ratio is wrong or drops below AA, if a text colour is missing a surface it is declared to appear on, or if CSS sets text in a colour that has no text role here.
+
+### Roles
+
+| Token | Role | Appears on |
+|---|---|---|
+| `{colors.primary}` | surface | — |
+| `{colors.on-primary}` | text | primary, ink, ink-soft, accent |
+| `{colors.on-primary-soft}` | text | primary, ink, ink-soft |
+| `{colors.ink}` | text, surface | canvas, canvas-soft, field |
+| `{colors.ink-soft}` | text, surface | canvas, canvas-soft, field |
+| `{colors.text-muted}` | text | canvas, canvas-soft, field |
+| `{colors.text-faint}` | text | canvas, canvas-soft, field |
+| `{colors.canvas}` | surface | — |
+| `{colors.canvas-soft}` | surface | — |
+| `{colors.field}` | surface | — |
+| `{colors.hairline-soft}` | line | — |
+| `{colors.hairline}` | line | — |
+| `{colors.accent}` | text, surface | canvas, canvas-soft, field |
+
+`{colors.ink-soft}` is a surface only as the hover state of a `button-primary`. `{colors.field}` is a surface as the hover state of anything resting on `{colors.canvas-soft}`, which is why every light text colour is measured on it.
+
+### Contrast
+
+| Pairing | Ratio | Meets |
+|---|---|---|
+| `{colors.ink}` on `{colors.canvas}` | 18.42:1 | AA, AAA |
+| `{colors.ink}` on `{colors.canvas-soft}` | 16.60:1 | AA, AAA |
+| `{colors.ink}` on `{colors.field}` | 16.17:1 | AA, AAA |
+| `{colors.ink-soft}` on `{colors.canvas}` | 15.13:1 | AA, AAA |
+| `{colors.ink-soft}` on `{colors.canvas-soft}` | 13.64:1 | AA, AAA |
+| `{colors.ink-soft}` on `{colors.field}` | 13.28:1 | AA, AAA |
+| `{colors.text-muted}` on `{colors.canvas}` | 6.69:1 | AA |
+| `{colors.text-muted}` on `{colors.canvas-soft}` | 6.03:1 | AA |
+| `{colors.text-muted}` on `{colors.field}` | 5.87:1 | AA |
+| `{colors.text-faint}` on `{colors.canvas}` | 5.33:1 | AA |
+| `{colors.text-faint}` on `{colors.canvas-soft}` | 4.80:1 | AA |
+| `{colors.text-faint}` on `{colors.field}` | 4.68:1 | AA |
+| `{colors.accent}` on `{colors.canvas}` | 5.34:1 | AA |
+| `{colors.accent}` on `{colors.canvas-soft}` | 4.81:1 | AA |
+| `{colors.accent}` on `{colors.field}` | 4.69:1 | AA |
+| `{colors.on-primary}` on `{colors.primary}` | 18.42:1 | AA, AAA |
+| `{colors.on-primary}` on `{colors.ink}` | 18.42:1 | AA, AAA |
+| `{colors.on-primary}` on `{colors.ink-soft}` | 15.13:1 | AA, AAA |
+| `{colors.on-primary}` on `{colors.accent}` | 5.34:1 | AA |
+| `{colors.on-primary-soft}` on `{colors.primary}` | 8.21:1 | AA, AAA |
+| `{colors.on-primary-soft}` on `{colors.ink}` | 8.21:1 | AA, AAA |
+| `{colors.on-primary-soft}` on `{colors.ink-soft}` | 6.74:1 | AA |
+
+### Other rules
+- **Focus** is a 2px `{colors.ink}` ring offset 2px on light surfaces and a 2px `{colors.on-primary}` ring on the footer, on every interactive element. Both exceed the 3:1 non-text minimum on every surface they sit on.
+- **Links inside text** are the same colour as the text around them, so they are always underlined. Colour never carries meaning alone.
+- **Hairlines** are non-text. They only need to be visible, and `{colors.hairline}` is used wherever a line separates content rather than decorating it.
+- **Touch targets** are at least 44px tall: every pill button, nav link and segmented option.
+
+## Applied to Sector 4
+
+Where the reference describes Mobbin's own pages, this is how each rule lands on a site of race predictions. Where the reference is silent, the choice made is recorded here.
+
+- **Typeface.** Inter, per the reference's own note on substitutes: 652 → 650, 456 → 450, 300 and 600 unchanged, line-heights as specified. Self-hosted, latin subset only. Numbers use Inter with tabular figures; there is no second family, because the reference sets one typeface in every role.
+- **No imagery.** The reference lets screenshots and photography carry colour. Sector 4 carries no photography, logos or series imagery at all. Colour comes from data only: a team's colour appears as a small squircle marker (the 30% radius of `app-icon-squircle`) beside the team's name in text. It is never chrome, never a fill behind text and never text colour.
+- **The accent.** Sector 4 has no commercial signals. The accent marks the single time-sensitive thing on a page, the upcoming race, as a `badge-popular`-style chip. One per page at most. Never a button, never a link.
+- **Outcomes.** The reference has no success or error palette, and neither does this site. Hits and misses are written as words ("Called", "Missed", "Hit", "Miss") and deltas carry their sign. Nothing is green or red.
+- **Notices.** The preview banner and the reduced-snapshot note use a `{colors.canvas-soft}` fill with an ink label: a step on the tint ladder, not a warning colour.
+- **Links.** Inline links are ink and underlined. Standalone links are `button-pill-soft` pills; the one primary action on a page is a `button-primary` pill.
+- **Bands.** There are no dark section bands. The `{colors.ink}` footer is the only inverse surface on any page.
+- **Headlines.** Sentence case with a terminal period where the headline is a sentence ("Scored in public."). A race or circuit name used as a heading is a name, not a sentence, and takes no period.
+- **Tables.** `ex-data-table-cell` as specified: `{colors.canvas-soft}` header in `{typography.caption}`, body in `{typography.body-sm}`, `{spacing.sm} {spacing.md}` cells, `{colors.hairline}` row rules. Its description mentions a mono-caps eyebrow; the Don'ts forbid all-caps and a second family, and the Don'ts win.
+- **Charts.** Bars and distributions are `{colors.ink}` on a `{colors.field}` track, pill-ended. Every chart has its values in text beside it or in an accessible table; the drawing is decorative.
+- **Dark mode.** The reference defines none. The site is light only.
