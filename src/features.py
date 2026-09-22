@@ -145,12 +145,30 @@ FEATURES: tuple[Feature, ...] = (
     Feature("quali_reached_q3", "Qualifying", POST,
             "A hard threshold the raw position blurs across a grid of twenty.", nullable=False),
 
+    # --------------------------------------------------------- relative form
+    Feature("driver_vs_teammate_finish_mean_5", "Relative form", PRE,
+            "Absolute form conflates driver and car; the same car on the same day is the control."),
+    Feature("driver_vs_team_points_share_5", "Relative form", PRE,
+            "Which half of the garage is scoring, on a scale that survives a change of car."),
+    Feature("team_finish_pos_trend_5", "Relative form", PRE,
+            "Slope, not level: whether the car is improving or falling back, which upgrades and a new reg era decide."),
     # ----------------------------------------------------- tyre (2019 onward)
     Feature("practice_compounds_run", "Tyre", POST,
             "How much of the allocation was explored; null before 2019, where names are absolute."),
     Feature("practice_softest_long_run_gap_ms", "Tyre", POST,
             "Long-run pace on the softest compound run, comparable only under the relative scheme."),
 )
+
+# Considered and rejected, so the same idea is not re-proposed:
+#
+# circuit_grid_to_finish_correlation -- corr(grid, finish) in prior runnings at
+#   the circuit. Measured |r| = 0.958 against circuit_overtaking_difficulty on
+#   the full frame. It is the same quantity seen from the other side: where the
+#   grid predicts the finish, mean position change is small. Two collinear
+#   columns is noise, not information, so only the mean-absolute version stays.
+#
+# grid_position -- knowable before lights out, but there is no penalty feed, so
+#   it could only be trained on and not served. See ENRICHMENT_REPORT.md.
 
 FEATURE_NAMES: tuple[str, ...] = tuple(f.name for f in FEATURES)
 KEYS: tuple[str, ...] = ("raceId", "driverId", "snapshot")
@@ -280,6 +298,77 @@ def _rolling(prior: pd.DataFrame, key: str, n: int) -> pd.DataFrame:
             "_unused_pos": pos.mean(),
         })
     return pd.DataFrame(out)
+
+
+def _teammate_finish(prior: pd.DataFrame) -> pd.DataFrame:
+    """Each classified finish beside the mean of that driver's teammates'.
+
+    Restricted to races where both sides were classified: a comparison against
+    a teammate who retired on lap 1 measures the retirement, not the driver.
+    """
+    fin = prior[~prior["is_dnf"]].copy()
+    fin["pos"] = pd.to_numeric(fin["positionOrder"], errors="coerce")
+    fin = fin[fin["pos"].notna()]
+    g = fin.groupby(["raceId", "team_entity_id"])["pos"]
+    fin["_sum"], fin["_n"] = g.transform("sum"), g.transform("count")
+    fin = fin[fin["_n"] > 1]
+    fin["mate_pos"] = (fin["_sum"] - fin["pos"]) / (fin["_n"] - 1)
+    return fin[["raceId", "driverId", "order", "pos", "mate_pos", "team_entity_id", "points"]]
+
+
+def _relative_form(prior: pd.DataFrame, n: int) -> pd.DataFrame:
+    """Driver against the other side of the same garage, over the last n races."""
+    cols = ["driverId", "driver_vs_teammate_finish_mean_5", "driver_vs_team_points_share_5"]
+    if prior.empty:
+        return pd.DataFrame(columns=cols)
+    pairs = _teammate_finish(prior)
+    rows = []
+    for did, g in pairs.groupby("driverId", sort=False):
+        tail = g.sort_values("order").tail(n)
+        rows.append({"driverId": did,
+                     "driver_vs_teammate_finish_mean_5": float((tail["pos"] - tail["mate_pos"]).mean())
+                     if len(tail) else None})
+    out = pd.DataFrame(rows) if rows else pd.DataFrame(columns=["driverId", cols[1]])
+
+    # Points share uses every race, retirement included: a driver who retires
+    # scores nothing, and that is a fact about the season rather than noise.
+    pts = prior[["raceId", "driverId", "team_entity_id", "order"]].copy()
+    pts["points"] = pd.to_numeric(prior["points"], errors="coerce").fillna(0.0)
+    # Team total per race, joined on rather than recomputed per driver: the
+    # nested version was quadratic and dominated the test suite's runtime.
+    team_race = pts.groupby(["raceId", "team_entity_id"])["points"].sum().rename("team_points")
+    pts = pts.merge(team_race, on=["raceId", "team_entity_id"], how="left")
+    tail = (pts.sort_values("order").groupby("driverId", sort=False).tail(n)
+            .groupby("driverId")[["points", "team_points"]].sum().reset_index())
+    tail["driver_vs_team_points_share_5"] = (
+        tail["points"] / tail["team_points"]).where(tail["team_points"] > 0)
+    sh = tail[["driverId", "driver_vs_team_points_share_5"]]
+    return out.merge(sh, on="driverId", how="outer") if len(out) else sh
+
+
+def _team_trend(prior: pd.DataFrame, n: int) -> pd.DataFrame:
+    """Slope of the team's mean finishing position over its last n races.
+
+    Negative means improving, because a smaller position is a better one.
+    """
+    if prior.empty:
+        return pd.DataFrame(columns=["team_entity_id", "team_finish_pos_trend_5"])
+    fin = prior[~prior["is_dnf"]].copy()
+    fin["pos"] = pd.to_numeric(fin["positionOrder"], errors="coerce")
+    per_race = fin.groupby(["team_entity_id", "order"])["pos"].mean().reset_index()
+    rows = []
+    for team, g in per_race.groupby("team_entity_id", sort=False):
+        tail = g.sort_values("order").tail(n)
+        if len(tail) < 3:          # two points make a line through noise
+            rows.append({"team_entity_id": team, "team_finish_pos_trend_5": None})
+            continue
+        x = range(len(tail))
+        slope = pd.Series(list(x)).corr(tail["pos"].reset_index(drop=True))
+        sd_x, sd_y = pd.Series(list(x)).std(), tail["pos"].std()
+        rows.append({"team_entity_id": team,
+                     "team_finish_pos_trend_5": float(slope * sd_y / sd_x)
+                     if sd_x and sd_y and pd.notna(slope) else 0.0})
+    return pd.DataFrame(rows)
 
 
 def _standing_before(tables: dict[str, pd.DataFrame], race: pd.Series, table: str,
@@ -440,6 +529,10 @@ def build_race(tables: dict[str, pd.DataFrame], race: pd.Series, snapshot: str) 
         df = df.merge(short, on=key, how="left").merge(long, on=key, how="left")
     df["driver_races_started"] = pd.to_numeric(df["driver_races_started"], errors="coerce").fillna(0).astype(int)
     df = df.drop(columns=["team_races_started"], errors="ignore")
+
+    # ---- driver against the rest of their own garage
+    df = df.merge(_relative_form(prior, 5), on="driverId", how="left")
+    df = df.merge(_team_trend(prior, 5), on="team_entity_id", how="left")
 
     # ---- standings entering the race
     for table, key, prefix in (("driver_standings", "driverId", "driver"),
