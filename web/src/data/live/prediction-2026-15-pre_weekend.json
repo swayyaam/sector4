@@ -13,6 +13,32 @@
     "driver_vs_team_points_share_5"
   ],
   "model_note": "Reduction of the shipped specification to the features available before the cars run. Qualifying position and practice pace do not exist yet, so this is a weaker model and was not separately validated. The DNF probability is a separate logistic on the same features. See MODEL_REPORT.md.",
+  "revision": 2,
+  "published_commit": "7db2bb1d09dc8fcd4823c6d1504c2f90601229b4",
+  "revisions": [
+    {
+      "revision": 1,
+      "file": "15-pre_weekend.json",
+      "generated_at": "2026-09-22T20:14:47Z",
+      "published_commit": "e5aabd2ac32f7cb65379368213ff3ff5a7bf4153",
+      "supersedes": null,
+      "superseded_by": "15-pre_weekend-r2.json",
+      "reason": null,
+      "effective": false,
+      "late": false
+    },
+    {
+      "revision": 2,
+      "file": "15-pre_weekend-r2.json",
+      "generated_at": "2026-09-22T22:58:41Z",
+      "published_commit": "7db2bb1d09dc8fcd4823c6d1504c2f90601229b4",
+      "supersedes": "15-pre_weekend.json",
+      "superseded_by": null,
+      "reason": "Revision 1 was published with two defects. Every driver's team_entity_id was empty, because the team was never joined back onto the feature frame, so the file could not be rendered. Every p_dnf was 0.0, because the model classes used fit only the win and podium targets, which claimed no car could retire. Win, podium and top-10 probabilities and expected positions are identical between the two revisions to six decimal places; only team_entity_id and p_dnf differ. This revision was generated at 2026-09-22T22:58:41Z, before the first session at 2026-09-24T08:30Z. It was first committed by overwriting revision 1 in place on an unmerged branch, which broke the append-only rule; that was undone, revision 1 is restored exactly as published, and this is published beside it.",
+      "effective": true,
+      "late": false
+    }
+  ],
   "drivers": [
     {
       "driverId": 863,

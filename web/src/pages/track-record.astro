@@ -238,6 +238,15 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
                   {snapshots.map((s) => SNAPSHOT_LABEL[s.snapshot]).join(" and ")} ·{" "}
                   <time datetime={race.starts_at}>{formatUtc(race.starts_at)}</time>
                 </span>
+                {snapshots
+                  .filter((s) => s.revisions.length > 1)
+                  .map((s) => (
+                    <span class="meta">
+                      {SNAPSHOT_LABEL[s.snapshot]}: {s.revisions.length} revisions published,
+                      revision {s.revision} counts ·{" "}
+                      <a href={`/races/${race.season}/${race.slug}/`}>see why</a>
+                    </span>
+                  ))}
               </li>
             );
           })}
