@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 DATA = ROOT / "data" / "processed"
+ON_TIME = "2026-09-12T18:00:00Z"     # after R14 qualifying, before the race
+LATE = "2026-09-14T09:00:00Z"        # the morning after R14
 needs_data = pytest.mark.skipif(
     not (DATA / "results.csv").exists(),
     reason="the full dataset is gitignored; these run locally and before a release",
@@ -40,6 +42,10 @@ def prediction(tmp_path_factory):
     out = tmp_path_factory.mktemp("predictions")
     P.OUT = out
     pred = P.build(2026, 14, "post_qualifying")
+    # Built today, for a race that ran on the 13th. Stamped as if published the
+    # evening before, so the scorer's deadline rule treats it as on time; the
+    # rule itself is tested separately below.
+    pred["generated_at"] = ON_TIME
     path = P.path_for(2026, 14, "post_qualifying")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(pred, indent=2) + "\n")
@@ -180,3 +186,54 @@ def test_dnf_is_a_real_probability(prediction):
     assert max(dnf) > 0.01, "every DNF probability is zero"
     assert sum(dnf) > 0.5, f"the whole field sums to {sum(dnf):.3f} retirements"
     assert all(d < 0.9 for d in dnf)
+
+
+@needs_data
+def test_a_revision_published_after_the_race_is_refused(tmp_path, monkeypatch, capsys):
+    """A prediction timestamped after its session could have seen the session.
+    The scorer reports it and scores nothing."""
+    import predict as P
+    import score_race as S
+
+    pred = P.build(2026, 14, "post_qualifying")
+    pred["generated_at"] = LATE
+    monkeypatch.setattr(P, "OUT", tmp_path)
+    monkeypatch.setattr(S, "OUT", tmp_path)
+    monkeypatch.setattr(S, "LEDGER", tmp_path / "track_record.json")
+    monkeypatch.setattr(S, "RESULTS_DIR", tmp_path / "results")
+    path = P.path_for(2026, 14, "post_qualifying")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(pred, indent=2))
+
+    monkeypatch.setattr(sys, "argv", ["score_race.py", "--season", "2026", "--round", "14"])
+    S.main()
+    out = capsys.readouterr().out
+    assert "IGNORING" in out and "REFUSING" in out
+    assert not (tmp_path / "track_record.json").exists(), "a late prediction was scored"
+
+
+@needs_data
+def test_revising_needs_a_reason(prediction, monkeypatch):
+    import predict as P
+
+    out, _, _ = prediction
+    monkeypatch.setattr(P, "OUT", out)
+    monkeypatch.setattr(sys, "argv", ["predict.py", "--season", "2026", "--round", "14",
+                                      "--snapshot", "post_qualifying", "--revise"])
+    with pytest.raises(SystemExit, match="needs --reason"):
+        P.main()
+
+
+@needs_data
+def test_revising_after_the_deadline_is_refused(prediction, monkeypatch):
+    """R14 ran on the 13th; a revision now could not be scored, so none is written."""
+    import predict as P
+
+    out, _, _ = prediction
+    monkeypatch.setattr(P, "OUT", out)
+    monkeypatch.setattr(sys, "argv", ["predict.py", "--season", "2026", "--round", "14",
+                                      "--snapshot", "post_qualifying", "--revise",
+                                      "--reason", "test"])
+    with pytest.raises(SystemExit, match="deadline"):
+        P.main()
+    assert not P.path_for(2026, 14, "post_qualifying", 2).exists()

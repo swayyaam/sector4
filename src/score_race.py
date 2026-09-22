@@ -31,7 +31,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import baselines as B  # noqa: E402
 import features as F  # noqa: E402
-from predict import OUT, ROOT, path_for  # noqa: E402
+import revisions as REV  # noqa: E402
+from predict import OUT, ROOT  # noqa: E402
 
 LEDGER = OUT / "track_record.json"
 RESULTS_DIR = OUT / "results"
@@ -125,17 +126,31 @@ def main() -> int:
     bars = baseline_probabilities(race_id)
     written = 0
 
+    schedule = REV.sessions(args.season, args.round)
     for snapshot in (F.PRE, F.POST):
-        path = path_for(args.season, args.round, snapshot)
-        if not path.exists():
+        published = REV.revisions(args.season, args.round, snapshot, OUT)
+        if not published:
             continue
         key = (args.season, args.round, snapshot)
         if key in already:
             print(f"  {snapshot}: already scored, leaving it alone")
             continue
 
+        # The latest revision generated before the session started, and only
+        # that one. A revision timestamped after the deadline could have seen
+        # the session, so it is reported and never scored.
+        chosen, late = REV.effective(args.season, args.round, snapshot, OUT, schedule)
+        for rev, lpath, lpred in late:
+            print(f"  {snapshot}: IGNORING {lpath.name} -- generated {lpred['generated_at']}, "
+                  f"after the {REV.deadline(args.season, args.round, snapshot, schedule):%Y-%m-%dT%H:%MZ} "
+                  "deadline")
+        if chosen is None:
+            print(f"  {snapshot}: REFUSING to score -- no revision was published before the "
+                  "session started")
+            continue
+        revision, path, pred = chosen
+
         before = file_digest(path)
-        pred = json.loads(path.read_text())
         p = pd.Series({int(d["driverId"]): float(d["p_win"]) for d in pred["drivers"]})
         # Drivers who were predicted but did not start are dropped, and the
         # rest renormalised: scoring a driver who was never on the grid would
@@ -151,6 +166,9 @@ def main() -> int:
             "model_version": pred["model_version"], "commit_sha": pred["commit_sha"],
             "data_version": pred["data_version"],
             "prediction_sha256": before,
+            "revision": revision, "revision_file": path.name,
+            "revisions_published": len(published),
+            "ignored_late_revisions": [lp.name for _, lp, _ in late],
             "model": model_score,
             "baseline": {
                 "name": BASELINE_FOR[snapshot],

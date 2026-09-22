@@ -25,6 +25,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import features as F  # noqa: E402
+import revisions as REV  # noqa: E402
 from predict import OUT as PRED_DIR, upcoming_race  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -179,13 +180,46 @@ def build_reference(races_wanted: set[int], extra_circuits: set[int] = frozenset
             "circuits": out_circuits, "races": out_races}
 
 
-def site_prediction(pred: dict, race_id: int, result: dict | None) -> dict:
+def published_commit(path: Path) -> str | None:
+    """The commit that first added this file: the proof of when it was public.
+
+    generated_at is written by the program and could say anything; the commit
+    that introduced the file is recorded by git and pushed to a remote. The
+    site links to this one.
+    """
+    import subprocess
+
+    try:
+        rel = path.resolve().relative_to(ROOT).as_posix()
+        out = subprocess.run(["git", "log", "--diff-filter=A", "--format=%H", "--", rel],
+                             cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
+        return out[-1] if out else None
+    except Exception:
+        return None
+
+
+def revision_history(revs: list[tuple[int, Path, dict]], chosen_rev: int | None,
+                     late: set[int]) -> list[dict]:
+    return [{
+        "revision": rev, "file": path.name, "generated_at": pred["generated_at"],
+        "published_commit": published_commit(path),
+        "supersedes": pred.get("supersedes"), "superseded_by": pred.get("superseded_by"),
+        "reason": pred.get("revision_reason"),
+        "effective": rev == chosen_rev, "late": rev in late,
+    } for rev, path, pred in revs]
+
+
+def site_prediction(pred: dict, race_id: int, result: dict | None,
+                    path: Path | None = None, history: list[dict] | None = None) -> dict:
     return {
         "race_id": race_id, "season": pred["season"], "round": pred["round"],
         "snapshot": pred["snapshot"], "generated_at": pred["generated_at"],
         "model_version": pred["model_version"], "data_version": pred["data_version"],
         "commit_sha": pred["commit_sha"], "is_mock": False,
         "model_features": pred["model_features"], "model_note": pred["model_note"],
+        "revision": int(pred.get("revision", 1)),
+        "published_commit": published_commit(path) if path else None,
+        "revisions": history or [],
         "drivers": pred["drivers"], "result": result,
     }
 
@@ -197,9 +231,20 @@ def main() -> int:
     scored = {(e["season"], e["round"], e["snapshot"]): e for e in ledger["races"]}
 
     preds, wanted, upcoming = [], set(), {}
-    for path in sorted(PRED_DIR.glob("*/*.json")):
-        pred = json.loads(path.read_text())
-        season, rnd = pred["season"], pred["round"]
+    # One entry per race and snapshot: the revision that counts, carrying the
+    # history of every revision beside it. Listing each revision as its own
+    # prediction would put two pre-weekend calls on one race page.
+    groups = sorted({(int(path.parent.name), *REV.parse_name(path)[:2])
+                     for path in REV.all_prediction_files(PRED_DIR)})
+    for season, rnd, snapshot in groups:
+        revs = REV.revisions(season, rnd, snapshot, PRED_DIR)
+        chosen, late = REV.effective(season, rnd, snapshot, PRED_DIR)
+        if chosen is None:
+            print(f"  {season} R{rnd} {snapshot}: every revision is after the deadline; "
+                  "nothing on-time to show")
+            continue
+        chosen_rev, path, pred = chosen
+        history = revision_history(revs, chosen_rev, {r for r, _, _ in late})
         row = races[(races["year"] == season) & (races["round"] == rnd)]
         if row.empty:
             # Not run yet: the schedule supplies the race, and the provisional
@@ -223,7 +268,7 @@ def main() -> int:
                              **{k: entry["baseline"][k]
                                 for k in ("log_loss", "brier", "winner_hit", "podium_hits")}},
             }
-        preds.append(site_prediction(pred, race_id, result))
+        preds.append(site_prediction(pred, race_id, result, path, history))
 
     if not preds:
         print("no predictions can reach the site yet")
