@@ -154,3 +154,44 @@ def test_monte_carlo_orders_are_a_proper_distribution():
     assert p["win"].sum() == pytest.approx(1.0, abs=1e-6)
     assert (p["podium"] >= p["win"] - 1e-9).all(), "podium cannot be less likely than a win"
     assert (p["top10"] >= p["podium"] - 1e-9).all()
+
+
+def test_the_ranker_is_not_a_point_mass():
+    """Regression test for the in-sample temperature collapse.
+
+    Fitted on races the ranker had trained on, the temperature went to zero:
+    p_win reached 1.000 in most races and the actual winner was given exactly
+    zero in 55 of 166, a log loss of 7.57 against a 1.43 baseline. The failure
+    is silent in every discrimination metric -- the winner hit rate stayed at
+    52% -- so only the probabilities themselves reveal it.
+    """
+    df = _synthetic(n_races=60, n_drivers=10)
+    train, test = df[df["raceId"] < 1055], df[df["raceId"] == 1055]
+    p, dist = M.RankerMonteCarlo(["f1", "f2"], n_estimators=80, draws=4000,
+                                 calibration_races=10).fit_predict_full(train, test)
+    assert p["win"].max() < 0.99, f"collapsed to a point mass at {p['win'].max():.4f}"
+    assert p["win"].min() > 0, "a simulated zero is an infinite log loss waiting to happen"
+    assert (dist > 0).all().all(), "every cell of the distribution must be representable"
+
+
+def test_the_temperature_is_fitted_out_of_sample():
+    """The calibration races must not be in the ranker's training set."""
+    df = _synthetic(n_races=60, n_drivers=10)
+    train = df[df["raceId"] < 1055]
+    model = M.RankerMonteCarlo(["f1", "f2"], n_estimators=20, draws=500,
+                               calibration_races=10)
+    seen = {}
+    import lightgbm as lgb
+
+    real_fit = lgb.LGBMRanker.fit
+
+    def spy_fit(self, X, y, **kw):
+        seen["rows"] = len(X)
+        return real_fit(self, X, y, **kw)
+
+    lgb.LGBMRanker.fit = spy_fit
+    try:
+        model.fit_predict_full(train, df[df["raceId"] == 1055])
+    finally:
+        lgb.LGBMRanker.fit = real_fit
+    assert seen["rows"] < len(train), "the ranker trained on the calibration races too"

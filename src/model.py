@@ -182,11 +182,12 @@ class RankerMonteCarlo:
 
     name = "ranker+mc"
 
-    def __init__(self, cols: list[str], n_estimators: int = 300, draws: int = MC_DRAWS):
+    def __init__(self, cols: list[str], n_estimators: int = 300, draws: int = MC_DRAWS,
+                 calibration_races: int = 25):
         self.cols = cols
         self.n = n_estimators
         self.draws = draws
-        self._dnf = None
+        self.calibration_races = calibration_races
 
     @staticmethod
     def _log_loss_at(z: np.ndarray, groups: list[np.ndarray], winners: list[int],
@@ -227,7 +228,19 @@ class RankerMonteCarlo:
                          test: pd.DataFrame) -> tuple[dict[str, pd.Series], pd.DataFrame]:
         import lightgbm as lgb
 
-        tr = train.sort_values(["order", "raceId"])
+        ordered = train.sort_values(["order", "raceId"])
+        # The temperature has to be fitted on races the ranker did not see.
+        # Fitted in-sample it collapses toward zero, because a ranker puts the
+        # winner first on its own training data almost every time, and the
+        # likelihood is then maximised by making the distribution a point mass.
+        # That is exactly what happened: p_win hit 1.000 in most races and the
+        # actual winner was given exactly zero in 55 of 166, for a log loss of
+        # 7.57 against a 1.43 baseline.
+        race_order = ordered["raceId"].drop_duplicates().tolist()
+        n_hold = max(self.calibration_races, 1)
+        holdout = set(race_order[-n_hold:]) if len(race_order) > n_hold * 2 else set()
+        tr = ordered[~ordered["raceId"].isin(holdout)] if holdout else ordered
+        cal = ordered[ordered["raceId"].isin(holdout)] if holdout else ordered
         sizes = tr.groupby("raceId", sort=False).size().to_numpy()
         # lambdarank wants "bigger is better", so the finishing order is flipped
         # and clipped: the difference between 18th and 19th is not information.
@@ -238,7 +251,8 @@ class RankerMonteCarlo:
                                 random_state=RNG_SEED)
         ranker.fit(tr[self.cols].astype(float), rel, group=sizes)
 
-        temperature = self._fit_temperature(ranker.predict(tr[self.cols].astype(float)), tr)
+        temperature = self._fit_temperature(
+            ranker.predict(cal[self.cols].astype(float)), cal)
         z = ranker.predict(test[self.cols].astype(float)) / temperature
 
         rng = np.random.default_rng(RNG_SEED)
@@ -250,9 +264,12 @@ class RankerMonteCarlo:
         rank[rows, order] = np.arange(n)[None, :]               # 0 = winner
 
         ids = test["driverId"].to_numpy()
-        dist = pd.DataFrame(
-            [(rank[:, i] == k).mean() for i in range(n) for k in range(n)],
-        ).to_numpy().reshape(n, n)
+        counts = np.stack([np.bincount(rank[:, i], minlength=n) for i in range(n)])
+        # Laplace smoothing. Ten thousand draws cannot represent anything below
+        # one in ten thousand, and a simulated zero for a driver who then wins
+        # is an infinite log loss rather than a confident miss.
+        dist = (counts + 1.0) / (self.draws + n)
+        dist = dist / dist.sum(axis=1, keepdims=True)
         out = {
             "win": pd.Series(dist[:, 0], index=ids),
             "podium": pd.Series(dist[:, :3].sum(axis=1), index=ids),
