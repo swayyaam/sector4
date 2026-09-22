@@ -7,7 +7,6 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  buildDataset,
   checkReferentialIntegrity,
   parseOrThrow,
   predictionSchema,
@@ -15,6 +14,7 @@ import {
   siteMetaSchema,
 } from "../src/lib/schema";
 import {
+  buildDataset,
   driverById,
   driversByWinProbability,
   loadDataset,
@@ -114,6 +114,41 @@ describe("the shipped dataset", () => {
     const sorted = driversByWinProbability(p);
     for (let i = 1; i < sorted.length; i++) {
       expect(sorted[i - 1]!.p_win).toBeGreaterThanOrEqual(sorted[i]!.p_win);
+    }
+  });
+});
+
+describe("the fixture", () => {
+  // Loaded explicitly. loadDataset() prefers real pipeline output once it
+  // exists, so a test that reads it and then asserts something about the
+  // fixture is testing whichever happens to be present.
+  const data = buildDataset(MOCK_FILES);
+
+  it("has both snapshots for the next race and results for past ones", () => {
+    const next = data.meta.next_race!;
+    expect(data.predictions.filter((p) => p.race_id === next.race_id)).toHaveLength(2);
+    expect(scoredPredictions(data.predictions).length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("shows hits and misses, so the track record exercises both", () => {
+    const scored = scoredPredictions(data.predictions);
+    const hits = scored.filter((p) => p.result!.winner_hit).length;
+    expect(hits).toBeGreaterThan(0);
+    expect(hits).toBeLessThan(scored.length);
+  });
+
+  it("prefers the post-qualifying snapshot", () => {
+    const next = data.meta.next_race!;
+    expect(preferredSnapshot(data.predictions, next.race_id)?.snapshot).toBe("post_qualifying");
+  });
+
+  it("is flagged as sample data, which is what drives the banner", () => {
+    expect(data.isMock).toBe(true);
+  });
+
+  it("carries a baseline on every scored race", () => {
+    for (const p of scoredPredictions(data.predictions)) {
+      expect(p.result!.baseline).not.toBeNull();
     }
   });
 });
