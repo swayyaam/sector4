@@ -188,6 +188,9 @@ export const predictionSchema = z
     data_version: z.string().min(1),
     commit_sha: z.string().regex(/^[0-9a-f]{7,40}$/),
     is_mock: z.boolean().default(false),
+    /** What the model actually used, so a page can say so rather than imply it. */
+    model_features: z.array(z.string().min(1)).optional(),
+    model_note: z.string().min(1).optional(),
     drivers: z.array(driverPredictionSchema).min(1).max(30),
     result: raceResultSchema.nullable(),
   })

@@ -161,6 +161,23 @@ def top_factors(x: pd.DataFrame, cols: list[str], i: int) -> list[dict]:
     return sorted(out, key=lambda d: -d["magnitude"])[:4]
 
 
+def _fit_dnf(train: pd.DataFrame, test: pd.DataFrame, cols: list[str]) -> pd.Series:
+    """A logistic on the same features, for the retirement marginal."""
+    from sklearn.impute import SimpleImputer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    ids = test["driverId"].to_numpy()
+    y = train["dnf"].to_numpy()
+    if y.sum() < 20:
+        return pd.Series(float(y.mean()), index=ids)
+    pipe = make_pipeline(SimpleImputer(strategy="median"), StandardScaler(),
+                         LogisticRegression(max_iter=2000, C=0.5))
+    pipe.fit(train[cols].astype(float), y)
+    return pd.Series(pipe.predict_proba(test[cols].astype(float))[:, 1], index=ids)
+
+
 def build(season: int, rnd: int, snapshot: str) -> dict:
     tables = F.load_tables()
     race, completed = race_row(tables, season, rnd)
@@ -169,6 +186,14 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
     feats = F.build_race(tables, race, snapshot)
     if feats.empty:
         raise SystemExit(f"no entrants resolved for {season} round {rnd} at {snapshot}")
+    # build_race returns the keys and the features, and team_entity_id is
+    # neither, so it has to be joined back on. Without it a prediction cannot
+    # be rendered: no team name, no colour, nothing to group a garage by.
+    field = F.entrants(tables, race, snapshot)[["driverId", "team_entity_id"]]
+    feats = feats.merge(field, on="driverId", how="left")
+    missing = feats["team_entity_id"].isna().sum()
+    if missing:
+        raise SystemExit(f"{missing} drivers have no team_entity_id; refusing to publish")
 
     history = M.dataset(snapshot)
     train = history[history["order"] < int(race["order"])]
@@ -181,6 +206,13 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
     # says so rather than presenting the two as equivalent.
     model = D.SplineQuali(list(cols)) if "quali_position" in cols else D.Slim(list(cols))
     probs = model.fit_predict(train, feats)
+
+    # Those classes fit only the targets the scorer needs, so p_dnf comes back
+    # as zero. A published zero would be a claim that no car can retire, which
+    # is worse than a rough number. It is fitted here on the same features,
+    # separately, and MODEL_REPORT.md validated only p_win -- so this marginal
+    # is stated as unvalidated rather than implied to carry the same weight.
+    probs["dnf"] = _fit_dnf(train, feats, list(cols))
 
     ids = feats["driverId"].astype(int).to_numpy()
     p_win = np.clip(probs["win"].reindex(ids).to_numpy(dtype=float), 1e-9, None)
@@ -203,8 +235,7 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
         pt = max(top10[i], pp)
         drivers.append({
             "driverId": int(did),
-            "team_entity_id": str(feats.iloc[i]["team_entity_id"])
-            if "team_entity_id" in feats.columns else "",
+            "team_entity_id": str(feats.iloc[i]["team_entity_id"]),
             "p_win": pw, "p_podium": pp, "p_top10": pt,
             "p_dnf": round(float(p_dnf[i]), 6),
             "expected_position": round(float((dist[i] * np.arange(1, n + 1)).sum()), 6),
@@ -221,12 +252,15 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
         "model_version": MODEL_VERSION,
         "model_features": list(cols),
         "model_note": (
-            "Shipped specification, validated at this snapshot."
+            "Shipped specification, validated at this snapshot. The DNF "
+            "probability is a separate logistic on the same features and was "
+            "not part of that validation."
             if snapshot == F.POST else
             "Reduction of the shipped specification to the features available "
             "before the cars run. Qualifying position and practice pace do not "
             "exist yet, so this is a weaker model and was not separately "
-            "validated. See MODEL_REPORT.md."
+            "validated. The DNF probability is a separate logistic on the same "
+            "features. See MODEL_REPORT.md."
         ),
         "data_version": data_version(),
         "commit_sha": commit_sha(),
