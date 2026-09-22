@@ -1,0 +1,142 @@
+statusId,status,source
+1,Finished,kaggle
+2,Disqualified,kaggle
+3,Accident,kaggle
+4,Collision,kaggle
+5,Engine,kaggle
+6,Gearbox,kaggle
+7,Transmission,kaggle
+8,Clutch,kaggle
+9,Hydraulics,kaggle
+10,Electrical,kaggle
+11,+1 Lap,kaggle
+12,+2 Laps,kaggle
+13,+3 Laps,kaggle
+14,+4 Laps,kaggle
+15,+5 Laps,kaggle
+16,+6 Laps,kaggle
+17,+7 Laps,kaggle
+18,+8 Laps,kaggle
+19,+9 Laps,kaggle
+20,Spun off,kaggle
+21,Radiator,kaggle
+22,Suspension,kaggle
+23,Brakes,kaggle
+24,Differential,kaggle
+25,Overheating,kaggle
+26,Mechanical,kaggle
+27,Tyre,kaggle
+28,Driver Seat,kaggle
+29,Puncture,kaggle
+30,Driveshaft,kaggle
+31,Retired,kaggle
+32,Fuel pressure,kaggle
+33,Front wing,kaggle
+34,Water pressure,kaggle
+35,Refuelling,kaggle
+36,Wheel,kaggle
+37,Throttle,kaggle
+38,Steering,kaggle
+39,Technical,kaggle
+40,Electronics,kaggle
+41,Broken wing,kaggle
+42,Heat shield fire,kaggle
+43,Exhaust,kaggle
+44,Oil leak,kaggle
+45,+11 Laps,kaggle
+46,Wheel rim,kaggle
+47,Water leak,kaggle
+48,Fuel pump,kaggle
+49,Track rod,kaggle
+50,+17 Laps,kaggle
+51,Oil pressure,kaggle
+128,+42 Laps,kaggle
+53,+13 Laps,kaggle
+54,Withdrew,kaggle
+55,+12 Laps,kaggle
+56,Engine fire,kaggle
+129,Engine misfire,kaggle
+58,+26 Laps,kaggle
+59,Tyre puncture,kaggle
+60,Out of fuel,kaggle
+61,Wheel nut,kaggle
+62,Not classified,kaggle
+63,Pneumatics,kaggle
+64,Handling,kaggle
+65,Rear wing,kaggle
+66,Fire,kaggle
+67,Wheel bearing,kaggle
+68,Physical,kaggle
+69,Fuel system,kaggle
+70,Oil line,kaggle
+71,Fuel rig,kaggle
+72,Launch control,kaggle
+73,Injured,kaggle
+74,Fuel,kaggle
+75,Power loss,kaggle
+76,Vibrations,kaggle
+77,107% Rule,kaggle
+78,Safety,kaggle
+79,Drivetrain,kaggle
+80,Ignition,kaggle
+81,Did not qualify,kaggle
+82,Injury,kaggle
+83,Chassis,kaggle
+84,Battery,kaggle
+85,Stalled,kaggle
+86,Halfshaft,kaggle
+87,Crankshaft,kaggle
+88,+10 Laps,kaggle
+89,Safety concerns,kaggle
+90,Not restarted,kaggle
+91,Alternator,kaggle
+92,Underweight,kaggle
+93,Safety belt,kaggle
+94,Oil pump,kaggle
+95,Fuel leak,kaggle
+96,Excluded,kaggle
+97,Did not prequalify,kaggle
+98,Injection,kaggle
+99,Distributor,kaggle
+100,Driver unwell,kaggle
+101,Turbo,kaggle
+102,CV joint,kaggle
+103,Water pump,kaggle
+104,Fatal accident,kaggle
+105,Spark plugs,kaggle
+106,Fuel pipe,kaggle
+107,Eye injury,kaggle
+108,Oil pipe,kaggle
+109,Axle,kaggle
+110,Water pipe,kaggle
+111,+14 Laps,kaggle
+112,+15 Laps,kaggle
+113,+25 Laps,kaggle
+114,+18 Laps,kaggle
+115,+22 Laps,kaggle
+116,+16 Laps,kaggle
+117,+24 Laps,kaggle
+118,+29 Laps,kaggle
+119,+23 Laps,kaggle
+120,+21 Laps,kaggle
+121,Magneto,kaggle
+122,+44 Laps,kaggle
+123,+30 Laps,kaggle
+124,+19 Laps,kaggle
+125,+46 Laps,kaggle
+126,Supercharger,kaggle
+127,+20 Laps,kaggle
+130,Collision damage,kaggle
+131,Power Unit,kaggle
+132,ERS,kaggle
+133,+49 Laps,kaggle
+134,+38 Laps,kaggle
+135,Brake duct,kaggle
+136,Seat,kaggle
+137,Damage,kaggle
+138,Debris,kaggle
+139,Illness,kaggle
+140,Undertray,kaggle
+141,Cooling system,kaggle
+142,Did not start,jolpica
+143,Lapped,jolpica

@@ -1,0 +1,2 @@
+resultId,raceId,driverId,constructorId,number,grid,position,positionText,positionOrder,points,laps,time,milliseconds,fastestLap,rank,fastestLapTime,fastestLapSpeed,statusId,source,pit_lane_start,lap_data_suspect,grid_slot,elapsed_ms
+27436,1177,832,3,55.0,14,17.0,17,17,0.0,51,,,51.0,7.0,1:32.734,,143,jolpica,False,True,14.0,5235726.0

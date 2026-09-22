@@ -8,8 +8,10 @@ Design notes
 * **Reverse chronological** (2026 back to 2018): if the run is interrupted, what
   landed is the most relevant slice.
 * FastF1's own limiter allows 4 requests/second (it sleeps) but caps at 500 per
-  hour by *raising* ``RateLimitExceededError`` rather than waiting. So the cap
-  is caught here and slept off. Roughly 8 requests go out per session.
+  hour by *raising* ``RateLimitExceededError`` rather than waiting -- and it
+  counts the refused call too, so retrying digs the hole deeper. ``RateBudget``
+  attaches to FastF1's transport and claims a slot before each request, so the
+  cap is never reached. Roughly 8 requests go out per session.
 * Everything is cached under data/raw/fastf1/, and a manifest records finished
   sessions, so a rerun costs nothing for work already done.
 * Tyre compound names are stored **as reported**. 2018 uses absolute names
@@ -25,7 +27,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import sys
 import time
 import warnings
@@ -48,7 +49,8 @@ RATE_SLEEP = 300        # fallback wait if the cap is somehow still hit
 RATE_MAX_WAITS = 24
 RATE_LOG = CACHE / "_rate_log.json"
 RATE_MAX_PER_HOUR = 460   # FastF1 caps at 500/h; leave headroom
-REQ_PER_SESSION = 10      # conservative estimate used to reserve budget
+RATE_SOFT_FRACTION = 0.7  # start spacing requests out once this much is spent
+RATE_WINDOW = 3600.0
 
 log = logging.getLogger("ff1")
 
@@ -56,37 +58,84 @@ log = logging.getLogger("ff1")
 class RateBudget:
     """Pace requests so FastF1's hourly cap is never actually hit.
 
-    This matters more than it looks. FastF1's limiter appends a timestamp
-    *before* deciding whether to raise, so a call that fails still consumes a
-    slot. Retrying therefore pushes recovery further away instead of closer --
-    six retries bought thirty minutes of zero progress. The fix is to never
-    trigger it: track real requests ourselves, persist them across restarts so
-    a restart cannot silently reset the count, and wait before asking rather
-    than after being refused.
+    FastF1's limiter appends a timestamp *before* deciding whether to raise, so
+    a refused call still consumes a slot and retrying pushes recovery further
+    away rather than closer. Two of those episodes cost one run 7.8 hours of
+    zero progress. The only reliable defence is to never trigger it.
+
+    Counting happens at the point FastF1 itself counts. One call to
+    ``_SessionWithRateLimiting.send`` is exactly one append to its deque,
+    whether the response is a 200, a 404, or a body identical to one already on
+    disk. ``attach`` wraps that method so a slot is claimed immediately before
+    the request goes out.
+
+    The previous version inferred the count from new files appearing in the
+    cache directory, which missed every re-fetch, every failure, and every HTTP
+    call that does not land as a .ff1pkl. After one full pull the cache held
+    7,667 files against 8,266 distinct cached responses -- and that gap is a
+    floor, because a repeated URL overwrites its row instead of adding one. The
+    shortfall surfaced in the logs as ``549/460 used this hour``: a 19%
+    overshoot into the very cap the budget existed to stay under.
     """
 
     def __init__(self, path: Path = RATE_LOG, per_hour: int = RATE_MAX_PER_HOUR):
         self.path = path
         self.per_hour = per_hour
+        self.soft = int(per_hour * RATE_SOFT_FRACTION)
         self.stamps: list[float] = []
+        self.attached = False
+        # Requests this process made. The persisted window spans restarts, so
+        # it is the wrong thing to reconcile against FastF1's in-memory deque.
+        self.spent_here = 0
         if path.exists():
             try:
                 self.stamps = [float(x) for x in json.loads(path.read_text())]
             except Exception:
-                self.stamps = []
+                # A truncated log must not read as "nothing spent yet": that is
+                # how a crash mid-write would hand the next run a clean budget
+                # and walk it straight into the cap.
+                log.warning("rate log unreadable; assuming the budget is fully spent")
+                self.stamps = [time.time()] * per_hour
 
+    # ------------------------------------------------------------- accounting
     def _prune(self) -> None:
-        cutoff = time.time() - 3600
+        cutoff = time.time() - RATE_WINDOW
         self.stamps = [t for t in self.stamps if t > cutoff]
 
-    def record(self, n: int) -> None:
+    def used(self) -> int:
+        self._prune()
+        return len(self.stamps)
+
+    def record(self, n: int = 1) -> None:
         now = time.time()
         self.stamps.extend([now] * max(n, 0))
         self._prune()
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps([round(t, 3) for t in self.stamps]))
+        self._flush()
 
-    def wait_for(self, need: int) -> float:
+    def _flush(self) -> None:
+        """Persist atomically. A half-written file is worse than a stale one."""
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self.path.with_suffix(".tmp")
+        tmp.write_text(json.dumps([round(t, 3) for t in self.stamps]))
+        tmp.replace(self.path)
+
+    # ----------------------------------------------------------------- pacing
+    def _soft_delay(self) -> float:
+        """Spacing to apply before the next request.
+
+        Below the soft threshold there is headroom, so requests go out at full
+        speed. Above it the interval ramps toward the sustainable one, which
+        turns the old pattern -- sprint into the cap, then stop dead for the
+        remainder of the hour -- into a glide.
+        """
+        used = len(self.stamps)
+        if used < self.soft:
+            return 0.0
+        span = max(self.per_hour - self.soft, 1)
+        frac = min((used - self.soft) / span, 1.0)
+        return frac * (RATE_WINDOW / self.per_hour)
+
+    def wait_for(self, need: int = 1) -> float:
         """Block until `need` slots are free in the trailing hour."""
         total = 0.0
         while True:
@@ -97,18 +146,66 @@ class RateBudget:
             # sleep until enough of the oldest entries fall out of the window
             k = need - free
             oldest = sorted(self.stamps)[:k]
-            wait = max(1.0, oldest[-1] + 3600 - time.time() + 1)
+            wait = max(1.0, oldest[-1] + RATE_WINDOW - time.time() + 1)
             log.info("    pacing: %d/%d used this hour, need %d slots - waiting %.0fs",
                      len(self.stamps), self.per_hour, need, wait)
             time.sleep(wait)
             total += wait
 
+    def acquire(self) -> None:
+        """Claim one slot, blocking as long as necessary, then spend it."""
+        self.wait_for(1)
+        delay = self._soft_delay()
+        if delay > 0:
+            time.sleep(delay)
+        self.record(1)
+        self.spent_here += 1
 
-def count_cache_files() -> int:
-    n = 0
-    for _, _, fs in os.walk(CACHE):
-        n += len(fs)
-    return n
+    # ------------------------------------------------------------- attachment
+    def attach(self) -> None:
+        """Route every FastF1 network request through this budget.
+
+        Wrapping ``send`` rather than the cached session means cache hits are
+        not counted: requests_cache short-circuits them before ``send`` is
+        reached, and FastF1's own limiter never sees them either. What is
+        counted here is exactly what the cap counts.
+        """
+        from fastf1 import req
+
+        cls = req._SessionWithRateLimiting
+        if getattr(cls.send, "_sector4_budget", None) is not None:
+            self.attached = True
+            return
+        original = cls.send
+        budget = self
+
+        def send(self, request, **kwargs):  # noqa: ANN001 - mirrors requests.Session.send
+            budget.acquire()
+            return original(self, request, **kwargs)
+
+        send._sector4_budget = budget
+        cls.send = send
+        self.attached = True
+
+    def fastf1_usage(self) -> int | None:
+        """What FastF1's own limiter believes has been spent, for reconciliation.
+
+        Private API, so a miss returns None rather than raising: this is a
+        cross-check on our own count, never the thing the pacing depends on.
+        """
+        try:
+            from fastf1 import req
+
+            cutoff = time.time() - RATE_WINDOW
+            for limiters in req._SessionWithRateLimiting._RATE_LIMITS.values():
+                for lim in limiters:
+                    info = getattr(lim, "_info", "")
+                    stamps = getattr(lim, "_timestamps", None)
+                    if stamps is not None and "any API" in info:
+                        return sum(1 for t in stamps if t > cutoff)
+        except Exception:
+            return None
+        return None
 
 
 def td_ms(s: pd.Series) -> pd.Series:
@@ -322,8 +419,9 @@ def main() -> int:
     Cache.enable_cache(str(CACHE))
 
     budget = RateBudget()
-    log.info("rate budget: %d requests used in the trailing hour (cap %d)",
-             len(budget.stamps), budget.per_hour)
+    budget.attach()
+    log.info("rate budget: %d requests used in the trailing hour (cap %d, spacing from %d)",
+             budget.used(), budget.per_hour, budget.soft)
     mapper = IdMapper()
     races = mapper.races
     races = races[races["year"] >= FIRST_SEASON]
@@ -369,12 +467,11 @@ def main() -> int:
                     got.append(sn)
                     continue
                 try:
-                    # Reserve budget BEFORE calling; a cached session spends
-                    # nothing, which the post-hoc count corrects for.
-                    budget.wait_for(REQ_PER_SESSION)
-                    before_files = count_cache_files()
+                    # No reservation here any more. The budget is attached to
+                    # FastF1's transport, so every request this call makes --
+                    # and only the ones it actually makes -- claims its own
+                    # slot on the way out.
                     sess = load_session(fastf1, int(year), ev["EventName"], sn)
-                    budget.record(max(count_cache_files() - before_files, 0))
                     out = extract(sess, int(rr.raceId), int(year), sn, mapper)
                     append(frames, out)
                     done[key] = {"raceId": int(rr.raceId), "laps": len(out["laps"]),
@@ -406,6 +503,21 @@ def main() -> int:
     log.info("=" * 74)
     log.info("DONE. %d sessions fetched this run, %d recorded total, %d failures, %.1f min",
              total_sessions, len(done), len(manifest["failures"]), (time.time()-t_start)/60)
+
+    # Reconcile against FastF1's own tally. These should agree exactly; a gap
+    # means the hook is no longer sitting where the cap is counted, which is
+    # the failure that is otherwise invisible until a run stalls for hours.
+    theirs = budget.fastf1_usage()
+    if theirs is None:
+        log.warning("could not read FastF1's own request count - budget unverified")
+    else:
+        # Only this process's requests are comparable: our window is restored
+        # from disk across restarts, FastF1's deque starts empty every time.
+        drift = budget.spent_here - theirs
+        level = log.info if abs(drift) <= 1 else log.warning
+        level("rate budget: %d requests this run, %d seen by FastF1 (drift %+d); "
+              "%d/%d spent in the trailing hour",
+              budget.spent_here, theirs, drift, budget.used(), budget.per_hour)
     return 0
 
 

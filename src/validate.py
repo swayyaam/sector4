@@ -7,6 +7,7 @@ unexplained rather than a known era difference.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 import unicodedata
@@ -21,6 +22,10 @@ DATA = ROOT / "data" / "processed"
 GT = ROOT / "data" / "ground_truth" / "official_standings.json"
 
 RESULTS: list[tuple[str, str, bool, str]] = []
+# Seasons present in the dataset being validated. A subset fixture cannot
+# answer a question about 2007, and pretending it passed would be worse than
+# saying so.
+YEARS: set[int] = set()
 
 # ---- documented expectations (all established in Part 1) --------------------
 SHARED_DRIVE_LAST_YEAR = 1964      # two drivers could share a car until 1964
@@ -50,6 +55,30 @@ def check(group: str, name: str, ok: bool, detail: str = "") -> bool:
     return ok
 
 
+def skip(group: str, name: str, why: str) -> None:
+    """Record a check that cannot apply to this dataset.
+
+    Reported separately from passes. A check that silently disappears when the
+    data it needs is absent is indistinguishable from one that was never
+    written.
+    """
+    RESULTS.append((group, name, None, why))
+
+
+def covers(*years: int) -> bool:
+    return all(y in YEARS for y in years)
+
+
+def full_history() -> bool:
+    """True when this is the whole record, not a slice of it.
+
+    Some checks are statements about the span of the dataset -- that a
+    constructor reused across decades splits into separate entities, say. On a
+    fixture covering one season they are unanswerable rather than false.
+    """
+    return bool(YEARS) and min(YEARS) <= 1950
+
+
 def norm(s: str) -> str:
     s = unicodedata.normalize("NFKD", str(s))
     return "".join(c for c in s if not unicodedata.combining(c)).lower().strip()
@@ -60,7 +89,14 @@ def load(t: str) -> pd.DataFrame:
                        low_memory=False)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    global DATA
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--data", type=Path, default=DATA,
+                    help="directory of processed CSVs to validate (default: data/processed)")
+    args = ap.parse_args(argv)
+    DATA = args.data
+
     pd.set_option("display.width", 200)
     print(f"validating: {DATA}\n")
     races, results, sprint = load("races"), load("results"), load("sprint_results")
@@ -69,6 +105,8 @@ def main() -> int:
     drivers, cons = load("drivers").set_index("driverId"), load("constructors").set_index("constructorId")
     ry = races.set_index("raceId")["year"]
     rids = set(races["raceId"])
+    global YEARS
+    YEARS = set(races["year"].astype(int))
 
     # ------------------------------------------------------------ structural
     check("Structural", "races: raceId unique", races["raceId"].is_unique)
@@ -183,6 +221,10 @@ def main() -> int:
           not unexplained, str(unexplained[:6]))
     for y, (cref, why) in CONSTRUCTOR_PENALTIES.items():
         if y == 2007:
+            if not covers(y):
+                skip("Recompute", f"{y} {cref}: championship_points is 0 ({why})",
+                     f"{y} is not in this dataset")
+                continue
             cid = ref[ref == cref].index[0]
             last = races[races["year"] == y].sort_values("round").iloc[-1]["raceId"]
             row = cs[(cs["raceId"] == last) & (cs["constructorId"] == cid)]
@@ -192,6 +234,11 @@ def main() -> int:
     # ----------------------------------------------------------- ground truth
     gt = json.loads(GT.read_text())
     for year in ("2024", "2025", "2026"):
+        if not covers(int(year)):
+            for what in ("driver", "constructor"):
+                skip("Ground truth", f"{year} {what} points match formula1.com",
+                     f"{year} is not in this dataset")
+            continue
         last = races[races["year"] == int(year)].sort_values("round").iloc[-1]["raceId"]
         got = ds[ds["raceId"] == last]
         mine: dict[str, float] = {}
@@ -226,7 +273,11 @@ def main() -> int:
           bool(allent.between(5, 60).all()), str(allent[~allent.between(5, 60)].to_dict()))
     rc = races.groupby("year").size()
     check("Sanity", "season race counts within 6..25", bool(rc.between(6, 25).all()), str(rc[~rc.between(6, 25)].to_dict()))
-    check("Sanity", "2026 partial season has 14 rounds so far", int(rc.get(2026, 0)) == 14, str(rc.get(2026)))
+    if covers(2026):
+        check("Sanity", "2026 partial season has 14 rounds so far",
+              int(rc.get(2026, 0)) == 14, str(rc.get(2026)))
+    else:
+        skip("Sanity", "2026 partial season has 14 rounds so far", "2026 is not in this dataset")
     check("Sanity", "no negative points", bool((results["points"] >= 0).all()))
     check("Sanity", "grid within 0..40", bool(results["grid"].between(0, 40).all()),
           str(results.loc[~results["grid"].between(0, 40), "grid"].unique()[:8]))
@@ -271,11 +322,18 @@ def main() -> int:
     if "classified_laps" in races.columns:
         notes_p = DATA / "race_classification_notes.csv"
         n_set = int(races["classified_laps"].notna().sum())
-        check("Lap flags", "classified_laps is populated only where documented",
-              notes_p.exists() and n_set == len(pd.read_csv(notes_p)),
-              f"{n_set} races set")
-        if notes_p.exists():
-            nt = pd.read_csv(notes_p)
+        noted = set(pd.read_csv(notes_p)["raceId"]) if notes_p.exists() else set()
+        if noted and not (noted <= rids):
+            for name in ("classified_laps is populated only where documented",
+                         "every classified_laps note cites a source",
+                         "classified_laps matches the winner's classified distance"):
+                skip("Lap flags", name, "the documented races are not in this dataset")
+            nt = None
+        else:
+            check("Lap flags", "classified_laps is populated only where documented",
+                  notes_p.exists() and n_set == len(noted), f"{n_set} races set")
+            nt = pd.read_csv(notes_p) if notes_p.exists() else None
+        if nt is not None:
             check("Lap flags", "every classified_laps note cites a source",
                   bool(nt["evidence_source"].notna().all() and
                        nt["evidence_source"].str.startswith("http").all()))
@@ -319,33 +377,45 @@ def main() -> int:
         per_cid: dict[int, set[str]] = {}
         for eid, cids in ent_cids.items():
             per_cid.setdefault(next(iter(cids)), set()).add(eid)
-        unsplit = [int(c) for c in br["constructorId"] if len(per_cid.get(int(c), set())) < 2]
-        check("Team entities", "every constructorId with an identity break yields >1 entity",
-              not unsplit, f"not split: {unsplit}")
-        # the headline case
-        am = br[br["constructorRef"] == "aston_martin"]
-        if len(am):
-            cid = int(am.iloc[0]["constructorId"])
-            got = sorted(per_cid.get(cid, set()))
-            check("Team entities",
-                  "Aston Martin 1959-60 and 2021-26 are separate entities",
-                  len(got) == 2, f"entities={got}")
+        if not full_history():
+            for name in ("every constructorId with an identity break yields >1 entity",
+                         "Aston Martin 1959-60 and 2021-26 are separate entities"):
+                skip("Team entities", name, "identity breaks span seasons this dataset omits")
+        else:
+            unsplit = [int(c) for c in br["constructorId"] if len(per_cid.get(int(c), set())) < 2]
+            check("Team entities", "every constructorId with an identity break yields >1 entity",
+                  not unsplit, f"not split: {unsplit}")
+            # the headline case
+            am = br[br["constructorRef"] == "aston_martin"]
+            if len(am):
+                cid = int(am.iloc[0]["constructorId"])
+                got = sorted(per_cid.get(cid, set()))
+                check("Team entities",
+                      "Aston Martin 1959-60 and 2021-26 are separate entities",
+                      len(got) == 2, f"entities={got}")
 
     # -------------------------------------------------------------- report
     print("=" * 96)
     print("VALIDATION — merged dataset 1950 to latest race")
     print("=" * 96)
-    cur, npass, nfail = None, 0, 0
+    cur, npass, nfail, nskip = None, 0, 0, 0
     for group, name, ok, detail in RESULTS:
         if group != cur:
             print(f"\n{group}")
             cur = group
+        if ok is None:
+            nskip += 1
+            print(f"  [SKIP] {name}\n         -> {detail}")
+            continue
         npass += ok
         nfail += not ok
         print(f"  [{'PASS' if ok else 'FAIL'}] {name}" + (f"\n         -> {detail}" if detail and not ok else ""))
     print("\n" + "=" * 96)
-    print(f"{npass} passed, {nfail} failed")
-    return 0
+    tail = f", {nskip} not applicable to this dataset" if nskip else ""
+    print(f"{npass} passed, {nfail} failed{tail}")
+    # Previously always 0, so a failing check could not fail a script or a CI
+    # job -- the suite reported the problem and then said everything was fine.
+    return 1 if nfail else 0
 
 
 if __name__ == "__main__":
