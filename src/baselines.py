@@ -60,6 +60,13 @@ class Score:
         a random draw among equals is the only answer that is right for every
         predictor.
         """
+        if not p.index.is_unique:
+            raise ValueError(
+                "the probability series has a duplicated driverId. Before 1965 a "
+                "driver could share a car and appear twice in one classification; "
+                "deduplicate the field before scoring rather than letting pandas "
+                "return a Series where a float is expected."
+            )
         p = (p / p.sum()).sort_index()
         pw = float(p.get(winner, 0.0))
         ll = -math.log(max(pw, FLOOR))
@@ -214,9 +221,13 @@ def run(eval_from: int = EVAL_FROM_SEASON) -> tuple[pd.DataFrame, dict]:
         if field_rows.empty:
             continue
         # Sorted by driverId so nothing downstream can accidentally read the
-        # finishing order out of the row order.
+        # finishing order out of the row order. Deduplicated because a shared
+        # drive before 1965 puts the same driver in one classification twice,
+        # and a field is a set of drivers.
         started = (field_rows[field_rows["positionText"].astype(str) != "W"]
-                   .sort_values("driverId").reset_index(drop=True))
+                   .sort_values(["driverId", "positionOrder"])
+                   .drop_duplicates("driverId", keep="first")
+                   .reset_index(drop=True))
         if len(started) < 5:
             continue
         won = started[started["positionText"].astype(str) == "1"]
