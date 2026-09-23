@@ -1,9 +1,12 @@
 # Data (rebuildable: Kaggle download + fetch_jolpica.py)
 data/raw/
-data/processed/
-# ...except the small, auditable ID maps
+# data/processed/ is rebuildable and not committed -- except the small,
+# auditable ID maps. Git cannot re-include a file inside an ignored directory,
+# so the directory itself stays visible, its contents are ignored, and id_maps
+# is let back in. (Ignoring "data/processed/" outright silently kept id_maps out
+# of the repo, and CI ran without them.)
+data/processed/*
 !data/processed/id_maps/
-!data/processed/id_maps/*.csv
 
 # Python
 __pycache__/
