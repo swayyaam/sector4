@@ -21,6 +21,10 @@ Design notes
 
 Usage:
     python src/fetch_fastf1.py [--seasons 2026 2025] [--limit-sessions N] [--dry-run]
+    python src/fetch_fastf1.py --upcoming 2026 15 [--dry-run]
+
+``--upcoming`` fetches the finished practice and qualifying sessions of a race
+that has not run, for a post-qualifying prediction. See src/upcoming.py.
 """
 from __future__ import annotations
 
@@ -402,9 +406,107 @@ def write_season(year: int, frames: dict[str, list]) -> dict[str, int]:
     return counts
 
 
+# ----------------------------------------------------------- upcoming weekend
+UPCOMING_OUT = OUT / "upcoming"
+# Practice for the pace features; Qualifying for its entry list, which names
+# the weekend's race drivers before the race exists to name them.
+UPCOMING_SESSIONS = ("Practice 1", "Practice 2", "Practice 3", "Qualifying")
+# Loaded any sooner, a session can be cached with its data still arriving,
+# and the cache would then serve the partial copy for good.
+SESSION_SETTLE_MINUTES = 90
+
+
+def upcoming_frame(laps: list[pd.DataFrame], season: int, rnd: int) -> pd.DataFrame:
+    """Practice laps for an upcoming weekend, keyed on (season, round).
+
+    The race has no raceId yet, so the placeholder extract() was given is
+    dropped, and so is is_race_driver: historically it means "raced in this
+    race", which cannot be known yet. predict.py sets it from qualifying.
+    """
+    df = pd.concat(laps, ignore_index=True) if laps else pd.DataFrame()
+    df = df.drop(columns=[c for c in ("raceId", "year", "is_race_driver") if c in df.columns])
+    df.insert(0, "round", int(rnd))
+    df.insert(0, "season", int(season))
+    return df
+
+
+def fetch_upcoming(fastf1, season: int, rnd: int, mapper: IdMapper, dry_run: bool) -> int:
+    """Fetch this weekend's finished practice and qualifying sessions, for a race
+    that has not run.
+
+    Written to data/enriched/upcoming/<season>-<round>/, apart from the season
+    files the model trains on, and keyed on (season, round) because no raceId
+    exists yet.
+    """
+    import datetime as dt
+
+    if mapper.race_id(season, rnd) is not None:
+        log.error("%d round %d has already run; its practice comes in with the normal fetch",
+                  season, rnd)
+        return 1
+    sched = with_rate_retry(lambda: fastf1.get_event_schedule(season, include_testing=False),
+                            f"{season} schedule")
+    ev = sched[sched["RoundNumber"] == rnd]
+    if not len(ev):
+        log.error("%d round %d is not in FastF1's schedule", season, rnd)
+        return 1
+    ev = ev.iloc[0]
+    now = pd.Timestamp(dt.datetime.now(dt.timezone.utc))
+    settle = pd.Timedelta(minutes=SESSION_SETTLE_MINUTES)
+
+    laps, results, unmapped, fetched, waiting = [], [], [], [], []
+    for i in range(1, 6):
+        name = ev.get(f"Session{i}")
+        if name not in UPCOMING_SESSIONS:
+            continue
+        start = pd.Timestamp(ev.get(f"Session{i}DateUtc"))
+        if pd.isna(start):
+            waiting.append(f"{name} (no start time)")
+            continue
+        start = start.tz_localize("UTC") if start.tzinfo is None else start.tz_convert("UTC")
+        if start + settle > now:
+            waiting.append(f"{name} (starts {start:%a %d %b %H:%M} UTC)")
+            continue
+        if dry_run:
+            fetched.append(name)
+            continue
+        sess = load_session(fastf1, season, ev["EventName"], name)
+        out = extract(sess, 0, season, name, mapper)
+        laps.append(out["laps"])
+        if len(out["results"]):
+            results.append(out["results"])
+        unmapped.extend(out["unmapped"])
+        fetched.append(f"{name}({len(out['laps'])} laps)")
+
+    log.info("%d round %d, %s: fetched %s; not yet finished: %s", season, rnd,
+             ev["EventName"], ", ".join(fetched) or "none", ", ".join(waiting) or "none")
+    if dry_run:
+        return 0
+    if not laps:
+        log.error("no session of %d round %d has finished; nothing written", season, rnd)
+        return 1
+
+    d = UPCOMING_OUT / f"{season}-{rnd:02d}"
+    d.mkdir(parents=True, exist_ok=True)
+    frame = upcoming_frame(laps, season, rnd)
+    frame.to_csv(d / "laps.csv", index=False)
+    if results:
+        upcoming_frame(results, season, rnd).to_csv(d / "results.csv", index=False)
+    pd.DataFrame(unmapped).to_csv(d / "unmapped.csv", index=False)
+    (d / "fetched.json").write_text(json.dumps({
+        "season": season, "round": rnd, "event": str(ev["EventName"]),
+        "fetched_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "sessions": fetched,
+        "not_yet_finished": waiting}, indent=2) + "\n")
+    log.info("wrote %d laps -> %s", len(frame), d)
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seasons", nargs="+", type=int)
+    ap.add_argument("--upcoming", nargs=2, type=int, metavar=("SEASON", "ROUND"),
+                    help="fetch the finished practice and qualifying sessions of a race "
+                         "that has not run")
     ap.add_argument("--limit-sessions", type=int)
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
@@ -423,6 +525,12 @@ def main() -> int:
     log.info("rate budget: %d requests used in the trailing hour (cap %d, spacing from %d)",
              budget.used(), budget.per_hour, budget.soft)
     mapper = IdMapper()
+    if args.upcoming:
+        season, rnd = args.upcoming
+        rc = fetch_upcoming(fastf1, season, rnd, mapper, args.dry_run)
+        log.info("rate budget: %d requests this run, %d/%d spent in the trailing hour",
+                 budget.spent_here, budget.used(), budget.per_hour)
+        return rc
     races = mapper.races
     races = races[races["year"] >= FIRST_SEASON]
     seasons = args.seasons or sorted(races["year"].unique(), reverse=True)   # newest first
