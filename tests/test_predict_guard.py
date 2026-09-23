@@ -88,3 +88,35 @@ def test_a_first_prediction_before_its_deadline_goes_ahead(tmp_path, monkeypatch
     with pytest.raises(Built):
         P.main()
 
+
+# ------------------------------------------------------ the feature cache
+def test_the_feature_cache_is_stale_once_any_input_is_newer(tmp_path):
+    import os
+
+    import model as M
+
+    cache, data, code = tmp_path / "post.csv", tmp_path / "results.csv", tmp_path / "features.py"
+    for f in (data, code):
+        f.write_text("x")
+    cache.write_text("x")
+    os.utime(data, (1_000, 1_000))
+    os.utime(code, (1_000, 1_000))
+    os.utime(cache, (2_000, 2_000))
+    assert M.cache_is_fresh(cache, [data, code])
+
+    os.utime(data, (3_000, 3_000))          # a race was merged after the cache was built
+    assert not M.cache_is_fresh(cache, [data, code])
+
+    os.utime(data, (1_000, 1_000))
+    os.utime(code, (3_000, 3_000))          # the feature code changed
+    assert not M.cache_is_fresh(cache, [data, code])
+
+    assert not M.cache_is_fresh(tmp_path / "missing.csv", [data])
+
+
+def test_the_cache_watches_the_processed_tables_and_the_feature_code():
+    import model as M
+
+    inputs = M.feature_inputs()
+    assert Path(M.F.__file__) in inputs
+    assert all(p.suffix in {".csv", ".py"} for p in inputs)
