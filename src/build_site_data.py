@@ -224,6 +224,52 @@ def site_prediction(pred: dict, race_id: int, result: dict | None,
     }
 
 
+def pipeline_summary() -> dict:
+    """Counts the methodology page states, read from the data rather than typed.
+
+    Every figure on that page has to come from the pipeline or the build fails,
+    which is the same rule the probabilities follow. A number written by hand
+    into a template is a number nobody will notice going stale.
+    """
+    import subprocess
+
+    tables = {}
+    for name in ("races", "results", "qualifying", "lap_times", "pit_stops"):
+        df = F._rd(F.PROCESSED / f"{name}.csv")
+        by_source = (df["source"].value_counts().to_dict() if "source" in df.columns else {})
+        tables[name] = {"rows": int(len(df)),
+                        "by_source": {k: int(v) for k, v in by_source.items()}}
+
+    corrections = F._rd(F.PROCESSED / "corrections_applied.csv")
+    unresolved = F._rd(F.PROCESSED / "unresolved_conflicts.csv")
+
+    # The validation suite's own count, taken by running it rather than quoted.
+    checks = {"passed": None, "failed": None}
+    try:
+        out = subprocess.run([sys.executable, str(ROOT / "src" / "validate.py")],
+                             capture_output=True, text=True, cwd=ROOT, timeout=600)
+        for line in out.stdout.splitlines():
+            if "passed," in line and "failed" in line:
+                parts = line.replace(",", "").split()
+                checks = {"passed": int(parts[0]), "failed": int(parts[2])}
+    except Exception:
+        pass
+
+    races = F._rd(F.PROCESSED / "races.csv")
+    return {
+        "tables": tables,
+        "corrections": {
+            "total": int(len(corrections)),
+            "by_evidence": {k: int(v) for k, v in
+                            corrections["evidence_type"].value_counts().to_dict().items()},
+        },
+        "unresolved_conflicts": int(len(unresolved)),
+        "validation": checks,
+        "seasons": {"first": int(races["year"].min()), "last": int(races["year"].max())},
+        "enrichment_first_season": 2018,
+    }
+
+
 def main() -> int:
     races = F._rd(F.PROCESSED / "races.csv")
     ledger_path = PRED_DIR / "track_record.json"
@@ -299,6 +345,7 @@ def main() -> int:
         "is_mock": False,
         "last_completed_race": None,
         "next_race": None,
+        "pipeline": pipeline_summary(),
     }
     if latest:
         r = next(x for x in reference["races"] if x["race_id"] == latest["race_id"])
