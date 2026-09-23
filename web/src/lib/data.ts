@@ -150,3 +150,8 @@ export function scoredPredictions(all: Prediction[]): Prediction[] {
 export function driversByWinProbability(p: Prediction) {
   return [...p.drivers].sort((a, b) => b.p_win - a.p_win);
 }
+
+/** What happened at a race's circuit before it, when the pipeline computed it. */
+export function circuitHistoryFor(ref: Reference, raceId: number) {
+  return ref.circuit_history.find((h) => h.race_id === raceId);
+}

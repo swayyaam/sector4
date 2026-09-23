@@ -770,7 +770,29 @@
       "slug": "azerbaijan-grand-prix",
       "circuit_id": 73,
       "starts_at": "2026-09-26T11:00:00Z",
-      "regs_era": "2026_reset"
+      "regs_era": "2026_reset",
+      "sessions": [
+        {
+          "name": "Practice 1",
+          "starts_at": "2026-09-24T08:30:00Z"
+        },
+        {
+          "name": "Practice 2",
+          "starts_at": "2026-09-24T12:00:00Z"
+        },
+        {
+          "name": "Practice 3",
+          "starts_at": "2026-09-25T08:30:00Z"
+        },
+        {
+          "name": "Qualifying",
+          "starts_at": "2026-09-25T12:00:00Z"
+        },
+        {
+          "name": "Race",
+          "starts_at": "2026-09-26T11:00:00Z"
+        }
+      ]
     },
     {
       "race_id": 1184,
@@ -780,7 +802,29 @@
       "slug": "bahrain-grand-prix-in-malaysia",
       "circuit_id": 2,
       "starts_at": "2026-10-04T07:00:00Z",
-      "regs_era": "2026_reset"
+      "regs_era": "2026_reset",
+      "sessions": [
+        {
+          "name": "Practice 1",
+          "starts_at": "2026-10-02T04:30:00Z"
+        },
+        {
+          "name": "Practice 2",
+          "starts_at": "2026-10-02T08:00:00Z"
+        },
+        {
+          "name": "Practice 3",
+          "starts_at": "2026-10-03T04:30:00Z"
+        },
+        {
+          "name": "Qualifying",
+          "starts_at": "2026-10-03T08:00:00Z"
+        },
+        {
+          "name": "Race",
+          "starts_at": "2026-10-04T07:00:00Z"
+        }
+      ]
     },
     {
       "race_id": 1185,
@@ -790,7 +834,29 @@
       "slug": "singapore-grand-prix",
       "circuit_id": 15,
       "starts_at": "2026-10-11T12:00:00Z",
-      "regs_era": "2026_reset"
+      "regs_era": "2026_reset",
+      "sessions": [
+        {
+          "name": "Practice 1",
+          "starts_at": "2026-10-09T08:30:00Z"
+        },
+        {
+          "name": "Sprint Qualifying",
+          "starts_at": "2026-10-09T12:30:00Z"
+        },
+        {
+          "name": "Sprint",
+          "starts_at": "2026-10-10T09:00:00Z"
+        },
+        {
+          "name": "Qualifying",
+          "starts_at": "2026-10-10T13:00:00Z"
+        },
+        {
+          "name": "Race",
+          "starts_at": "2026-10-11T12:00:00Z"
+        }
+      ]
     },
     {
       "race_id": 1186,
@@ -800,7 +866,29 @@
       "slug": "united-states-grand-prix",
       "circuit_id": 69,
       "starts_at": "2026-10-25T20:00:00Z",
-      "regs_era": "2026_reset"
+      "regs_era": "2026_reset",
+      "sessions": [
+        {
+          "name": "Practice 1",
+          "starts_at": "2026-10-23T17:30:00Z"
+        },
+        {
+          "name": "Practice 2",
+          "starts_at": "2026-10-23T21:00:00Z"
+        },
+        {
+          "name": "Practice 3",
+          "starts_at": "2026-10-24T17:30:00Z"
+        },
+        {
+          "name": "Qualifying",
+          "starts_at": "2026-10-24T21:00:00Z"
+        },
+        {
+          "name": "Race",
+          "starts_at": "2026-10-25T20:00:00Z"
+        }
+      ]
     },
     {
       "race_id": 1187,
@@ -810,7 +898,29 @@
       "slug": "mexico-city-grand-prix",
       "circuit_id": 32,
       "starts_at": "2026-11-01T20:00:00Z",
-      "regs_era": "2026_reset"
+      "regs_era": "2026_reset",
+      "sessions": [
+        {
+          "name": "Practice 1",
+          "starts_at": "2026-10-30T18:30:00Z"
+        },
+        {
+          "name": "Practice 2",
+          "starts_at": "2026-10-30T22:00:00Z"
+        },
+        {
+          "name": "Practice 3",
+          "starts_at": "2026-10-31T17:30:00Z"
+        },
+        {
+          "name": "Qualifying",
+          "starts_at": "2026-10-31T21:00:00Z"
+        },
+        {
+          "name": "Race",
+          "starts_at": "2026-11-01T20:00:00Z"
+        }
+      ]
     },
     {
       "race_id": 1188,
@@ -820,7 +930,29 @@
       "slug": "brazilian-grand-prix",
       "circuit_id": 18,
       "starts_at": "2026-11-08T17:00:00Z",
-      "regs_era": "2026_reset"
+      "regs_era": "2026_reset",
+      "sessions": [
+        {
+          "name": "Practice 1",
+          "starts_at": "2026-11-06T15:30:00Z"
+        },
+        {
+          "name": "Practice 2",
+          "starts_at": "2026-11-06T19:00:00Z"
+        },
+        {
+          "name": "Practice 3",
+          "starts_at": "2026-11-07T14:30:00Z"
+        },
+        {
+          "name": "Qualifying",
+          "starts_at": "2026-11-07T18:00:00Z"
+        },
+        {
+          "name": "Race",
+          "starts_at": "2026-11-08T17:00:00Z"
+        }
+      ]
     },
     {
       "race_id": 1189,
@@ -830,7 +962,29 @@
       "slug": "las-vegas-grand-prix",
       "circuit_id": 80,
       "starts_at": "2026-11-22T04:00:00Z",
-      "regs_era": "2026_reset"
+      "regs_era": "2026_reset",
+      "sessions": [
+        {
+          "name": "Practice 1",
+          "starts_at": "2026-11-20T00:30:00Z"
+        },
+        {
+          "name": "Practice 2",
+          "starts_at": "2026-11-20T04:00:00Z"
+        },
+        {
+          "name": "Practice 3",
+          "starts_at": "2026-11-21T00:30:00Z"
+        },
+        {
+          "name": "Qualifying",
+          "starts_at": "2026-11-21T04:00:00Z"
+        },
+        {
+          "name": "Race",
+          "starts_at": "2026-11-22T04:00:00Z"
+        }
+      ]
     },
     {
       "race_id": 1190,
@@ -840,7 +994,29 @@
       "slug": "qatar-grand-prix",
       "circuit_id": 78,
       "starts_at": "2026-11-29T16:00:00Z",
-      "regs_era": "2026_reset"
+      "regs_era": "2026_reset",
+      "sessions": [
+        {
+          "name": "Practice 1",
+          "starts_at": "2026-11-27T13:30:00Z"
+        },
+        {
+          "name": "Practice 2",
+          "starts_at": "2026-11-27T17:00:00Z"
+        },
+        {
+          "name": "Practice 3",
+          "starts_at": "2026-11-28T14:30:00Z"
+        },
+        {
+          "name": "Qualifying",
+          "starts_at": "2026-11-28T18:00:00Z"
+        },
+        {
+          "name": "Race",
+          "starts_at": "2026-11-29T16:00:00Z"
+        }
+      ]
     },
     {
       "race_id": 1191,
@@ -850,7 +1026,42 @@
       "slug": "abu-dhabi-grand-prix",
       "circuit_id": 24,
       "starts_at": "2026-12-06T13:00:00Z",
-      "regs_era": "2026_reset"
+      "regs_era": "2026_reset",
+      "sessions": [
+        {
+          "name": "Practice 1",
+          "starts_at": "2026-12-04T09:30:00Z"
+        },
+        {
+          "name": "Practice 2",
+          "starts_at": "2026-12-04T13:00:00Z"
+        },
+        {
+          "name": "Practice 3",
+          "starts_at": "2026-12-05T10:30:00Z"
+        },
+        {
+          "name": "Qualifying",
+          "starts_at": "2026-12-05T14:00:00Z"
+        },
+        {
+          "name": "Race",
+          "starts_at": "2026-12-06T13:00:00Z"
+        }
+      ]
+    }
+  ],
+  "circuit_history": [
+    {
+      "race_id": 1183,
+      "circuit_id": 73,
+      "prior_races": 9,
+      "first_season": 2016,
+      "last_season": 2025,
+      "mean_position_change": 4.08,
+      "retirement_rate": 0.1813,
+      "grid_one_wins": 3,
+      "grid_one_races": 9
     }
   ]
 }

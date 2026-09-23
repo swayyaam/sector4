@@ -57,6 +57,21 @@ export const teamSchema = z.object({
   colour_on_light: z.string().regex(/^#[0-9a-f]{6}$/),
 });
 
+/** The sessions of a weekend, in running order. Stored in UTC, shown in the reader's zone. */
+export const sessionSchema = z.object({
+  name: z.enum([
+    "Practice 1",
+    "Practice 2",
+    "Practice 3",
+    "Sprint Qualifying",
+    "Sprint Shootout",
+    "Sprint",
+    "Qualifying",
+    "Race",
+  ]),
+  starts_at: isoDateTime,
+});
+
 export const raceSchema = z.object({
   race_id: z.int().positive(),
   season: z.int().min(1950).max(2100),
@@ -66,6 +81,8 @@ export const raceSchema = z.object({
   circuit_id: z.int().positive(),
   starts_at: isoDateTime,
   regs_era: z.string().min(1),
+  /** Present for races that have not run; the schedule is where they come from. */
+  sessions: z.array(sessionSchema).default([]),
 });
 
 export const circuitSchema = z.object({
@@ -81,12 +98,54 @@ export const circuitSchema = z.object({
   track_credit_id: z.string().min(1).nullable(),
 });
 
+/**
+ * What happened at a circuit before a race, from src/build_site_data.py.
+ *
+ * Two of these are the model's own circuit features over the same window, so
+ * the page describes what the model saw. A circuit with no history has nulls,
+ * and the page says so rather than showing a stand-in.
+ */
+export const circuitHistorySchema = z
+  .object({
+    race_id: z.int().positive(),
+    circuit_id: z.int().positive(),
+    prior_races: z.int().min(0),
+    first_season: z.int().min(1950).max(2100).nullable(),
+    last_season: z.int().min(1950).max(2100).nullable(),
+    mean_position_change: z.number().min(0).nullable(),
+    retirement_rate: probability.nullable(),
+    grid_one_wins: z.int().min(0).nullable(),
+    grid_one_races: z.int().min(0).nullable(),
+  })
+  .superRefine((h, ctx) => {
+    const fields = [
+      h.first_season,
+      h.last_season,
+      h.mean_position_change,
+      h.retirement_rate,
+      h.grid_one_wins,
+      h.grid_one_races,
+    ];
+    if (h.prior_races === 0 && fields.some((f) => f !== null)) {
+      ctx.addIssue({ code: "custom", message: `circuit ${h.circuit_id}: figures with no history` });
+    }
+    if (h.prior_races > 0 && fields.some((f) => f === null)) {
+      ctx.addIssue({ code: "custom", message: `circuit ${h.circuit_id}: history with a gap` });
+    }
+    if (h.grid_one_wins !== null && h.grid_one_races !== null) {
+      if (h.grid_one_wins > h.grid_one_races || h.grid_one_races > h.prior_races) {
+        ctx.addIssue({ code: "custom", message: `circuit ${h.circuit_id}: impossible counts` });
+      }
+    }
+  });
+
 export const referenceSchema = z
   .object({
     drivers: z.array(driverSchema).min(1),
     teams: z.array(teamSchema).min(1),
     races: z.array(raceSchema).min(1),
     circuits: z.array(circuitSchema).min(1),
+    circuit_history: z.array(circuitHistorySchema).default([]),
   })
   .superRefine((ref, ctx) => {
     const dup = <T>(items: T[], key: (t: T) => string | number, label: string) => {
@@ -103,6 +162,18 @@ export const referenceSchema = z
     dup(ref.teams, (t) => t.team_entity_id, "team_entity_id");
     dup(ref.races, (r) => r.race_id, "race_id");
     dup(ref.circuits, (c) => c.circuit_id, "circuit_id");
+    dup(ref.circuit_history, (h) => h.race_id, "circuit_history race_id");
+
+    const raceById = new Map(ref.races.map((r) => [r.race_id, r]));
+    for (const h of ref.circuit_history) {
+      const r = raceById.get(h.race_id);
+      if (!r || r.circuit_id !== h.circuit_id) {
+        ctx.addIssue({
+          code: "custom",
+          message: `circuit_history for race ${h.race_id} does not match a race at circuit ${h.circuit_id}`,
+        });
+      }
+    }
 
     const circuitIds = new Set(ref.circuits.map((c) => c.circuit_id));
     for (const r of ref.races) {
@@ -338,26 +409,13 @@ export const siteMetaSchema = z.object({
   generated_at: isoDateTime,
   is_mock: z.boolean(),
   pipeline: pipelineSummarySchema.nullable().default(null),
+  /** The latest race with results in the pipeline, scored or not. */
   last_completed_race: raceRefSchema.nullable(),
+  /** The latest race on the track record. Null until the first one is scored. */
+  last_scored_race: raceRefSchema.nullable().default(null),
   next_race: raceRefSchema
     .extend({
-      sessions: z
-        .array(
-          z.object({
-            name: z.enum([
-              "Practice 1",
-              "Practice 2",
-              "Practice 3",
-              "Sprint Qualifying",
-              "Sprint Shootout",
-              "Sprint",
-              "Qualifying",
-              "Race",
-            ]),
-            starts_at: isoDateTime,
-          }),
-        )
-        .min(1),
+      sessions: z.array(sessionSchema).min(1),
     })
     .nullable(),
 });
@@ -372,6 +430,8 @@ export type Team = z.infer<typeof teamSchema>;
 export type Race = z.infer<typeof raceSchema>;
 export type BaselineScore = z.infer<typeof baselineScoreSchema>;
 export type Circuit = z.infer<typeof circuitSchema>;
+export type CircuitHistory = z.infer<typeof circuitHistorySchema>;
+export type RaceSession = z.infer<typeof sessionSchema>;
 
 /**
  * Cross-file integrity: a prediction may only reference drivers, teams and
