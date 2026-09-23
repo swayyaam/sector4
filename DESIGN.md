@@ -1,7 +1,7 @@
 ---
 version: alpha
-name: Mobbin Analysis
-description: An analysis of Mobbin's design language — a gallery-white, monochrome interface system built to disappear behind the content it curates. Near-black ink on white canvas, a ladder of barely-there neutral tints instead of shadows, stadium-pill controls, 24px card geometry, iOS-style 30% squircle icon tiles, and the Saans typeface at unusual variable weights (652 display, 456 text, 300 light). One electric blue accent is reserved for commercial signals; every other color on screen belongs to the product screenshots being showcased.
+name: Sector 4 design system
+description: The Sector 4 design system — a gallery-white, monochrome interface built to disappear behind the content it presents. Near-black ink on white canvas, a ladder of barely-there neutral tints instead of shadows, stadium-pill controls, 24px card geometry, iOS-style 30% squircle tiles, and the Saans typeface at unusual variable weights (652 display, 456 text, 300 light). One electric blue accent is reserved for commercial signals; every other color on screen belongs to the content being shown.
 
 colors:
   primary: "#141414"
@@ -289,28 +289,26 @@ components:
 
 ## Overview
 
-Mobbin is a reference library of real product interfaces, and its own interface is engineered to get out of the way. The system is strictly monochrome: near-black ink (`{colors.ink}` — #141414) on a pure white canvas (`{colors.canvas}`), with structure carried by a ladder of barely-perceptible neutral tints rather than by shadows or color. The thousands of app screenshots, icon tiles, and brand logos the site exists to show are the only saturated elements on any page — the chrome frames them the way a gallery wall frames paintings.
+This is an interface engineered to get out of the way of the content it presents. The system is strictly monochrome: near-black ink (`{colors.ink}` — #141414) on a pure white canvas (`{colors.canvas}`), with structure carried by a ladder of barely-perceptible neutral tints rather than by shadows or color. That content is the only saturated element on any page — the chrome frames it the way a gallery wall frames paintings.
 
 The geometry does the brand work that color refuses to do. Every interactive element is a stadium pill (`{rounded.full}`): the floating navigation bar, every button, the segmented billing toggle, the overlay badges. Containers sit at a calm `{rounded.md}` (24px), media tiles at `{rounded.sm}` (16px), and app icons render as iOS-style squircles at 30% corner radius. Type is set in Saans at deliberately non-standard variable weights — a chunky 652 for every heading, a bookish 456 for text, an airy 300 for hero subtitles — which gives the monochrome pages a strong typographic voice without a single decorative flourish.
 
-One color is allowed to interrupt: an electric blue accent (`{colors.accent}` — #0060f0), used exclusively for commercial signals — the "Popular" plan badge and the yearly-savings callout on pricing. Its scarcity is the point; when blue appears, it is asking for a decision.
+One color is allowed to interrupt: an electric blue accent (`{colors.accent}` — #0060f0), used exclusively for commercial signals — a featured-tier badge, a savings callout. Its scarcity is the point; when blue appears, it is asking for a decision.
 
 **Key Characteristics:**
 - Gallery-white monochrome palette — `{colors.ink}` on `{colors.canvas}`, zero brand chroma outside the single `{colors.accent}` blue
 - Stadium-pill interaction language: nav bar, buttons, toggles, and badges all at `{rounded.full}`
 - Shadow-free elevation — hierarchy built from a neutral tint ladder (`{colors.canvas-soft}`, `{colors.field}`, `{colors.hairline}`) and 1px hairlines
 - Saans at signature variable weights: 652 headings with tight 1.0–1.13 line-height, 456 body, 300 light subtitles
-- iOS-style squircle icon tiles (30% radius) as a recurring visual motif across library counters and brand marquees
-- Content supplies the color: app screenshots, brand icons, and grayscale curator portraits carry all visual richness
+- iOS-style squircle tiles (30% radius) as a recurring visual motif across counters and marquees
+- Content supplies the color: whatever the page presents carries all visual richness, and portraits stay grayscale
 - Full-bleed near-black `{colors.ink}` footer with rounded top corners closes every page in polarity inversion
 
 ## Colors
 
-Source pages: home, pricing, awards, signup.
-
 ### Brand & Accent
-- **Ink Black** (`{colors.primary}` — #141414): The brand color. Fills every primary CTA pill, the footer band, and all display typography. Mobbin's identity is this near-black, softened just off pure black to sit comfortably next to photography.
-- **Electric Blue** (`{colors.accent}` — #0060f0): The only chromatic accent in the system. Darkened from #0066ff, which fell to 4.24:1 on `{colors.field}`; the hue is unchanged. Reserved for commercial emphasis — the "Popular" pricing badge and savings callouts. Never used decoratively, never used for CTAs.
+- **Ink Black** (`{colors.primary}` — #141414): The brand color. Fills every primary CTA pill, the footer band, and all display typography. The identity is this near-black, softened just off pure black to sit comfortably next to photography.
+- **Electric Blue** (`{colors.accent}` — #0060f0): The only chromatic accent in the system. Darkened from #0066ff, which fell to 4.24:1 on `{colors.field}`; the hue is unchanged. Reserved for commercial emphasis — featured badges and savings callouts. Never used decoratively, never used for CTAs.
 
 ### Surface
 - **Canvas** (`{colors.canvas}` — #ffffff): Default page and card background across all pages.
@@ -321,8 +319,8 @@ Source pages: home, pricing, awards, signup.
 
 ### Text
 - **Ink** (`{colors.ink}` — #141414): Headings, body copy, and nav links.
-- **Soft Ink** (`{colors.ink-soft}` — #262626): Slightly lifted dark used for secondary lockups and the awards wordmark.
-- **Muted** (`{colors.text-muted}` — #5c5c5c): Darkened from #707070, which failed AA on both tints (4.46:1 on `{colors.canvas-soft}`, 4.35:1 on `{colors.field}`). Secondary copy — supporting paragraphs, plan descriptions, vote counts, underlined inline links.
+- **Soft Ink** (`{colors.ink-soft}` — #262626): Slightly lifted dark used for secondary lockups and wordmarks.
+- **Muted** (`{colors.text-muted}` — #5c5c5c): Darkened from #707070, which failed AA on both tints (4.46:1 on `{colors.canvas-soft}`, 4.35:1 on `{colors.field}`). Secondary copy — supporting paragraphs, plan descriptions, counts, underlined inline links.
 - **Faint** (`{colors.text-faint}` — #6b6b6b): Darkened from #adadad, which failed AA on every light surface (2.24:1 on `{colors.canvas}`). Tertiary text — placeholders and fine print on light surfaces. Still lighter than `{colors.text-muted}`, so the ladder keeps its order.
 - **Faint on ink** (`{colors.on-primary-soft}` — #adadad): The original faint value, kept for the one place it passed: de-emphasized text on the `{colors.ink}` footer (8.21:1). Darkening `{colors.text-faint}` for light surfaces would have broken it there, so the footer has its own token.
 
@@ -339,10 +337,10 @@ Source pages: home, pricing, awards, signup.
 
 | Token | Size | Weight | Line Height | Letter Spacing | Use |
 |---|---|---|---|---|---|
-| `{typography.display}` | 80px | 652 | 1.0 | 0 | Homepage hero statements and library counters |
-| `{typography.heading-1}` | 56px | 652 | 1.0 | 0 | Page heroes ("Design like a Pro.", "The votes are in.") |
+| `{typography.display}` | 80px | 652 | 1.0 | 0 | Homepage hero statements and large counters |
+| `{typography.heading-1}` | 56px | 652 | 1.0 | 0 | Page heroes ("Race predictions, scored in public.") |
 | `{typography.heading-2}` | 44px | 652 | 1.13 | 0 | Section headings on content pages |
-| `{typography.heading-3}` | 32px | 652 | 1.13 | 0 | Card-level headlines, award winner names, auth headings |
+| `{typography.heading-3}` | 32px | 652 | 1.13 | 0 | Card-level headlines, featured names, auth headings |
 | `{typography.heading-4}` | 24px | 652 | 1.25 | 0 | Sub-section headings, plan names |
 | `{typography.title}` | 20px | 600 | 1.3 | 0 | Feature titles, emphasized rows |
 | `{typography.body-lg}` | 20px | 300 | 1.38 | 0 | Hero subtitles and lead paragraphs — the light counterpoint to 652 headings |
@@ -357,7 +355,7 @@ Source pages: home, pricing, awards, signup.
 - **Weight contrast is the drama.** Pairing 652 headings against 300 light subtitles at the same scale step (e.g. 80px display over 20px light lead) creates hierarchy without color or ornament.
 - **Tight leading up top.** Display and heading-1 sit at line-height 1.0; headings never breathe more than 1.25. Body text opens up to 1.38–1.43.
 - **Zero letter-spacing everywhere.** The grotesque is trusted at its natural fit; no tracking adjustments at any size.
-- **Sentence case with terminal periods.** Headlines read as declarative sentences: "Discover real-world design inspiration." — the period is part of the voice.
+- **Sentence case with terminal periods.** Headlines read as declarative sentences: "Race predictions, scored in public." — the period is part of the voice.
 
 ### Note on Font Substitutes
 
@@ -372,13 +370,13 @@ Saans is a commercial typeface. The closest widely-available substitutes are **I
 - Universal rhythm constants: 28px and 80px vertical steps recur on every page; 120px separates major homepage acts
 
 ### Grid & Container
-- Content rides a centered column: single-column centered lockups for heroes and award winners, a 2-up card grid for pricing plans, 3-up for portrait tiles, and a 4-column masonry for testimonials.
+- Content rides a centered column: single-column centered lockups for heroes and featured items, a 2-up card grid for pricing plans, 3-up for portrait tiles, and a 4-column masonry for testimonials.
 - The floating nav pill is detached from the viewport edge and horizontally centered, rather than a full-width bar — the page canvas visibly wraps around it.
-- Marquee strips (brand logos, app screenshots) run full-bleed beyond the content column.
+- Marquee strips of content run full-bleed beyond the content column.
 
 ### Whitespace Philosophy
 
-Whitespace is the primary grouping device. Sections are separated by `{spacing.section}` to `{spacing.section-lg}` of empty canvas with no divider rules; within cards, generous `{spacing.lg}` padding keeps content off the hairline edges. The homepage alternates dense collage moments (icon clouds, screenshot grids) with near-empty typographic interludes — compression and release.
+Whitespace is the primary grouping device. Sections are separated by `{spacing.section}` to `{spacing.section-lg}` of empty canvas with no divider rules; within cards, generous `{spacing.lg}` padding keeps content off the hairline edges. The homepage alternates dense collage moments with near-empty typographic interludes — compression and release.
 
 ### Responsive Strategy
 
@@ -391,7 +389,7 @@ Whitespace is the primary grouping device. Sections are separated by `{spacing.s
 | lg | 1024px | Comparison table condenses; testimonial masonry drops to 3 columns |
 | md | 840px / 768px | Pricing cards stack to 1-up; portrait grid drops to 2-up; nav links collapse |
 | sm | 719px / 640px | Single-column layouts; display type scales down from 80px |
-| xs | 600px | Minimum layout; auth split-panel drops its screenshot marquee |
+| xs | 600px | Minimum layout; auth split-panel drops its marquee |
 
 #### Touch Targets
 - Pill buttons and nav CTAs are fixed-height stadium shapes comfortably above the 44px minimum; form inputs pad to a similar height via `{spacing.sm} {spacing.md}`.
@@ -400,12 +398,12 @@ Whitespace is the primary grouping device. Sections are separated by `{spacing.s
 #### Collapsing Strategy
 - The floating `nav-pill` persists on scroll and across breakpoints, tightening to logomark + CTA on narrow screens.
 - Multi-column grids (pricing 2-up, portraits 3-up, testimonials 4-up) collapse column-by-column rather than reflowing horizontally.
-- The signup page's two-panel split (form left, angled screenshot marquee right) drops the marquee panel entirely on narrow viewports, keeping the centered form column.
+- A two-panel split (form left, angled marquee right) drops the marquee panel entirely on narrow viewports, keeping the centered form column.
 
 #### Image Behavior
-- App screenshots and device mockups keep fixed aspect ratios and `{rounded.md}` corners at all sizes.
+- Screenshots and device mockups keep fixed aspect ratios and `{rounded.md}` corners at all sizes.
 - Marquee strips overflow the viewport intentionally and animate horizontally; they crop rather than scale.
-- Curator portraits stay square-ish tiles, lazily loaded, always grayscale.
+- Portraits stay square-ish tiles, lazily loaded, always grayscale.
 
 ## Elevation & Depth
 
@@ -417,11 +415,11 @@ Whitespace is the primary grouping device. Sections are separated by `{spacing.s
 | 3 | 1px inset ring | Comparison-table highlight column edge |
 | Inverse | `{colors.ink}` fill, `{colors.on-primary}` text | Footer band, primary CTAs |
 
-The system is essentially shadow-free: no drop shadows appear on any card, button, or nav element. Elevation is communicated by *fill difference* (white vs. 6–8% ink tints) and by hairlines, which keeps every surface print-flat and lets the screenshot content supply all depth cues. The one soft-shadow exception is the active segment of the segmented control, which lifts off its `{colors.canvas-soft}` track as a white pill.
+The system is essentially shadow-free: no drop shadows appear on any card, button, or nav element. Elevation is communicated by *fill difference* (white vs. 6–8% ink tints) and by hairlines, which keeps every surface print-flat and lets the content supply all depth cues. The one soft-shadow exception is the active segment of the segmented control, which lifts off its `{colors.canvas-soft}` track as a white pill.
 
 ### Decorative Depth
-- **Glass monoliths** — the awards hero renders tall trophy pillars in a white-to-gray vertical gradient, reading as frosted glass against the `{colors.canvas-soft}` band; the page's only atmospheric gradient.
-- **Photography as depth** — floating app-icon squircles, angled screenshot collages (signup's rotated marquee panel), and device mockups create parallax-like layering on a flat canvas.
+- **Glass monoliths** — a hero may render tall pillars in a white-to-gray vertical gradient, reading as frosted glass against the `{colors.canvas-soft}` band; the page's only atmospheric gradient.
+- **Photography as depth** — floating squircle tiles, angled collages, and device mockups create parallax-like layering on a flat canvas.
 - **Polarity inversion** — the `{colors.ink}` footer with `{rounded.md}` top corners acts as a heavy baseboard, giving each page a physical end-stop.
 
 ## Shapes
@@ -436,34 +434,34 @@ The system is essentially shadow-free: no drop shadows appear on any card, butto
 | `{rounded.full}` | 9999px | Every pill: nav, buttons, badges, toggles |
 
 ### Photography Geometry
-- App screenshots render inside device-shaped frames at `{rounded.md}`.
-- App icons use the signature 30% squircle radius (`app-icon-squircle`) — the iOS icon silhouette — at every size from 32px chips to 96px hero tiles.
-- Curator portraits are near-square tiles at `{rounded.md}`, always black-and-white, with name captions overlaid in `{colors.on-primary}` on a `badge-overlay` scrim near the lower edge.
+- Screenshots render inside device-shaped frames at `{rounded.md}`.
+- Icons use the signature 30% squircle radius (`app-icon-squircle`) — the iOS icon silhouette — at every size from 32px chips to 96px hero tiles.
+- Portraits are near-square tiles at `{rounded.md}`, always black-and-white, with name captions overlaid in `{colors.on-primary}` on a `badge-overlay` scrim near the lower edge.
 - Avatars in testimonial cards are small circles (`{rounded.full}`) with a tiny company logo badge overlapping the bottom-right corner.
 
 ## Components
 
 ### Buttons
 
-**`button-primary`** — "Join for free", "Get started", "Continue", "View winners"
+**`button-primary`** — "Next race", "See the race"
 - Fill `{colors.primary}`, label `{colors.on-primary}` in `{typography.link}`, shape `{rounded.full}`, padding `0px {spacing.md}` on a fixed-height pill
-- The single CTA style everywhere: nav, pricing cards, auth form, awards hero
+- The single CTA style everywhere: nav, cards, forms, heroes
 
-**`button-outline`** — "Continue with Google", secondary "Get started"
+**`button-outline`** — "Full field and factors", "Open the track record"
 - Fill `{colors.canvas}`, label `{colors.ink}`, 1px `{colors.hairline}` border, shape `{rounded.full}`
 - The de-emphasized twin of the primary pill; used when two actions sit side by side or for third-party auth
 
-**`button-pill-soft`** — "Explore ↗", "Mobbin ↗", "Read more"
+**`button-pill-soft`** — "How it works", "Read more"
 - Fill `{colors.canvas-soft}`, label `{colors.ink}`, shape `{rounded.full}`
 - Tertiary utility pill for outbound and in-page links; no border, relies on its tint fill
 
 ### Cards & Containers
 
-**`pricing-card`** — default plan tier (Team)
+**`pricing-card`** — default plan tier
 - `{colors.canvas}` fill, 1px `{colors.hairline-soft}` outline, `{rounded.md}` corners
 - Plan name in `{typography.heading-4}`, price figure large with stacked `{typography.caption}` qualifiers, feature list rows in `{typography.body-sm}` with `{colors.text-muted}` icons
 
-**`pricing-card-featured`** — highlighted plan tier (Pro)
+**`pricing-card-featured`** — highlighted plan tier
 - `{colors.canvas-soft}` fill, borderless, `{rounded.md}` corners — emphasis by tint, not by outline or polarity flip
 - Carries the `badge-popular` chip beside the plan name and a full-width `button-primary` CTA, while the default tier gets `button-outline`
 
@@ -475,7 +473,7 @@ The system is essentially shadow-free: no drop shadows appear on any card, butto
 **`faq-row`** — accordion item
 - Full-width `{colors.canvas-soft}` bar, `{rounded.sm}` corners, question in `{typography.body}` with a trailing chevron; rows stack with `{spacing.sm}` gaps
 
-**`portrait-tile`** — curator/juror grid cell
+**`portrait-tile`** — people grid cell
 - Grayscale photograph at `{rounded.md}`, name + role caption overlaid at bottom center in `{colors.on-primary}`
 - The strict black-and-white treatment keeps the people grid inside the monochrome system
 
@@ -490,18 +488,18 @@ The system is essentially shadow-free: no drop shadows appear on any card, butto
 ### Navigation
 
 **`nav-pill`** — Top Nav (Desktop)
-- A floating, horizontally-centered stadium bar in `{colors.canvas-soft}`: logomark + wordmark left, text links ("Pricing", "Awards", "Log in") in `{typography.link}` right, capped by a `button-primary` CTA
+- A floating, horizontally-centered stadium bar in `{colors.canvas-soft}`: logomark + wordmark left, text links in `{typography.link}` right, capped by a `button-primary` CTA
 - Detaches from the page edge with visible canvas above it; persists as a sticky element on scroll
 
 **Top Nav (Mobile)**
 - The pill tightens to logomark + CTA; links collapse behind the pill
 
-**Sub-nav (Awards)**
-- Minimal corner marks instead of a bar: logomark + section name top-left, a `button-pill-soft` "Mobbin ↗" return link top-right
+**Sub-nav (section pages)**
+- Minimal corner marks instead of a bar: logomark + section name top-left, a `button-pill-soft` return link to the main site top-right
 
 ### Signature Components
 
-**`app-icon-squircle`** — the recurring 30%-radius icon tile; floats in loose clouds around library counters, lines up in "Other nominees" rows, and anchors `brand-chip` entries
+**`app-icon-squircle`** — the recurring 30%-radius icon tile; floats in loose clouds around counters, lines up in rows, and anchors `brand-chip` entries
 
 **`brand-chip`** — marquee lockup of squircle icon + brand name in `{typography.heading-3}` ink; scrolls horizontally in full-bleed strips of recognizable products
 
@@ -511,7 +509,7 @@ The system is essentially shadow-free: no drop shadows appear on any card, butto
 
 **`segmented-control`** + **`segmented-control-active`** — billing-period toggle: a `{colors.canvas-soft}` stadium track holding two pill options; the active option is a `{colors.canvas}` white pill, the inactive label sits in `{colors.text-muted}`
 
-**`award-lockup`** — centered winner presentation: laurel-flanked category eyebrow in `{colors.text-muted}`, winner name in `{typography.heading-3}`, description in `{colors.text-muted}` `{typography.body}`, vote share in `{typography.body-sm}`, closed by a `button-pill-soft` "Explore ↗"
+**`award-lockup`** — centered featured-item presentation: category eyebrow in `{colors.text-muted}`, name in `{typography.heading-3}`, description in `{colors.text-muted}` `{typography.body}`, a supporting figure in `{typography.body-sm}`, closed by a `button-pill-soft`
 
 **`compare-table`** — the pricing comparison grid: feature rows divided by 1px `{colors.canvas-soft}` rules, the recommended plan's column washed in `{colors.canvas-soft}` with an inset ring edge
 
@@ -571,12 +569,12 @@ The system is essentially shadow-free: no drop shadows appear on any card, butto
 - Don't outline the featured pricing tier — feature it with the `{colors.canvas-soft}` fill and `badge-popular` instead.
 - Don't apply letter-spacing or all-caps styling; the type system runs at natural tracking in sentence case.
 - Don't put borders on form fields at rest — inputs are `{colors.field}` tint fills; the border appears only as the 2px ink focus ring.
-- Don't let full-color photography of people into the curator/juror grids; portraits are strictly black-and-white.
+- Don't let full-color photography of people into people grids; portraits are strictly black-and-white.
 - Don't square off pill geometry at small sizes — badges, chips, and toggles stay stadium-shaped.
 
 ## Motion
 
-The reference is silent on motion beyond its marquees, and Sector 4 has no marquees. These tokens are proposed for this site and follow the system's temperament: quiet, quick and flat. Motion confirms that something responded or arrived. It never decorates.
+The system above is silent on motion beyond marquees, and Sector 4 has no marquees. These tokens are proposed for this site and follow the system's temperament: quiet, quick and flat. Motion confirms that something responded or arrived. It never decorates.
 
 | Token | Value | Use |
 |---|---|---|
@@ -665,16 +663,16 @@ Every text colour is measured on every surface it can appear on, and every pairi
 
 ## Applied to Sector 4
 
-Where the reference describes Mobbin's own pages, this is how each rule lands on a site of race predictions. Where the reference is silent, the choice made is recorded here.
+Where the sections above describe patterns Sector 4 does not use, this is how each rule lands on a site of race predictions. Where they are silent, the choice made is recorded here.
 
-- **Typeface.** Inter, per the reference's own note on substitutes: 652 → 650, 456 → 450, 300 and 600 unchanged, line-heights as specified. Self-hosted, latin subset only. Numbers use Inter with tabular figures; there is no second family, because the reference sets one typeface in every role.
-- **No imagery.** The reference lets screenshots and photography carry colour. Sector 4 carries no photography, logos or series imagery at all. Colour comes from data only: a team's colour appears as a small squircle marker (the 30% radius of `app-icon-squircle`) beside the team's name in text. It is never chrome, never a fill behind text and never text colour.
+- **Typeface.** Inter, per the note on font substitutes above: 652 → 650, 456 → 450, 300 and 600 unchanged, line-heights as specified. Self-hosted, latin subset only. Numbers use Inter with tabular figures; there is no second family, because the reference sets one typeface in every role.
+- **No imagery.** The system lets content and photography carry colour. Sector 4 carries no photography, logos or series imagery at all. Colour comes from data only: a team's colour appears as a small squircle marker (the 30% radius of `app-icon-squircle`) beside the team's name in text. It is never chrome, never a fill behind text and never text colour.
 - **The accent.** Sector 4 has no commercial signals. The accent marks the single time-sensitive thing on a page, the upcoming race, as a `badge-popular`-style chip. One per page at most. Never a button, never a link.
-- **Outcomes.** The reference has no success or error palette, and neither does this site. Hits and misses are written as words ("Called", "Missed", "Hit", "Miss") and deltas carry their sign. Nothing is green or red.
+- **Outcomes.** The system has no success or error palette, and neither does this site. Hits and misses are written as words ("Called", "Missed", "Hit", "Miss") and deltas carry their sign. Nothing is green or red.
 - **Notices.** The preview banner and the reduced-snapshot note use a `{colors.canvas-soft}` fill with an ink label: a step on the tint ladder, not a warning colour.
 - **Links.** Inline links are ink and underlined. Standalone links are `button-pill-soft` pills; the one primary action on a page is a `button-primary` pill.
 - **Bands.** There are no dark section bands. The `{colors.ink}` footer is the only inverse surface on any page.
 - **Headlines.** Sentence case with a terminal period where the headline is a sentence ("Scored in public."). A race or circuit name used as a heading is a name, not a sentence, and takes no period.
 - **Tables.** `ex-data-table-cell` as specified: `{colors.canvas-soft}` header in `{typography.caption}`, body in `{typography.body-sm}`, `{spacing.sm} {spacing.md}` cells, `{colors.hairline}` row rules. Its description mentions a mono-caps eyebrow; the Don'ts forbid all-caps and a second family, and the Don'ts win.
 - **Charts.** Bars and distributions are `{colors.ink}` on a `{colors.field}` track, pill-ended. Every chart has its values in text beside it or in an accessible table; the drawing is decorative.
-- **Dark mode.** The reference defines none. The site is light only.
+- **Dark mode.** The system defines none. The site is light only.
