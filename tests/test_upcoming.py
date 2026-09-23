@@ -34,8 +34,8 @@ R15 = pd.Series({"raceId": RACE_ID, "year": SEASON, "round": ROUND, "circuitId":
                  "name": "Azerbaijan Grand Prix", "order": SEASON * 100 + ROUND,
                  "regs_era": "2026_reset"})
 
-# R15 qualifying, in the order Jolpica publishes it. Real refs, so they
-# resolve through the committed id maps.
+# R15 qualifying, in the order Jolpica publishes it. Real refs; the ids they
+# map to are the fixture's own, since data/processed is not in the repo.
 R15_QUALI = [("russell", "mercedes", "1:41.100"), ("antonelli", "mercedes", "1:41.250"),
              ("norris", "mclaren", "1:41.300"), ("piastri", "mclaren", "1:41.420"),
              ("leclerc", "ferrari", "1:41.500"), ("hamilton", "ferrari", "1:41.610")]
@@ -47,7 +47,15 @@ CARRIED_OVER = ("sainz", "williams")
 NO_TIME = ("bearman", "haas")
 
 
-def _maps() -> tuple[dict[str, int], dict[str, int]]:
+FIXTURE_DRIVERS = {"russell": 847, "antonelli": 863, "norris": 846, "piastri": 857,
+                   "leclerc": 844, "hamilton": 1, "sainz": 832, "bearman": 860}
+FIXTURE_CONSTRUCTORS = {"mercedes": 131, "mclaren": 1, "ferrari": 6, "williams": 3, "haas": 210}
+
+
+def _maps(real: bool = False) -> tuple[dict[str, int], dict[str, int]]:
+    """The fixture's id maps, or the real ones for the tests that need data."""
+    if not real:
+        return dict(FIXTURE_DRIVERS), dict(FIXTURE_CONSTRUCTORS)
     d = pd.read_csv(DATA / "id_maps" / "drivers.csv")
     c = pd.read_csv(DATA / "id_maps" / "constructors.csv")
     return dict(zip(d["driverRef"], d["driverId"])), dict(zip(c["constructorRef"], c["constructorId"]))
@@ -80,9 +88,10 @@ def weekend(tmp_path):
     ])
 
     (processed / "id_maps").mkdir(parents=True)
-    for name in ("drivers", "constructors"):
-        (processed / "id_maps" / f"{name}.csv").write_text(
-            (DATA / "id_maps" / f"{name}.csv").read_text())
+    pd.DataFrame({"driverRef": list(drivers), "driverId": list(drivers.values())}
+                 ).to_csv(processed / "id_maps" / "drivers.csv", index=False)
+    pd.DataFrame({"constructorRef": list(constructors), "constructorId": list(constructors.values())}
+                 ).to_csv(processed / "id_maps" / "constructors.csv", index=False)
     teams = {c for _, c, _ in R15_QUALI} | {CARRIED_OVER[1], NO_TIME[1]}
     pd.DataFrame([{"constructorId": constructors[t], "team_entity_id": f"{constructors[t]}-2014",
                    "first_year": 2014, "last_year": 2026, "n_seasons": 13} for t in sorted(teams)]
@@ -286,6 +295,6 @@ def test_r15_is_never_predicted_from_a_carried_over_field():
         return
     quali = next(r for r in J.read_cached_all(f"{SEASON}/qualifying")
                  if int(r["round"]) == ROUND)
-    drivers, _ = _maps()
+    drivers, _ = _maps(real=True)
     assert {d["driverId"] for d in pred["drivers"]} == {
         drivers[r["Driver"]["driverId"]] for r in quali["QualifyingResults"]}
