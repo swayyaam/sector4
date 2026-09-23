@@ -18,7 +18,7 @@ interface Props {
 const { title, description, image, imageAlt, jsonLd = [], breadcrumbs = [] } = Astro.props;
 const path = Astro.url.pathname;
 const { meta, isMock } = loadDataset();
-const site = (Astro.site ?? new URL("https://sector4.dev")).href.replace(/\/$/, "");
+const site = Astro.site!.href.replace(/\/$/, "");
 
 const crumbs =
   breadcrumbs.length > 0

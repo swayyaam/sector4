@@ -7,7 +7,7 @@ import { loadDataset } from "../lib/data";
  * and the 404, which a directory crawl would happily include.
  */
 export const GET: APIRoute = ({ site }) => {
-  const origin = (site ?? new URL("https://sector4.dev")).href.replace(/\/$/, "");
+  const origin = site!.href.replace(/\/$/, "");
   const { reference, predictions, meta } = loadDataset();
   const predicted = new Set(predictions.map((p) => p.race_id));
 
