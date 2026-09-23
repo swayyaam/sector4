@@ -88,7 +88,7 @@ const BLURB: Record<Snapshot, string> = {
   image="/og/track-record.png"
   breadcrumbs={[{ name: "Track record", path: "/track-record/" }]}
 >
-  <section class="wrap hero">
+  <section class="wrap page-hero">
     <p class="eyebrow">Track record</p>
     <h1>Every prediction, including the misses.</h1>
     <p class="lead">
@@ -305,24 +305,6 @@ const BLURB: Record<Snapshot, string> = {
 </BaseLayout>
 
 <style>
-  .hero {
-    display: grid;
-    gap: var(--space-md);
-    padding-top: var(--space-xxl);
-    padding-bottom: var(--space-md);
-  }
-  @media (min-width: 1024px) {
-    .hero {
-      padding-top: var(--space-section);
-    }
-  }
-  .hero h1 {
-    max-width: 16ch;
-  }
-  .hero .lead {
-    max-width: 52ch;
-  }
-
   .empty {
     display: grid;
     gap: var(--space-lg);

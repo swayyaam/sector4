@@ -177,7 +177,86 @@ a:hover {
 }
 
 .prose {
+  display: grid;
+  gap: var(--space-md);
   max-width: 68ch;
+}
+
+.prose ul,
+.prose ol {
+  margin: 0;
+  padding-left: var(--space-lg);
+  display: grid;
+  gap: var(--space-xs);
+}
+
+/* The top of a text page: eyebrow, headline, lead. */
+.page-hero {
+  display: grid;
+  gap: var(--space-md);
+  padding-top: var(--space-xxl);
+  padding-bottom: var(--space-md);
+}
+@media (min-width: 1024px) {
+  .page-hero {
+    padding-top: var(--space-section);
+  }
+}
+.page-hero h1 {
+  max-width: 16ch;
+}
+.page-hero .lead {
+  max-width: 52ch;
+}
+
+/*
+ * A chapter of a long page: its heading in the left column, the reading in
+ * the right, the heading staying in view while its chapter scrolls.
+ */
+.chapter {
+  display: grid;
+  gap: var(--space-lg);
+  scroll-margin-top: 88px;
+}
+@media (min-width: 900px) {
+  .chapter {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: var(--space-xxl);
+    align-items: start;
+  }
+  .chapter > h2 {
+    position: sticky;
+    top: 96px;
+  }
+}
+
+/* Definition rows divided by hairlines. */
+.defs {
+  display: grid;
+  margin: 0;
+  border-top: 1px solid var(--colour-hairline);
+}
+.defs > div {
+  display: grid;
+  gap: var(--space-xxs);
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid var(--colour-hairline);
+}
+.defs dt {
+  font-weight: var(--weight-strong);
+}
+.defs dd {
+  margin: 0;
+  color: var(--colour-text-muted);
+}
+
+/* A point that must not be skimmed past: one step up the tint ladder. */
+.callout {
+  display: grid;
+  gap: var(--space-sm);
+  background: var(--colour-canvas-soft);
+  border-radius: var(--rounded-sm);
+  padding: var(--space-md) var(--space-lg);
 }
 
 /* Whitespace is the grouping device: sections are separated by canvas, not rules. */

@@ -22,7 +22,7 @@ const groups = [...new Set(credits.sources.map((s) => s.kind))].map((kind) => ({
   image="/og/credits.png"
   breadcrumbs={[{ name: "Credits", path: "/credits/" }]}
 >
-  <section class="wrap hero">
+  <section class="wrap page-hero">
     <p class="eyebrow">Credits</p>
     <h1>Sources and licences.</h1>
     <p class="lead">
@@ -106,20 +106,6 @@ const groups = [...new Set(credits.sources.map((s) => s.kind))].map((kind) => ({
 </BaseLayout>
 
 <style>
-  .hero {
-    display: grid;
-    gap: var(--space-md);
-    padding-top: var(--space-xxl);
-    padding-bottom: var(--space-md);
-  }
-  @media (min-width: 1024px) {
-    .hero {
-      padding-top: var(--space-section);
-    }
-  }
-  .hero .lead {
-    max-width: 52ch;
-  }
   .group-h {
     margin-bottom: var(--space-lg);
   }
@@ -146,27 +132,5 @@ const groups = [...new Set(credits.sources.map((s) => s.kind))].map((kind) => ({
   .lic {
     min-height: 36px;
     font-size: 14px;
-  }
-
-  .chapter {
-    display: grid;
-    gap: var(--space-lg);
-  }
-  @media (min-width: 900px) {
-    .chapter {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-      gap: var(--space-xxl);
-      align-items: start;
-    }
-  }
-  .prose {
-    display: grid;
-    gap: var(--space-md);
-    max-width: 68ch;
-  }
-  .callout {
-    background: var(--colour-canvas-soft);
-    border-radius: var(--rounded-sm);
-    padding: var(--space-md) var(--space-lg);
   }
 </style>
