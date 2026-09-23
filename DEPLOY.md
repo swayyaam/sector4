@@ -1,0 +1,356 @@
+# Deploying Sector 4
+
+The site is a static Astro build in `web/`, hosted on Vercel. This file covers
+the Vercel project, the domain, what to check after a deploy, and the commands
+to run around each race weekend.
+
+**Status:** not deployed. Deployment is held until R15 (Azerbaijan, 2026) has
+been scored. Before the first production deploy:
+
+1. Fill `contact_email` and `jurisdiction_city` in `web/src/data/legal.json`.
+   A production build refuses to run while either is missing.
+2. Decide the domain (see [Custom domain](#custom-domain)).
+
+---
+
+## Vercel project settings
+
+Create one project from the GitHub repository `swayyaam/sector4`.
+
+| Setting | Value | Where it is pinned |
+|---|---|---|
+| Root Directory | `web` | Vercel dashboard only |
+| Framework Preset | Astro | `web/vercel.json` |
+| Install Command | `npm ci` | `web/vercel.json` |
+| Build Command | `npm run build` | `web/vercel.json` |
+| Output Directory | `dist` | `web/vercel.json` |
+| Node.js Version | 22.x | `web/package.json` `engines`, and `web/.nvmrc` locally |
+| Plan | Hobby | The privacy policy quotes Hobby's one-hour log retention |
+
+Leave on:
+
+- **Automatically expose System Environment Variables** (Settings → Environment
+  Variables). The build reads `VERCEL_PROJECT_PRODUCTION_URL` for canonical
+  URLs and `VERCEL_ENV` for the release guard. A Vercel build without them fails
+  on purpose.
+
+Leave off, because the privacy policy says they do not exist:
+
+- Web Analytics
+- Speed Insights
+- The Vercel Toolbar on preview deployments. Its script comes from another
+  origin, and the Content Security Policy blocks it anyway.
+
+**Environment variables to add: none. Secrets: none.** The build reads only
+Vercel's own system variables.
+
+If the plan changes, update `hosting.plan` and `hosting.runtime_log_retention`
+in `web/src/data/legal.json`, and the privacy policy with them, **before** the
+change.
+
+## Branches and deployments
+
+- **Production branch: `main`.** Every merge to `main` deploys production. Never
+  commit to `main` directly: branch, push, open a PR, let CI run, merge.
+- **Every PR gets a preview deployment.** Vercel protects previews behind its
+  login and sends `noindex` on them. A preview shows "not yet set" badges on
+  the legal pages while facts are missing; production refuses to build.
+
+## What the build refuses to publish
+
+Each of these fails the build, locally, in CI and on Vercel:
+
+| Problem | Caught by |
+|---|---|
+| A data file that breaks the schema (probabilities that do not sum, a driver who does not exist, a result scored before its prediction) | `web/src/lib/schema.ts`, at build |
+| Anything the privacy policy says never happens: a request to another origin, cookies, browser storage, a network call from a script | `web/integrations/publish-guards.mjs`, after build |
+| A production deploy without the legal contact or jurisdiction | the same file, before build |
+| A Vercel build without the production URL | `web/astro.config.mjs` |
+
+## Headers
+
+Set in `web/vercel.json` and verified locally with a server that applies them:
+every page loads with no CSP violation and no console error, and Lighthouse on
+the home page scores 100 in all four categories.
+
+| Header | Value and why |
+|---|---|
+| `Content-Security-Policy` | `default-src 'none'`, then `'self'` only for scripts, styles, images, fonts and connections. Scripts are emitted as files, so there is no inline script allowance. Styles allow `'unsafe-inline'` for the inline stylesheet and the `style` attributes that set bar widths and team colours. `connect-src 'self'` rather than `'none'` so Lighthouse can fetch `robots.txt`; no script on the site makes a request, and the build guard enforces that. No framing, no forms, no `<base>`. |
+| `Strict-Transport-Security` | Two years, `includeSubDomains`, **no `preload`**. Preload is hard to undo; add it only deliberately, once the domain is settled. |
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY`, alongside `frame-ancestors 'none'` for older browsers |
+| `Referrer-Policy` | `strict-origin-when-cross-origin`: other sites learn only which site a visitor came from, as the privacy policy says |
+| `Cross-Origin-Opener-Policy` | `same-origin` |
+| `Permissions-Policy` | Every feature the site does not use is denied: camera, microphone, geolocation, payment, USB and the rest |
+
+| Path | `Cache-Control` |
+|---|---|
+| `/_astro/*` (content-hashed scripts) | `public, max-age=31536000, immutable` |
+| `/fonts/*` (not hashed) | `public, max-age=2592000, stale-while-revalidate=86400` |
+| `/og/*` (cards change as predictions change) | `public, max-age=3600, must-revalidate` |
+| Everything else: HTML, sitemap, robots, favicon | `public, max-age=0, must-revalidate` |
+
+The cache rules do not overlap, so no two rules set the same header on the same
+path.
+
+## Custom domain
+
+What exists today:
+
+- `sector4.dev` does not resolve (NXDOMAIN). It is not registered, or not
+  delegated, so it cannot be used as it stands.
+- `swayam.codes` is registered at name.com and already served by Vercel.
+
+**Nothing in the repo names a domain.** The site's URL comes from Vercel's
+`VERCEL_PROJECT_PRODUCTION_URL`: the shortest custom domain attached to the
+project, or its `vercel.app` domain until one is. Attaching a domain needs no
+code change.
+
+### A subdomain, for example `sector4.swayam.codes`
+
+1. Vercel → project → Settings → Domains → Add `sector4.swayam.codes`.
+2. At name.com, DNS for `swayam.codes`, add:
+
+   | Type | Host | Answer |
+   |---|---|---|
+   | `CNAME` | `sector4` | the target Vercel shows for this project, of the form `<hash>.vercel-dns-0NN.com` |
+
+   The target is unique to the project, so copy it from the dashboard rather
+   than from anywhere else. Leave the existing records for `swayam.codes` alone.
+3. Wait for Vercel to show the domain as valid. It issues the certificate itself.
+
+### An apex domain, if one is registered for the project
+
+1. Add both `example.com` and `www.example.com` in Settings → Domains, and set
+   one to redirect to the other.
+2. At the registrar:
+
+   | Type | Host | Answer |
+   |---|---|---|
+   | `A` | `@` | the IP on the domain's card in Vercel (Vercel's documentation gives `76.76.21.21`) |
+   | `CNAME` | `www` | the project's target from the dashboard |
+
+### Once the domain is live
+
+- **Redeploy production.** The URL is written into the pages at build time, so
+  the deploy made before the domain was attached still names the `vercel.app`
+  address.
+- Check that `view-source:` on any page shows the new domain in
+  `<link rel="canonical">` and `og:image`, and that `/sitemap.xml` and
+  `/robots.txt` use it too.
+- Nothing to edit in the repo.
+
+## First deploy
+
+1. Fill the two legal facts, merge the legal pages PR, merge this one.
+2. Vercel → Add New → Project → import `swayyaam/sector4` → set Root Directory
+   to `web` → Deploy. Everything else comes from `web/vercel.json`.
+3. Confirm the settings above, then attach the domain.
+4. Run the post-deploy checklist.
+
+## Post-deploy checklist
+
+Replace `$SITE` with the production URL.
+
+**Pages.** Open each one and read it:
+
+- `$SITE/`
+- the next race, `$SITE/races/2026/<slug>/`
+- `$SITE/track-record/`
+- `$SITE/methodology/`
+- `$SITE/credits/`
+- `$SITE/privacy/`
+- `$SITE/terms/`
+- a URL that does not exist, which should show the 404 page with status 404
+- `$SITE/privacy`, without the slash, which should redirect to `/privacy/`
+
+**Console and network.** In desktop DevTools, on each page: zero console
+errors, zero CSP violations, and in the Network tab every request goes to the
+site's own domain.
+
+**Headers.**
+
+```bash
+curl -sI "$SITE/" | grep -iE "content-security|strict-transport|referrer|permissions|x-content|x-frame|cache-control"
+```
+
+```bash
+curl -sI "$SITE$(curl -s "$SITE/" | grep -o '/_astro/[^"]*\.js' | head -1)" | grep -i cache-control
+```
+
+The second should say `immutable`.
+
+**Lighthouse, mobile, on the live URL.** Every category must be 95 or higher.
+
+```bash
+npx lighthouse "$SITE/" --only-categories=performance,accessibility,best-practices,seo --output=html --output-path=./lighthouse-home.html
+```
+
+Run it for the home page, the next race page and `/privacy/`.
+
+**Link previews.** Paste `$SITE/` and the next race page into a private chat
+(or any Open Graph checker). Each preview should show its own card, and the race
+card should name the snapshot and when it was generated. Open the `og:image`
+URL directly: it must load from the production domain.
+
+**Sitemap and robots.** `$SITE/sitemap.xml` lists the six fixed pages and
+every predicted race, all on the production domain. `$SITE/robots.txt` allows
+everything and points to that sitemap.
+
+**Real phones.** On an iPhone (Safari) and an Android phone (Chrome), check:
+
+- The layout has no sideways scrolling, and the menu opens and closes.
+- Session times show in the phone's own time zone.
+- The countdown ticks over at the next minute.
+- The snapshot toggle switches.
+
+## After each race weekend
+
+### Rules
+
+- **Never run two fetchers at once.** The fetchers are `fetch_jolpica.py`,
+  `fetch_fastf1.py` and `scrape_grids.py`. Jolpica and FastF1 share an upstream
+  limit. Start one, wait for its PID to exit, then start the next:
+  `until ! ps -p <PID> >/dev/null 2>&1; do sleep 30; done`
+- **Pre-weekend** is published before the first session of the weekend,
+  which is FP1 on every current weekend format. Publication
+  means the prediction file is **committed and pushed**; the commit is the
+  proof of when it was public.
+- **Post-qualifying** is published after qualifying and before the race starts.
+  **It is blocked at present; see [below](#post-qualifying-blocked).**
+- **Scoring** happens after the result is in Jolpica. `fetch_jolpica.py` treats
+  a race as finished four hours after its scheduled start, and results within
+  30 days are re-fetched in case they are amended.
+- `predict.py` refuses to overwrite a prediction and refuses a revision after
+  its deadline. It does **not** refuse a first publication after the deadline.
+  The scorer ignores such a file as late, so check the time yourself.
+- Session times for every upcoming race are in
+  `web/src/data/live/reference.json`, in UTC.
+
+All commands run from the repo root with the project's virtualenv.
+
+### 1. After race N: bring the result in, score it
+
+Once race N has finished and Jolpica has its classification:
+
+```bash
+./.venv/bin/python src/fetch_jolpica.py --seasons 2026
+```
+
+```bash
+./.venv/bin/python src/build_processed.py
+```
+
+`scrape_grids.py` is a fetcher. Run it only after `fetch_jolpica.py` has exited:
+
+```bash
+./.venv/bin/python src/scrape_grids.py
+```
+
+```bash
+./.venv/bin/python src/merge.py
+```
+
+```bash
+./.venv/bin/python src/team_lineage.py
+```
+
+```bash
+./.venv/bin/python src/validate.py
+```
+
+Stop if validation fails. Then score and rebuild the site data:
+
+```bash
+./.venv/bin/python src/score_race.py --season 2026 --round N
+```
+
+```bash
+./.venv/bin/python src/build_site_data.py
+```
+
+Commit the scoring on a branch, as a commit separate from any prediction:
+
+```bash
+git switch -c score/2026-rN main
+```
+
+```bash
+git add predictions/2026/track_record.json predictions/2026/results/ web/src/data/live/
+```
+
+```bash
+git commit -m "feat: score the 2026 round N predictions"
+```
+
+```bash
+git push -u origin score/2026-rN
+```
+
+Open a PR, let CI pass, merge. Merging deploys.
+
+### 2. Before race N+1: pre-weekend prediction
+
+Before the first session of race N+1. The cached feature frames do not notice
+new results, so clear them first or the model trains without race N:
+
+```bash
+rm -rf data/features/
+```
+
+```bash
+./.venv/bin/python src/predict.py --season 2026 --round N+1 --snapshot pre_weekend
+```
+
+```bash
+git switch -c predict/2026-rN+1-pre main
+```
+
+```bash
+git add predictions/2026/<N+1>-pre_weekend.json
+```
+
+```bash
+git commit -m "feat: publish the 2026 round N+1 pre-weekend prediction"
+```
+
+```bash
+git push -u origin predict/2026-rN+1-pre
+```
+
+The push must land before the first session starts. Then rebuild the site data
+on the same branch, commit it, open a PR and merge:
+
+```bash
+./.venv/bin/python src/build_site_data.py
+```
+
+```bash
+git add web/src/data/live/ && git commit -m "feat: show the round N+1 prediction" && git push
+```
+
+Optional between races, and needed before any post-qualifying prediction: bring
+in FastF1 practice data for completed races. It is a fetcher, so it runs alone:
+
+```bash
+./.venv/bin/python src/fetch_fastf1.py --seasons 2026
+```
+
+### Post-qualifying: blocked
+
+The pipeline cannot yet produce a correct post-qualifying prediction for a race
+that has not run:
+
+- `build_processed.py` keeps only completed races, so the upcoming race's
+  qualifying results never reach `data/processed/`.
+- `fetch_fastf1.py` works from that same races table, so the weekend's practice
+  sessions are never fetched.
+- `predict.py` would still produce a file. Its entrants would fall back to the
+  previous race, and every driver's qualifying position would be filled with
+  20. The file would be labelled post-qualifying and contain no qualifying
+  information.
+
+Do not run `predict.py --snapshot post_qualifying` for an upcoming race until
+this is fixed. The fix is a pipeline change that gives the upcoming race's
+qualifying and practice a provisional race id, which is a decision about data,
+and a refusal in `predict.py` so the failure can never be silent.
