@@ -179,6 +179,31 @@ def _fit_dnf(train: pd.DataFrame, test: pd.DataFrame, cols: list[str]) -> pd.Ser
     return pd.Series(pipe.predict_proba(test[cols].astype(float))[:, 1], index=ids)
 
 
+def check_post_qualifying_inputs(tables: dict, race: pd.Series, feats: pd.DataFrame) -> None:
+    """Refuse a post-qualifying prediction that cannot see qualifying.
+
+    For a race that has not run, data/processed holds no qualifying result
+    (build_processed.py keeps completed races only) and entrants() falls back
+    to the previous race's field. The spline then fills every missing
+    qualifying position with 20 and practice gaps are median-imputed, so a
+    file labelled post-qualifying would carry no qualifying information at
+    all. That has to be an error, never a silent substitution.
+    """
+    q = tables["qualifying"]
+    if q[q["raceId"] == int(race["raceId"])].empty:
+        raise SystemExit(
+            f"{int(race['year'])} round {int(race['round'])}: no qualifying results in "
+            "data/processed, so a post-qualifying prediction would not see qualifying. "
+            "Refusing. See DEPLOY.md, 'Post-qualifying: blocked'.")
+    missing = sorted(feats.loc[feats["quali_position"].isna(), "driverId"].astype(int))
+    if missing:
+        raise SystemExit(f"no qualifying position for driverId {missing}; refusing rather than "
+                         "filling it in")
+    if feats["practice_best_lap_gap_ms"].isna().all():
+        raise SystemExit("no practice pace for any driver this weekend; run fetch_fastf1.py for "
+                         "the weekend first. Refusing rather than imputing the whole field.")
+
+
 def build(season: int, rnd: int, snapshot: str) -> dict:
     tables = F.load_tables()
     race, completed = race_row(tables, season, rnd)
@@ -195,6 +220,8 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
     missing = feats["team_entity_id"].isna().sum()
     if missing:
         raise SystemExit(f"{missing} drivers have no team_entity_id; refusing to publish")
+    if snapshot == F.POST:
+        check_post_qualifying_inputs(tables, race, feats)
 
     history = M.dataset(snapshot)
     train = history[history["order"] < int(race["order"])]
