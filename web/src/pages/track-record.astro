@@ -67,7 +67,7 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
   image="/og/track-record.png"
   breadcrumbs={[{ name: "Track record", path: "/track-record/" }]}
 >
-  <section class="band band-dark">
+  <section class="band">
     <div class="wrap">
       <p class="eyebrow">Track record</p>
       <h1>Every prediction, including the misses</h1>
@@ -270,14 +270,14 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
 
 <style>
   .sub {
-    color: var(--colour-on-dark-soft);
+    color: var(--colour-text-muted);
     margin-top: var(--space-sm);
     max-width: 62ch;
   }
   .summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--space-base);
+    gap: var(--space-md);
     margin: var(--space-lg) 0 0;
   }
   .summary div {
@@ -287,9 +287,7 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
   dt {
     font-size: 12px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
   }
   dd {
     margin: var(--space-xxs) 0 0;
@@ -299,7 +297,7 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
   .note {
     margin-top: var(--space-lg);
     font-size: 14px;
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
     max-width: 68ch;
   }
   .scroller {
@@ -322,9 +320,7 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
   thead th {
     font-size: 12px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
     border-bottom: 1px solid var(--colour-hairline);
   }
   tbody tr {
@@ -336,14 +332,14 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
   .season {
     display: block;
     font-size: 12px;
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
   }
   .snap {
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
   }
   .pos {
     width: 3ch;
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
   }
   .n {
     text-align: right;
@@ -352,10 +348,10 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
     font-weight: 600;
   }
   .hit {
-    color: var(--colour-positive);
+    color: var(--colour-ink);
   }
   .miss {
-    color: var(--colour-negative);
+    color: var(--colour-text-muted);
   }
   /* Below 640px the row becomes a block. A horizontal scroller put every score
      — the whole point of the page — off the right edge of a phone. */
@@ -389,7 +385,7 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
     /* Decorative: the <th> in thead still names the column for assistive tech. */
     tbody td::before {
       content: attr(data-label) " ";
-      color: var(--colour-muted);
+      color: var(--colour-text-muted);
       font-weight: 400;
     }
   }
@@ -399,7 +395,7 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
     margin: var(--space-lg) 0 0;
     padding: 0;
     display: grid;
-    gap: var(--space-base);
+    gap: var(--space-md);
   }
   .pending li {
     border-top: 1px solid var(--colour-hairline);
@@ -411,7 +407,7 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
   .pending .meta {
     display: block;
     font-size: 13px;
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
     margin-top: var(--space-xxs);
   }
 </style>

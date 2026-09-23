@@ -22,7 +22,7 @@ const groups = [...new Set(credits.sources.map((s) => s.kind))].map((kind) => ({
   image="/og/credits.png"
   breadcrumbs={[{ name: "Credits", path: "/credits/" }]}
 >
-  <section class="band band-dark">
+  <section class="band">
     <div class="wrap">
       <p class="eyebrow">Credits</p>
       <h1>Sources and licences</h1>
@@ -105,7 +105,7 @@ const groups = [...new Set(credits.sources.map((s) => s.kind))].map((kind) => ({
 
 <style>
   .sub {
-    color: var(--colour-on-dark-soft);
+    color: var(--colour-text-muted);
     margin-top: var(--space-sm);
     max-width: 62ch;
   }
@@ -127,7 +127,7 @@ const groups = [...new Set(credits.sources.map((s) => s.kind))].map((kind) => ({
   }
   .sources li {
     border-top: 1px solid var(--colour-hairline);
-    padding-top: var(--space-base);
+    padding-top: var(--space-md);
   }
   h3 {
     font-size: 18px;
@@ -135,12 +135,12 @@ const groups = [...new Set(credits.sources.map((s) => s.kind))].map((kind) => ({
   }
   .by {
     font-size: 13px;
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
     margin-bottom: var(--space-sm);
   }
   .use {
     font-size: 14px;
-    color: var(--colour-body);
+    color: var(--colour-ink);
     line-height: 1.6;
     margin-bottom: var(--space-sm);
   }
@@ -150,17 +150,17 @@ const groups = [...new Set(credits.sources.map((s) => s.kind))].map((kind) => ({
   }
   .notice {
     font-size: 13px;
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
     margin-top: var(--space-xs);
     line-height: 1.6;
   }
   .prose p {
-    color: var(--colour-body);
+    color: var(--colour-ink);
     line-height: 1.65;
-    margin-bottom: var(--space-base);
+    margin-bottom: var(--space-md);
   }
   .prose .meta {
     font-size: 13px;
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
   }
 </style>

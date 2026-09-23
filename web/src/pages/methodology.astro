@@ -15,7 +15,7 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
   image="/og/methodology.png"
   breadcrumbs={[{ name: "Methodology", path: "/methodology/" }]}
 >
-  <section class="band band-dark">
+  <section class="band">
     <div class="wrap">
       <p class="eyebrow">Methodology</p>
       <h1>How the numbers are made</h1>
@@ -419,18 +419,18 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
 
 <style>
   .sub {
-    color: var(--colour-on-dark-soft);
+    color: var(--colour-text-muted);
     margin-top: var(--space-sm);
     max-width: 62ch;
   }
   .prose h2 {
     font-size: 26px;
-    margin-bottom: var(--space-base);
+    margin-bottom: var(--space-md);
   }
   .prose p,
   .prose li {
-    color: var(--colour-body);
-    margin-bottom: var(--space-base);
+    color: var(--colour-ink);
+    margin-bottom: var(--space-md);
     line-height: 1.65;
   }
   .prose strong {
@@ -438,27 +438,27 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
   }
   .prose ul {
     padding-left: var(--space-lg);
-    margin-bottom: var(--space-base);
+    margin-bottom: var(--space-md);
   }
   .prose li {
     margin-bottom: var(--space-sm);
   }
   .defs {
-    margin: 0 0 var(--space-base);
+    margin: 0 0 var(--space-md);
   }
   .defs dt {
     font-weight: 600;
     color: var(--colour-ink);
-    margin-top: var(--space-base);
+    margin-top: var(--space-md);
   }
   .defs dd {
     margin: var(--space-xxs) 0 0;
-    color: var(--colour-body);
+    color: var(--colour-ink);
     line-height: 1.65;
   }
   .sub-h {
     font-size: 18px;
-    margin: var(--space-xl) 0 var(--space-base);
+    margin: var(--space-xl) 0 var(--space-md);
   }
   .scroller {
     overflow-x: auto;
@@ -479,9 +479,7 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
   thead th {
     font-size: 12px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
     border-bottom: 1px solid var(--colour-hairline);
   }
   tbody tr {
@@ -495,12 +493,12 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
     text-align: right;
   }
   .dim {
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
   }
   .summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: var(--space-base);
+    gap: var(--space-md);
     margin: 0 0 var(--space-lg);
   }
   .summary div {
@@ -510,9 +508,7 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
   .summary dt {
     font-size: 12px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
     margin: 0;
   }
   .summary dd {
@@ -521,9 +517,9 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
     color: var(--colour-ink);
   }
   .flag {
-    border-left: 3px solid var(--colour-caution);
-    background: var(--colour-caution-surface);
-    padding: var(--space-base) var(--space-lg);
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    border-left: 3px solid var(--colour-ink);
+    background: var(--colour-canvas-soft);
+    padding: var(--space-md) var(--space-lg);
+    border-radius: 0 var(--rounded-sm) var(--rounded-sm) 0;
   }
 </style>

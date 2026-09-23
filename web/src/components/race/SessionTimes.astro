@@ -1,0 +1,62 @@
+---
+/**
+ * The weekend's sessions. Rendered in UTC; the layout's script rewrites each
+ * time into the reader's zone and keeps UTC as the hover title.
+ */
+import type { RaceSession } from "../../lib/schema";
+import { formatUtc } from "../../lib/time";
+interface Props {
+  sessions: RaceSession[];
+}
+const { sessions } = Astro.props;
+---
+
+<div class="sessions">
+  <ol>
+    {sessions.map((s, i) => (
+      <li class="rise" style={`--i:${i}`}>
+        <span class="name">{s.name}</span>
+        <time class="num" datetime={s.starts_at} data-local>
+          {formatUtc(s.starts_at)}
+        </time>
+      </li>
+    ))}
+  </ol>
+  <p class="zone caption" data-zone>
+    Times in UTC.
+  </p>
+</div>
+
+<style>
+  ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+  }
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-md);
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--colour-hairline);
+    font-size: 14px;
+    line-height: 1.43;
+  }
+  li:last-child {
+    border-bottom: 0;
+  }
+  .name {
+    font-weight: var(--weight-strong);
+    color: var(--colour-ink);
+  }
+  time {
+    color: var(--colour-ink);
+    text-align: right;
+  }
+  .zone {
+    margin-top: var(--space-sm);
+    color: var(--colour-text-muted);
+  }
+</style>

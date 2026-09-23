@@ -1,11 +1,16 @@
 ---
 import BaseLayout from "../../../components/layout/BaseLayout.astro";
+import PositionDistribution from "../../../components/prediction/PositionDistribution.astro";
 import ProbabilityTable from "../../../components/prediction/ProbabilityTable.astro";
+import Provenance from "../../../components/prediction/Provenance.astro";
 import TeamMarker from "../../../components/prediction/TeamMarker.astro";
 import CircuitCard from "../../../components/race/CircuitCard.astro";
+import CircuitHistory from "../../../components/race/CircuitHistory.astro";
 import Countdown from "../../../components/race/Countdown.astro";
+import SessionTimes from "../../../components/race/SessionTimes.astro";
 import {
   circuitById,
+  circuitHistoryFor,
   driverById,
   driversByWinProbability,
   loadDataset,
@@ -14,8 +19,8 @@ import {
   teamById,
 } from "../../../lib/data";
 import { driverName, percent, position, score } from "../../../lib/format";
+import { BASELINE_FOR, SNAPSHOT_BLURB, SNAPSHOT_LABEL } from "../../../lib/snapshots";
 import { formatUtc, isPast } from "../../../lib/time";
-import type { Prediction } from "../../../lib/schema";
 
 export async function getStaticPaths() {
   const { reference, predictions } = loadDataset();
@@ -35,6 +40,7 @@ const teams = teamById(reference);
 const circuits = circuitById(reference);
 const race = raceById(reference).get(raceId)!;
 const circuit = circuits.get(race.circuit_id)!;
+const history = circuitHistoryFor(reference, raceId);
 
 // Post-qualifying first when it exists: it is the sharper of the two, and the
 // one a reader arriving on race day wants.
@@ -44,18 +50,12 @@ const scoredWith = snapshots.find((s) => s.result !== null) ?? null;
 const result = scoredWith?.result ?? null;
 const now = new Date();
 const started = isPast(race.starts_at, now);
-
-const REPO = "https://github.com/swayyaam/sector4";
-
-const SNAPSHOT_LABEL: Record<Prediction["snapshot"], string> = {
-  pre_weekend: "Pre-weekend",
-  post_qualifying: "Post-qualifying",
-};
-const SNAPSHOT_BLURB: Record<Prediction["snapshot"], string> = {
-  pre_weekend: "Published before any car runs, so it cannot see qualifying or practice pace.",
-  post_qualifying:
-    "Published after qualifying. It adds qualifying position and this weekend's practice pace, which is most of what the model knows.",
-};
+const sessions =
+  race.sessions.length > 0
+    ? race.sessions
+    : meta.next_race?.race_id === raceId
+      ? meta.next_race.sessions
+      : [];
 
 const actualById = new Map((result?.drivers ?? []).map((d) => [d.driverId, d]));
 const finalOrder = scoredWith
@@ -105,523 +105,479 @@ const jsonLd = [
     { name: `${race.season} ${race.name}`, path: `/races/${race.season}/${race.slug}/` },
   ]}
 >
-  <section class="band band-dark">
-    <div class="wrap head">
-      <div>
-        <p class="eyebrow">
-          {race.season} · Round {race.round}
-        </p>
-        <h1>{race.name}</h1>
-        <p class="where">
-          {circuit.name} — {circuit.locality}, {circuit.country}
-        </p>
-      </div>
-      <div class="when">
-        {started ? (
-          <p class="cd">
-            <span class="num">Race complete</span>
-            <span class="at">
-              <time datetime={race.starts_at}>{formatUtc(race.starts_at)}</time>
-            </span>
+  <section class="wrap head">
+    <div class="title-block">
+      <p class="kicker">
+        {!started && <span class="badge badge-accent">Upcoming</span>}
+        <span class="muted body-sm">
+          Round {race.round} of {race.season}
+        </span>
+      </p>
+      <h1>{race.name}</h1>
+      <p class="lead">
+        {circuit.name}, {circuit.locality}, {circuit.country}
+      </p>
+    </div>
+
+    <div class="card-soft when">
+      {started ? (
+        <>
+          <p class="h3">Race complete</p>
+          <p class="muted body-sm">
+            Started{" "}
+            <time datetime={race.starts_at} data-local>
+              {formatUtc(race.starts_at)}
+            </time>
           </p>
-        ) : (
+        </>
+      ) : (
+        <>
+          <p class="body-sm muted">Race starts in</p>
           <Countdown startsAt={race.starts_at} />
-        )}
-      </div>
+          {sessions.length > 0 ? (
+            <SessionTimes sessions={sessions} />
+          ) : (
+            <p class="body-sm">
+              Race{" "}
+              <time datetime={race.starts_at} data-local>
+                {formatUtc(race.starts_at)}
+              </time>
+            </p>
+          )}
+        </>
+      )}
     </div>
   </section>
 
   {result && scoredWith && (
-    <section class="band">
-      <div class="wrap">
+    <section class="wrap band" aria-labelledby="result-h">
+      <div class="section-head">
         <p class="eyebrow">Result</p>
-        <h2>Predicted against actual</h2>
-        <p class="lede">
+        <h2 id="result-h">Predicted against actual.</h2>
+        <p>
           Scored on the {SNAPSHOT_LABEL[scoredWith.snapshot].toLowerCase()} snapshot, the one
-          published before the race started. Nothing here is recalculated after the fact.
-        </p>
-        <dl class="scores">
-          <div>
-            <dt>Log loss</dt>
-            <dd class="num">{score(result.log_loss)}</dd>
-          </div>
-          <div>
-            <dt>Brier</dt>
-            <dd class="num">{score(result.brier)}</dd>
-          </div>
-          <div>
-            <dt>Winner</dt>
-            <dd class:list={["outcome", result.winner_hit ? "hit" : "miss"]}>
-              {result.winner_hit ? "Called" : "Missed"}
-            </dd>
-          </div>
-          <div>
-            <dt>Podium places</dt>
-            <dd class="num">{result.podium_hits} of 3</dd>
-          </div>
-        </dl>
-
-        <div class="scroller">
-          <table class="grid">
-            <caption class="sr-only">
-              Every driver's finishing position beside the probability given before the race.
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col" class="pos">
-                  Pos
-                </th>
-                <th scope="col">Driver</th>
-                <th scope="col" class="n">
-                  Win prob.
-                </th>
-                <th scope="col" class="n">
-                  Podium prob.
-                </th>
-                <th scope="col" class="n">
-                  Expected
-                </th>
-                <th scope="col" class="n">
-                  Delta
-                </th>
-                <th scope="col">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {finalOrder.map((row) => {
-                const d = drivers.get(row.driverId);
-                const t = teams.get(row.team_entity_id);
-                const a = actualById.get(row.driverId);
-                const pos = a?.actual_position ?? null;
-                const delta = pos === null ? null : row.expected_position - pos;
-                return (
-                  <tr>
-                    <td class="pos num">{pos === null ? "—" : pos}</td>
-                    <th scope="row">
-                      <span class="who">
-                        {t && <TeamMarker colour={t.colour} name={t.name} />}
-                        <span>
-                          <span class="name">{d ? driverName(d) : `Driver ${row.driverId}`}</span>
-                          <span class="team">{t?.short_name ?? "Unknown team"}</span>
-                        </span>
-                      </span>
-                    </th>
-                    <td class="n num">{percent(row.p_win)}</td>
-                    <td class="n num">{percent(row.p_podium)}</td>
-                    <td class="n num dim">{position(row.expected_position)}</td>
-                    <td
-                      class:list={[
-                        "n",
-                        "num",
-                        delta === null
-                          ? "dim"
-                          : delta > 0.5
-                            ? "hit"
-                            : delta < -0.5
-                              ? "miss"
-                              : "dim",
-                      ]}
-                    >
-                      {delta === null ? "—" : `${delta > 0 ? "+" : ""}${position(delta)}`}
-                    </td>
-                    <td class="status">{a?.status ?? "Unknown"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <p class="note">
-          Delta is expected position minus actual: positive means the driver beat the prediction. A
-          driver who did not finish has no position, so no delta.
+          published before the session it predicts. Nothing here is recalculated after the fact.
         </p>
       </div>
+      <dl class="figures scores">
+        <div class="rise" style="--i:0">
+          <dt>Log loss</dt>
+          <dd class="num">{score(result.log_loss)}</dd>
+        </div>
+        {result.baseline && (
+          <div class="rise" style="--i:1">
+            <dt>{result.baseline.name}, same race</dt>
+            <dd class="num">{score(result.baseline.log_loss)}</dd>
+          </div>
+        )}
+        <div class="rise" style="--i:2">
+          <dt>Brier</dt>
+          <dd class="num">{score(result.brier)}</dd>
+        </div>
+        <div class="rise" style="--i:3">
+          <dt>Winner</dt>
+          <dd>{result.winner_hit ? "Called" : "Missed"}</dd>
+        </div>
+        <div class="rise" style="--i:4">
+          <dt>Podium places</dt>
+          <dd class="num">{result.podium_hits} of 3</dd>
+        </div>
+      </dl>
+
+      <div class="scroller">
+        <table class="table wide">
+          <caption class="sr-only">
+            Every driver's finishing position beside the probability given before the race.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Pos</th>
+              <th scope="col">Driver</th>
+              <th scope="col" class="n">
+                Win
+              </th>
+              <th scope="col" class="n">
+                Podium
+              </th>
+              <th scope="col" class="n">
+                Expected
+              </th>
+              <th scope="col" class="n">
+                Beat expected by
+              </th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {finalOrder.map((row, i) => {
+              const d = drivers.get(row.driverId);
+              const t = teams.get(row.team_entity_id);
+              const a = actualById.get(row.driverId);
+              const pos = a?.actual_position ?? null;
+              const delta = pos === null ? null : row.expected_position - pos;
+              return (
+                <tr class="rise" style={`--i:${i}`}>
+                  <td class="num dim">{pos === null ? "—" : pos}</td>
+                  <th scope="row">
+                    <span class="who">
+                      {t && <TeamMarker colour={t.colour_on_light} name={t.name} />}
+                      <span>
+                        {d ? driverName(d) : `Driver ${row.driverId}`}
+                        <span class="team">{t?.short_name ?? "Unknown team"}</span>
+                      </span>
+                    </span>
+                  </th>
+                  <td class="n num">{percent(row.p_win)}</td>
+                  <td class="n num">{percent(row.p_podium)}</td>
+                  <td class="n num dim">{position(row.expected_position)}</td>
+                  <td class="n num">
+                    {delta === null
+                      ? "—"
+                      : `${delta > 0 ? "+" : delta < 0 ? "−" : ""}${position(Math.abs(delta))}`}
+                  </td>
+                  <td class="dim">{a?.status ?? "Unknown"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p class="note">
+        Beat expected by is expected position minus actual: positive means the driver finished ahead
+        of the prediction. A driver who did not finish has no position, so no figure.
+      </p>
     </section>
   )}
 
-  <section class="band band-soft">
-    <div class="wrap">
+  <section class="wrap band" aria-labelledby="field-h">
+    <div class="section-head">
       <p class="eyebrow">Prediction</p>
-      <h2>Full field</h2>
+      <h2 id="field-h">Full field</h2>
+      <p>
+        Every driver's chance of winning, reaching the podium and finishing in the top ten. Only the
+        win probability has been validated. Podium, top ten and finishing order follow from it
+        through one simulation of the whole race; the DNF figure is a separate fit that has not been
+        validated.
+      </p>
+    </div>
 
-      {snapshots.length > 1 && (
-        <fieldset class="switch">
-          <legend>Snapshot</legend>
-          {snapshots.map((s, i) => (
-            <>
-              <input
-                type="radio"
-                name="snapshot"
-                id={`snap-${s.snapshot}`}
-                value={s.snapshot}
-                checked={i === 0}
-              />
-              <label for={`snap-${s.snapshot}`}>{SNAPSHOT_LABEL[s.snapshot]}</label>
-            </>
-          ))}
-        </fieldset>
-      )}
+    {snapshots.length > 1 && (
+      <fieldset class="seg">
+        <legend class="sr-only">Snapshot</legend>
+        {snapshots.map((s, i) => (
+          <>
+            <input
+              type="radio"
+              name="snapshot"
+              id={`snap-${s.snapshot}`}
+              value={s.snapshot}
+              checked={i === 0}
+            />
+            <label for={`snap-${s.snapshot}`}>{SNAPSHOT_LABEL[s.snapshot]}</label>
+          </>
+        ))}
+      </fieldset>
+    )}
 
-      <div class="panels">
-        {snapshots.map((s) => {
-          const rows = driversByWinProbability(s);
-          return (
-            <div class="panel" data-snap={s.snapshot}>
-              {s.snapshot === "pre_weekend" && (
-                <p class="reduction">
-                  <strong>This snapshot uses two features.</strong> Qualifying position and practice
-                  pace do not exist yet, so it falls back to championship points and share of team
-                  points. It is a weaker model than the post-qualifying one, not a different view of
-                  the same thing — the <a href="/methodology/">methodology page</a> says what the
-                  full model uses.
-                </p>
-              )}
-              <p class="meta">
-                <strong>{SNAPSHOT_LABEL[s.snapshot]}.</strong> {SNAPSHOT_BLURB[s.snapshot]}{" "}
-                Generated <time datetime={s.generated_at}>{formatUtc(s.generated_at)}</time> · model{" "}
-                {s.model_version} · data {s.data_version} · revision {s.revision} ·{" "}
-                {s.published_commit ? (
-                  <a href={`${REPO}/commit/${s.published_commit}`} rel="noopener">
-                    published in <span class="num">{s.published_commit.slice(0, 7)}</span>
-                  </a>
-                ) : (
-                  <span>not yet committed</span>
-                )}
+    <div class="panels">
+      {snapshots.map((s) => {
+        const rows = driversByWinProbability(s);
+        return (
+          <div class="panel" data-snap={s.snapshot}>
+            <p class="meta body-sm">
+              <span class="badge badge-soft">{SNAPSHOT_LABEL[s.snapshot]}</span>
+              <span>
+                {SNAPSHOT_BLURB[s.snapshot]} Scored beside {BASELINE_FOR[s.snapshot]}.
+              </span>
+            </p>
+            <Provenance
+              generatedAt={s.generated_at}
+              revision={s.revision}
+              commit={s.published_commit}
+              model={s.model_version}
+              data={s.data_version}
+            />
+            {s.snapshot === "pre_weekend" && (
+              <p class="notice">
+                <span class="badge badge-ink">Two features</span>
+                <span>
+                  Qualifying position and practice pace do not exist yet, so this snapshot falls
+                  back to championship points and share of team points. It is a weaker model than
+                  the post-qualifying one, not a different view of the same thing. The{" "}
+                  <a href="/methodology/">methodology page</a> says what the full model uses.
+                </span>
               </p>
-              {s.revisions.length > 1 && (
-                <details class="revisions">
-                  <summary>
-                    Revision history — {s.revisions.length} published, revision {s.revision} counts
-                  </summary>
-                  <ol>
-                    {s.revisions.map((r) => (
-                      <li>
-                        <span class="num">r{r.revision}</span> · generated{" "}
-                        <time datetime={r.generated_at}>{formatUtc(r.generated_at)}</time> ·{" "}
-                        {r.published_commit ? (
-                          <a href={`${REPO}/commit/${r.published_commit}`} rel="noopener">
-                            <span class="num">{r.published_commit.slice(0, 7)}</span>
-                          </a>
-                        ) : (
-                          "uncommitted"
-                        )}{" "}
-                        ·{" "}
-                        <strong>
-                          {r.effective
-                            ? "the one that counts"
-                            : r.late
-                              ? "published after the session started — not scored"
-                              : "superseded"}
-                        </strong>
-                        {r.reason && <p class="reason">{r.reason}</p>}
-                      </li>
-                    ))}
-                  </ol>
-                </details>
-              )}
-              <div class="scroller">
-                <ProbabilityTable
-                  rows={rows}
-                  drivers={drivers}
-                  teams={teams}
-                  caption={`${SNAPSHOT_LABEL[s.snapshot]} probabilities for all ${rows.length} drivers, most likely winner first.`}
-                />
-              </div>
-
-              <h3 class="fh">What is driving each number</h3>
-              <ul class="factors">
-                {rows.map((r, i) => {
-                  const d = drivers.get(r.driverId);
-                  const t = teams.get(r.team_entity_id);
-                  return (
+            )}
+            {s.revisions.length > 1 && (
+              <details class="revisions disclosure">
+                <summary>
+                  Revision history: {s.revisions.length} published, revision {s.revision} counts
+                </summary>
+                <ol>
+                  {s.revisions.map((r) => (
                     <li>
-                      <details open={i < 3}>
-                        <summary>
-                          <span class="fname">{d ? driverName(d) : `Driver ${r.driverId}`}</span>
-                          <span class="fteam">{t?.short_name ?? "Unknown team"}</span>
-                          <span class="num fpct">{percent(r.p_win)}</span>
-                        </summary>
-                        {r.top_factors.length === 0 ? (
-                          <p class="empty">No factor above the reporting threshold.</p>
-                        ) : (
-                          <ul class="flist">
-                            {r.top_factors.map((f) => (
-                              <li>
-                                <span class="flabel">{f.label}</span>
-                                <span class="fmag" aria-hidden="true">
-                                  <span
-                                    class:list={["fbar", f.direction]}
-                                    style={`width:${Math.round(f.magnitude * 100)}%`}
-                                  />
-                                </span>
-                                <span class:list={["fdir", f.direction]}>
-                                  {f.direction === "positive" ? "helps" : "hurts"}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </details>
+                      <p>
+                        <strong>Revision {r.revision}.</strong>{" "}
+                        {r.effective
+                          ? "The one that counts."
+                          : r.late
+                            ? "Published after the session started, so not scored."
+                            : "Superseded."}
+                      </p>
+                      <Provenance
+                        generatedAt={r.generated_at}
+                        revision={r.revision}
+                        commit={r.published_commit}
+                      />
+                      {r.reason && <p class="reason">{r.reason}</p>}
                     </li>
-                  );
-                })}
-              </ul>
+                  ))}
+                </ol>
+              </details>
+            )}
+
+            <div class="scroller">
+              <ProbabilityTable
+                rows={rows}
+                drivers={drivers}
+                teams={teams}
+                caption={`${SNAPSHOT_LABEL[s.snapshot]} probabilities for all ${rows.length} drivers, most likely winner first.`}
+              />
             </div>
-          );
-        })}
-      </div>
+
+            <div class="sub">
+              <h3>Finishing order</h3>
+              <p class="muted body-sm">
+                Where the simulation places each driver, one column per position, all on one scale.
+                It does not model retirements: every car is placed somewhere in the order, and the
+                chance of retiring is the separate DNF column above.
+              </p>
+            </div>
+            <PositionDistribution rows={rows} drivers={drivers} teams={teams} />
+
+            <div class="sub">
+              <h3>What is driving each number</h3>
+              <p class="muted body-sm">
+                Each factor's share of the driver's score, not a lap time or any timing value.
+              </p>
+            </div>
+            <ul class="factors">
+              {rows.map((r, i) => {
+                const d = drivers.get(r.driverId);
+                const t = teams.get(r.team_entity_id);
+                return (
+                  <li>
+                    <details class="disclosure" open={i < 3}>
+                      <summary>
+                        <span class="fname">{d ? driverName(d) : `Driver ${r.driverId}`}</span>
+                        <span class="fteam">{t?.short_name ?? "Unknown team"}</span>
+                        <span class="num fpct">{percent(r.p_win)}</span>
+                      </summary>
+                      {r.top_factors.length === 0 ? (
+                        <p class="empty">No factor above the reporting threshold.</p>
+                      ) : (
+                        <ul class="flist">
+                          {r.top_factors.map((f, k) => (
+                            <li>
+                              <span class="flabel">{f.label}</span>
+                              <span class:list={["bar", f.direction]} aria-hidden="true">
+                                <span style={`--w:${(f.magnitude * 100).toFixed(1)}%;--i:${k}`} />
+                              </span>
+                              <span class="fdir">
+                                {f.direction === "positive" ? "Helps" : "Hurts"}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </details>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
     </div>
   </section>
 
-  <section class="band">
-    <div class="wrap circuit">
-      <div>
-        <p class="eyebrow">Circuit</p>
-        <h2>{circuit.name}</h2>
-        <p class="lede">
-          {circuit.locality}, {circuit.country}. Regulations era {race.regs_era}, which bounds the
-          history the model treats as comparable.
-        </p>
-        <p class="note">
-          Data version {meta.data_version}, generated{" "}
-          <time datetime={meta.generated_at}>{formatUtc(meta.generated_at)}</time>.
-        </p>
-      </div>
+  <section class="wrap band" aria-labelledby="circuit-h">
+    <div class="section-head">
+      <p class="eyebrow">Circuit</p>
+      <h2 id="circuit-h">{circuit.name}</h2>
+    </div>
+    <div class="circuit">
+      <CircuitHistory history={history} circuit={circuit} season={race.season} />
       <CircuitCard circuit={circuit} />
     </div>
+    <p class="note">
+      Regulations era <span class="num">{race.regs_era}</span>, which bounds the history the model
+      treats as comparable. Data version <span class="num">{meta.data_version}</span>, built{" "}
+      <time datetime={meta.generated_at} data-local>
+        {formatUtc(meta.generated_at)}
+      </time>
+      .
+    </p>
   </section>
 </BaseLayout>
 
 <style>
   .head {
     display: grid;
-    gap: var(--space-lg);
+    gap: var(--space-xl);
+    padding-top: var(--space-xxl);
+    padding-bottom: var(--space-lg);
   }
   @media (min-width: 900px) {
     .head {
-      grid-template-columns: 1fr auto;
-      align-items: end;
+      grid-template-columns: 1.2fr 1fr;
+      align-items: start;
+      padding-top: var(--space-section);
     }
   }
-  .where {
-    color: var(--colour-on-dark-soft);
-    margin-top: var(--space-sm);
+  .title-block {
+    display: grid;
+    gap: var(--space-md);
+    align-content: start;
   }
-  .cd {
+  .kicker {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-xxs);
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-xs);
   }
-  .cd .num {
-    font-size: 22px;
-    color: var(--colour-on-dark);
+  .when {
+    display: grid;
+    gap: var(--space-xs);
   }
-  .cd .at {
-    font-size: 13px;
-    color: var(--colour-on-dark-soft);
-  }
-  .lede {
-    max-width: 62ch;
-    color: var(--colour-body);
-    margin-top: var(--space-sm);
+  .when :global(.sessions) {
+    margin-top: var(--space-md);
   }
 
   .scores {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--space-base);
-    margin: var(--space-xl) 0;
+    margin-bottom: var(--space-xl);
   }
-  .scores div {
-    border-top: 1px solid var(--colour-hairline);
-    padding-top: var(--space-xs);
-  }
-  dt {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
-  }
-  dd {
-    margin: var(--space-xxs) 0 0;
-    font-size: 20px;
-    color: var(--colour-ink);
-  }
-  .outcome {
-    font-weight: 600;
-  }
-  .hit {
-    color: var(--colour-positive);
-  }
-  .miss {
-    color: var(--colour-negative);
-  }
-
-  /* Wide tables scroll rather than shrink the type. */
-  .scroller {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .grid {
-    width: 100%;
-    min-width: 640px;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-  .grid th,
-  .grid td {
-    text-align: left;
-    padding: var(--space-sm) var(--space-xs);
-    font-weight: 400;
-    white-space: nowrap;
-  }
-  .grid thead th {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
-    border-bottom: 1px solid var(--colour-hairline);
-  }
-  .grid tbody tr {
-    border-bottom: 1px solid var(--colour-hairline);
-  }
-  .grid .pos {
-    width: 3ch;
-    color: var(--colour-muted);
-  }
-  .grid .n {
-    text-align: right;
-  }
-  .grid .dim {
-    color: var(--colour-muted);
-  }
-  .grid .status {
-    color: var(--colour-muted);
+  .wide {
+    min-width: 680px;
   }
   .who {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
   }
-  .name {
-    display: block;
-    color: var(--colour-ink);
-    font-weight: 600;
-  }
   .team {
     display: block;
     font-size: 12px;
-    color: var(--colour-muted);
+    line-height: 1.33;
+    font-weight: var(--weight-text);
+    color: var(--colour-text-muted);
   }
   .note {
-    margin-top: var(--space-base);
-    font-size: 13px;
-    color: var(--colour-muted);
-    max-width: 62ch;
+    margin-top: var(--space-md);
+    font-size: 14px;
+    line-height: 1.43;
+    color: var(--colour-text-muted);
+    max-width: 68ch;
   }
 
-  /* Snapshot toggle: two radios and a :has() rule. No JavaScript, and it keeps
-     working with the keyboard for free. */
-  .switch {
+  /*
+   * Snapshot toggle: two radios and a :has() rule, no script, and the keyboard
+   * works for free. The white pill is one element that slides between the two
+   * equal columns by transform; the incoming panel's rows rise into place.
+   */
+  .seg {
+    position: relative;
+    display: inline-grid;
+    grid-template-columns: 1fr 1fr;
+    margin: 0 0 var(--space-xl);
+    padding: var(--space-xxs);
     border: 0;
-    padding: 0;
-    margin: var(--space-lg) 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-xs);
+    border-radius: var(--rounded-full);
+    background: var(--colour-canvas-soft);
   }
-  .switch legend {
-    float: left;
-    width: 100%;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
-    margin-bottom: var(--space-xs);
+  .seg::before {
+    content: "";
+    position: absolute;
+    top: var(--space-xxs);
+    bottom: var(--space-xxs);
+    left: var(--space-xxs);
+    width: calc(50% - var(--space-xxs));
+    border-radius: var(--rounded-full);
+    background: var(--colour-canvas);
+    /* DESIGN.md's one soft-shadow exception: the active segment lifts off its track. */
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--colour-ink) 10%, transparent);
+    transition: transform var(--motion-base) var(--motion-ease-standard);
   }
-  .switch input {
+  .seg:has(input:nth-of-type(2):checked)::before {
+    transform: translateX(100%);
+  }
+  .seg input {
     position: absolute;
     width: 1px;
     height: 1px;
     opacity: 0;
   }
-  .switch label {
-    border: 1px solid var(--colour-muted);
-    border-radius: var(--radius-pill);
-    padding: 8px 16px;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--colour-body);
+  .seg label {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 var(--space-lg);
+    border-radius: var(--rounded-full);
+    font-weight: var(--weight-strong);
+    color: var(--colour-text-muted);
     cursor: pointer;
+    transition: color var(--motion-base) var(--motion-ease-standard);
   }
-  .switch input:checked + label {
-    background: var(--colour-action);
-    border-color: var(--colour-action);
-    color: var(--colour-on-action);
+  .seg input:checked + label {
+    color: var(--colour-ink);
   }
-  .switch input:focus-visible + label {
-    outline: 2px solid var(--colour-action);
+  .seg input:focus-visible + label {
+    outline: 2px solid var(--colour-ink);
     outline-offset: 2px;
   }
   .wrap:has(#snap-post_qualifying:checked) .panel[data-snap="pre_weekend"],
   .wrap:has(#snap-pre_weekend:checked) .panel[data-snap="post_qualifying"] {
     display: none;
   }
+  .panel {
+    display: grid;
+    gap: var(--space-md);
+    animation: rise var(--motion-enter) var(--motion-ease-out) backwards;
+  }
 
-  .revisions {
-    font-size: 13px;
-    color: var(--colour-body);
-    margin: 0 0 var(--space-base);
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-xs) var(--space-sm);
     max-width: 78ch;
   }
-  .revisions summary {
-    cursor: pointer;
-    color: var(--colour-ink);
-    font-weight: 600;
+  .revisions {
+    font-size: 14px;
+    line-height: 1.43;
+    max-width: 78ch;
   }
   .revisions ol {
-    margin: var(--space-sm) 0 0;
+    margin: 0;
     padding-left: var(--space-lg);
     display: grid;
     gap: var(--space-sm);
   }
   .revisions .reason {
-    margin: var(--space-xxs) 0 0;
-    color: var(--colour-muted);
-    line-height: 1.55;
-  }
-  .reduction {
-    border-left: 3px solid var(--colour-caution);
-    background: var(--colour-caution-surface);
-    padding: var(--space-sm) var(--space-base);
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--colour-body);
-    max-width: 68ch;
-    margin-bottom: var(--space-base);
-  }
-  .reduction strong {
-    color: var(--colour-ink);
-  }
-  .meta {
-    font-size: 13px;
-    color: var(--colour-muted);
-    margin-bottom: var(--space-base);
-    max-width: 78ch;
-  }
-  .meta strong {
-    color: var(--colour-ink);
+    margin-top: var(--space-xxs);
+    color: var(--colour-text-muted);
   }
 
-  .fh {
-    margin: var(--space-xxl) 0 var(--space-base);
-    font-size: 18px;
+  .sub {
+    display: grid;
+    gap: var(--space-xs);
+    margin-top: var(--space-xxl);
+    max-width: 68ch;
   }
+
   .factors {
     list-style: none;
     margin: 0;
@@ -631,92 +587,70 @@ const jsonLd = [
   .factors > li {
     border-bottom: 1px solid var(--colour-hairline);
   }
-  summary {
+  .factors summary {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto auto auto;
+    width: auto;
+    font-weight: var(--weight-text);
     align-items: center;
     gap: var(--space-sm);
-    padding: var(--space-sm) var(--space-xs);
+    min-height: 48px;
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--rounded-sm);
     cursor: pointer;
     font-size: 14px;
+    transition: background-color var(--motion-quick) var(--motion-ease-out);
   }
-  summary:focus-visible {
-    outline: 2px solid var(--colour-action);
-    outline-offset: -2px;
+  .factors summary:hover {
+    background: var(--colour-canvas-soft);
   }
   .fname {
-    font-weight: 600;
-    color: var(--colour-ink);
+    font-weight: var(--weight-strong);
   }
   .fteam {
     font-size: 12px;
-    color: var(--colour-muted);
+    color: var(--colour-text-muted);
   }
   .fpct {
-    font-size: 14px;
-    color: var(--colour-body);
     min-width: 6ch;
     text-align: right;
   }
   .flist {
     list-style: none;
-    margin: 0 0 var(--space-base);
-    padding: 0 var(--space-xs);
+    margin: 0 0 var(--space-md);
+    padding: 0 var(--space-md);
     display: grid;
-    gap: var(--space-xs);
+    gap: var(--space-sm);
   }
   .flist li {
     display: grid;
-    grid-template-columns: 1fr 100px 5ch;
+    grid-template-columns: minmax(0, 1fr) minmax(80px, 160px) 6ch;
     align-items: center;
     gap: var(--space-sm);
-    font-size: 13px;
+    font-size: 14px;
+    line-height: 1.43;
   }
-  .flabel {
-    color: var(--colour-body);
-  }
-  .fmag {
-    display: block;
-    height: 6px;
-    border-radius: var(--radius-xs);
-    background: var(--colour-surface-strong);
-    overflow: hidden;
-  }
-  .fbar {
-    display: block;
-    height: 100%;
-    border-radius: var(--radius-xs);
-  }
-  .fbar.positive {
-    background: var(--colour-positive);
-  }
-  .fbar.negative {
-    background: var(--colour-negative);
+  .flist .bar.negative > span {
+    background: var(--colour-text-faint);
   }
   .fdir {
     font-size: 12px;
-    font-weight: 600;
-  }
-  .fdir.positive {
-    color: var(--colour-positive);
-  }
-  .fdir.negative {
-    color: var(--colour-negative);
+    font-weight: var(--weight-strong);
   }
   .empty {
-    padding: 0 var(--space-xs) var(--space-base);
-    font-size: 13px;
-    color: var(--colour-muted);
+    padding: 0 var(--space-md) var(--space-md);
+    font-size: 14px;
+    color: var(--colour-text-muted);
   }
 
   .circuit {
     display: grid;
-    gap: var(--space-xxl);
+    gap: var(--space-xl);
     align-items: start;
   }
   @media (min-width: 900px) {
     .circuit {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1.4fr 1fr;
     }
   }
 </style>

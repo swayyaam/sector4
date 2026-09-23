@@ -1,7 +1,8 @@
 ---
 /**
- * Team identity mark. Colour is data, never chrome: a 4px bar, always beside a
- * text label so colour is not the only channel.
+ * Team identity mark. Colour is data, never chrome: a small squircle at the
+ * 30% radius of DESIGN.md's app-icon tile, always beside the team's name in
+ * text so colour is never the only channel.
  */
 interface Props {
   colour: string;
@@ -15,9 +16,9 @@ const { colour, name } = Astro.props;
 <style>
   .marker {
     display: inline-block;
-    width: 4px;
-    height: 24px;
-    border-radius: var(--radius-xs);
+    width: 14px;
+    height: 14px;
+    border-radius: 30%;
     flex: none;
   }
 </style>

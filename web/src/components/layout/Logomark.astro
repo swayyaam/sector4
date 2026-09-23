@@ -1,0 +1,36 @@
+---
+/**
+ * Four timing bars in an ink squircle: three sectors, and the fourth this
+ * project is named for. Monochrome, like every other piece of chrome; the
+ * fourth bar is the one in full white. Decorative — the wordmark beside it, or
+ * the link's label, names the site.
+ */
+interface Props {
+  size?: number;
+}
+const { size = 28 } = Astro.props;
+---
+
+<svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" class="mark">
+  <rect width="32" height="32" rx="9.6" class="lm-bg"></rect>
+  <rect x="6" y="9" width="4" height="14" rx="2" class="lm-bar"></rect>
+  <rect x="12" y="9" width="4" height="14" rx="2" class="lm-bar"></rect>
+  <rect x="18" y="9" width="4" height="14" rx="2" class="lm-bar"></rect>
+  <rect x="24" y="9" width="4" height="14" rx="2" class="lm-four"></rect>
+</svg>
+
+<style>
+  .mark {
+    flex: none;
+    display: block;
+  }
+  .lm-bg {
+    fill: var(--colour-primary);
+  }
+  .lm-bar {
+    fill: var(--colour-on-primary-soft);
+  }
+  .lm-four {
+    fill: var(--colour-on-primary);
+  }
+</style>

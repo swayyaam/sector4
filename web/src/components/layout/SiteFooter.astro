@@ -1,78 +1,168 @@
 ---
-const { dataVersion, generatedAt } = Astro.props as { dataVersion: string; generatedAt: string };
+/**
+ * The inverse ink footer from DESIGN.md, rounded at the top: the one dark
+ * surface on any page. It is also where every page states how fresh its data
+ * is and which race the pipeline last completed, so no page can omit it.
+ */
+import { formatUtc } from "../../lib/time";
+
+interface RaceRef {
+  season: number;
+  round: number;
+  name: string;
+  slug: string;
+  starts_at: string;
+}
+interface Props {
+  dataVersion: string;
+  generatedAt: string;
+  lastCompleted: RaceRef | null;
+}
+const { dataVersion, generatedAt, lastCompleted } = Astro.props;
 ---
 
 <footer>
   <div class="wrap">
+    <p class="word" aria-hidden="true">
+      Sector 4.
+    </p>
+    <p class="tag">
+      Formula 1 race predictions, published before the session and scored in public.
+    </p>
+
     <div class="cols">
-      <div>
-        <h2 class="h">Sector 4</h2>
-        <p class="sm">Probabilistic F1 race predictions, scored in public.</p>
-      </div>
       <nav aria-label="Footer">
         <a href="/track-record/">Track record</a>
         <a href="/methodology/">Methodology</a>
-        <a href="/credits/">Credits</a>
+        <a href="/credits/">Sources and licences</a>
       </nav>
-      <p class="sm">
-        Data version <span class="num">{dataVersion}</span>
-        <br />
-        Built{" "}
-        <time datetime={generatedAt} class="num">
-          {generatedAt.slice(0, 10)}
-        </time>
+      <dl class="fresh">
+        <div>
+          <dt>Last completed race</dt>
+          <dd>
+            {lastCompleted ? (
+              <>
+                {lastCompleted.season} {lastCompleted.name}, round {lastCompleted.round}
+              </>
+            ) : (
+              "None in the data yet"
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>Data</dt>
+          <dd>
+            <span class="num">{dataVersion}</span>, built{" "}
+            <time datetime={generatedAt} data-local>
+              {formatUtc(generatedAt)}
+            </time>
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="legal">
+      <p>
+        Sector 4 is an unofficial fan project and is not associated in any way with the Formula 1
+        companies. F1, FORMULA ONE, FORMULA 1, and related marks are trademarks of Formula One
+        Licensing B.V.
+      </p>
+      <p>Predictions are for analysis and entertainment. They are not betting advice.</p>
+      <p>
+        Race data from the Jolpica F1 API under CC BY-NC-SA 4.0 and the Kaggle Formula 1 dataset
+        under CC0. Sector 4's data and predictions are shared under CC BY-NC-SA 4.0; the code is
+        MIT. <a href="/credits/">Every source and its terms</a>.
       </p>
     </div>
-    <p class="legal">
-      Sector 4 is an unofficial fan project and is not associated in any way with the Formula 1
-      companies. F1, FORMULA ONE, FORMULA 1, and related marks are trademarks of Formula One
-      Licensing B.V.
-    </p>
-    <p class="legal">
-      Predictions are for analysis and entertainment. They are not betting advice.
-    </p>
   </div>
 </footer>
 
 <style>
   footer {
-    border-top: 1px solid var(--colour-hairline);
+    margin-top: var(--space-section);
+    background: var(--colour-primary);
+    color: var(--colour-on-primary-soft);
+    border-radius: var(--rounded-md) var(--rounded-md) 0 0;
     padding: var(--space-xxl) 0 var(--space-xl);
-    margin-top: var(--space-xxl);
+  }
+  @media (min-width: 1024px) {
+    footer {
+      padding: var(--space-section) 0 var(--space-xxl);
+    }
+  }
+  .word {
+    color: var(--colour-on-primary);
+    font-size: clamp(48px, 11vw, 80px);
+    line-height: 1;
+    font-weight: var(--weight-heading);
+  }
+  .tag {
+    margin-top: var(--space-md);
+    max-width: 44ch;
+    font-size: 20px;
+    line-height: 1.38;
+    font-weight: var(--weight-light);
   }
   .cols {
     display: grid;
-    gap: var(--space-lg);
-    grid-template-columns: 1fr;
-    margin-bottom: var(--space-xl);
+    gap: var(--space-xl);
+    margin: var(--space-xxl) 0;
   }
   @media (min-width: 768px) {
     .cols {
-      grid-template-columns: 2fr 1fr 1fr;
+      grid-template-columns: 1fr 2fr;
     }
   }
-  .h {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: var(--space-xxs);
-  }
-  .sm {
-    font-size: 14px;
-    color: var(--colour-body);
-  }
   nav {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
-    font-size: 14px;
+    display: grid;
+    gap: var(--space-xxs);
+    align-content: start;
   }
   nav a {
-    color: var(--colour-body);
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    width: fit-content;
+    color: var(--colour-on-primary);
+    font-weight: var(--weight-strong);
+    text-decoration: none;
+  }
+  nav a:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--colour-on-primary);
+  }
+  .fresh {
+    display: grid;
+    gap: var(--space-md);
+    margin: 0;
+  }
+  @media (min-width: 640px) {
+    .fresh {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  dt {
+    font-size: 14px;
+    line-height: 1.43;
+  }
+  dd {
+    margin: var(--space-xxs) 0 0;
+    color: var(--colour-on-primary);
   }
   .legal {
-    font-size: 13px;
-    color: var(--colour-muted);
-    max-width: 68ch;
-    margin-top: var(--space-sm);
+    display: grid;
+    gap: var(--space-sm);
+    max-width: 78ch;
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--colour-ink-soft);
+    font-size: 14px;
+    line-height: 1.43;
+  }
+  .legal a {
+    color: var(--colour-on-primary);
+    text-decoration-color: var(--colour-on-primary-soft);
+  }
+  footer :focus-visible {
+    outline-color: var(--colour-on-primary);
   }
 </style>

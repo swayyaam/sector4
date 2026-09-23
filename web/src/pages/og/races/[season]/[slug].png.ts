@@ -9,6 +9,8 @@ import {
 } from "../../../../lib/data";
 import { driverName, percent } from "../../../../lib/format";
 import { pngResponse, renderCard } from "../../../../lib/og";
+import { SNAPSHOT_LABEL } from "../../../../lib/snapshots";
+import { formatUtc } from "../../../../lib/time";
 
 export const getStaticPaths: GetStaticPaths = () => {
   const { reference, predictions } = loadDataset();
@@ -39,17 +41,19 @@ export const GET: APIRoute = async ({ props }) => {
       return {
         name: driverName(drivers.get(d.driverId)!),
         team: team.short_name,
-        colour: team.colour,
+        colour: team.colour_on_light,
         value: percent(d.p_win),
       };
     });
 
   return pngResponse(
     await renderCard({
-      eyebrow: `${race.season} · Round ${race.round}`,
+      eyebrow: `Round ${race.round} of ${race.season}`,
       title: race.name,
-      subtitle: `${circuit.name} — ${circuit.locality}, ${circuit.country}`,
+      subtitle: `${circuit.name}, ${circuit.locality}, ${circuit.country}`,
       rows,
+      // A prediction shown anywhere carries its snapshot and when it was made.
+      note: `${SNAPSHOT_LABEL[snapshot.snapshot]} win probability, generated ${formatUtc(snapshot.generated_at)}`,
       isMock,
     }),
   );

@@ -1,38 +1,23 @@
 ---
 /**
- * Inline magnitude bar.
+ * Inline magnitude bar: ink on a field track, pill-ended.
  *
- * Fill is ink, not the action colour and not the team colour: purple would
- * read as interactive, and team colour would make magnitude look like
- * identity. Width is relative to the column maximum so small differences stay
- * visible. Decorative — the number beside it is the accessible value.
+ * Ink rather than team colour, because team colour would make magnitude look
+ * like identity. Width is relative to the column maximum so small differences
+ * stay visible. It fills from the left after its row arrives (global .bar), by
+ * transform, never by width. Decorative — the number beside it is the value.
  */
 import { barWidth } from "../../lib/format";
 interface Props {
   value: number;
   columnMax: number;
+  /** Position in its list, for the stagger. */
+  index?: number;
 }
-const { value, columnMax } = Astro.props;
+const { value, columnMax, index = 0 } = Astro.props;
 const w = barWidth(value, columnMax);
 ---
 
-<span class="track" aria-hidden="true">
-  <span class="fill" style={`width:${w}%`}></span>
+<span class="bar" aria-hidden="true">
+  <span style={`--w:${w.toFixed(2)}%;--i:${index}`}></span>
 </span>
-
-<style>
-  .track {
-    display: block;
-    width: 100%;
-    height: 6px;
-    border-radius: var(--radius-xs);
-    background: var(--colour-surface-strong);
-    overflow: hidden;
-  }
-  .fill {
-    display: block;
-    height: 100%;
-    border-radius: var(--radius-xs);
-    background: var(--colour-ink);
-  }
-</style>

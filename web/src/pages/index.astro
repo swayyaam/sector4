@@ -1,8 +1,10 @@
 ---
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import Countdown from "../components/race/Countdown.astro";
+import SessionTimes from "../components/race/SessionTimes.astro";
 import TeamMarker from "../components/prediction/TeamMarker.astro";
 import ProbabilityBar from "../components/prediction/ProbabilityBar.astro";
+import Provenance from "../components/prediction/Provenance.astro";
 import {
   circuitById,
   driverById,
@@ -14,7 +16,7 @@ import {
   teamById,
 } from "../lib/data";
 import { driverName, percent, score } from "../lib/format";
-import { formatUtc } from "../lib/time";
+import { SNAPSHOT_LABEL, SERIES, SCORED_SUMMARY_MINIMUM } from "../lib/snapshots";
 
 const { reference, predictions, meta } = loadDataset();
 const drivers = driverById(reference);
@@ -22,26 +24,38 @@ const teams = teamById(reference);
 const races = raceById(reference);
 const circuits = circuitById(reference);
 
-const next = meta.next_race!;
-const nextRace = races.get(next.race_id)!;
-const nextPred = preferredSnapshot(predictions, next.race_id)!;
-const contenders = driversByWinProbability(nextPred).slice(0, 5);
-const maxWin = contenders[0]!.p_win;
+const next = meta.next_race;
+const nextRace = next ? races.get(next.race_id) : undefined;
+const nextCircuit = next ? circuits.get(next.circuit_id) : undefined;
+const nextPred = next ? preferredSnapshot(predictions, next.race_id) : undefined;
+const contenders = nextPred ? driversByWinProbability(nextPred).slice(0, 5) : [];
+const maxWin = contenders[0]?.p_win ?? 1;
 
-// Only post-qualifying races are summarised here. The two snapshots are
-// different models measured against different baselines, so an average over
-// both would describe neither; the track record keeps them apart too.
-const scored = scoredPredictions(predictions).filter((p) => p.snapshot === "post_qualifying");
+// Scoring starts with the earliest race that has a prediction at all: every
+// race before it was run before anything was published, so there is nothing
+// of ours to score.
+const firstPredicted = [...predictions].sort((a, b) => a.season - b.season || a.round - b.round)[0];
+const firstRace = firstPredicted ? races.get(firstPredicted.race_id) : undefined;
+
+// The two snapshots are different models against different baselines, so
+// they are summarised side by side and never averaged together.
+const scored = scoredPredictions(predictions);
 const last = scored[0];
 const lastRace = last ? races.get(last.race_id) : undefined;
 const lastTop = last ? driversByWinProbability(last).slice(0, 3) : [];
 const actualById = new Map((last?.result?.drivers ?? []).map((d) => [d.driverId, d]));
 
-const wins = scored.filter((p) => p.result!.winner_hit).length;
-const podiums = scored.reduce((a, p) => a + p.result!.podium_hits, 0);
-const meanLogLoss = scored.length
-  ? scored.reduce((a, p) => a + p.result!.log_loss, 0) / scored.length
-  : 0;
+const series = SERIES.map((snapshot) => {
+  const rows = scored.filter((p) => p.snapshot === snapshot);
+  return {
+    snapshot,
+    n: rows.length,
+    wins: rows.filter((p) => p.result!.winner_hit).length,
+    podiums: rows.reduce((a, p) => a + p.result!.podium_hits, 0),
+    logLoss: rows.length ? rows.reduce((a, p) => a + p.result!.log_loss, 0) / rows.length : null,
+  };
+}).filter((s) => s.n > 0);
+const summarised = series.filter((s) => s.n >= SCORED_SUMMARY_MINIMUM);
 
 const jsonLd = [
   {
@@ -56,157 +70,277 @@ const jsonLd = [
 
 <BaseLayout
   title="Sector 4 — F1 race predictions, scored in public"
-  description={`Win, podium and top-ten probabilities for the ${next.season} ${next.name}, plus an auditable record of how every past prediction turned out.`}
+  description={
+    next
+      ? `Win, podium and top-ten probabilities for the ${next.season} ${next.name}, plus an auditable record of how every past prediction turned out.`
+      : "Win, podium and top-ten probabilities for Formula 1 races, plus an auditable record of how every prediction turned out."
+  }
   jsonLd={jsonLd}
 >
-  <section class="band band-dark">
-    <div class="wrap hero">
-      <div>
-        <p class="eyebrow">Next race · Round {next.round}</p>
-        <h1>{next.name}</h1>
-        <p class="sub">
-          {circuits.get(next.circuit_id)?.name}, {circuits.get(next.circuit_id)?.country}
-        </p>
-        <Countdown startsAt={next.starts_at} />
-      </div>
-
-      <div class="panel">
-        <div class="panel-head">
-          <h2>Most likely winner</h2>
-          <p class="snap">
-            {nextPred.snapshot === "post_qualifying" ? "Post-qualifying" : "Pre-weekend"} snapshot
-          </p>
-        </div>
-        <ol class="contenders">
-          {contenders.map((c) => {
-            const d = drivers.get(c.driverId)!;
-            const t = teams.get(c.team_entity_id)!;
-            return (
-              <li>
-                <TeamMarker colour={t.colour} name={t.name} />
-                <span class="cname">
-                  {driverName(d)}
-                  <span class="cteam">{t.short_name}</span>
-                </span>
-                <span class="cbar">
-                  <ProbabilityBar value={c.p_win} columnMax={maxWin} />
-                </span>
-                <span class="num cpct">{percent(c.p_win)}</span>
-              </li>
-            );
-          })}
-        </ol>
-        <a class="cta" href={`/races/${nextRace.season}/${nextRace.slug}/`}>
-          Full field and factors
+  <section class="wrap hero">
+    {next && (
+      <p class="kicker">
+        <span class="badge badge-accent">Next race</span>
+        <span class="muted body-sm">
+          Round {next.round} of {next.season}, {next.name}
+        </span>
+      </p>
+    )}
+    <h1 class="display">Race predictions, scored in public.</h1>
+    <p class="lead">
+      Win, podium and top-ten chances for every driver, published before the cars run and again
+      after qualifying, then graded against the result. The misses stay on the record.
+    </p>
+    <div class="actions">
+      {nextRace && (
+        <a class="btn btn-primary" href={`/races/${nextRace.season}/${nextRace.slug}/`}>
+          See the {nextRace.name}
         </a>
-      </div>
+      )}
+      <a class="btn btn-soft" href="/methodology/">
+        How it works
+      </a>
     </div>
   </section>
 
-  {last && lastRace && (
-    <section class="band">
-      <div class="wrap">
-        <p class="eyebrow">Last race</p>
-        <h2>{lastRace.name} — predicted against actual</h2>
-        <div class="receipt">
-          <table>
-            <caption class="sr-only">
-              The three drivers given the highest podium probability, and where each finished.
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Predicted top 3</th>
-                <th scope="col" class="n">
-                  Win prob.
-                </th>
-                <th scope="col" class="n">
-                  Finished
-                </th>
-                <th scope="col" class="n">
-                  Outcome
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {lastTop.map((c) => {
-                const d = drivers.get(c.driverId)!;
-                const a = actualById.get(c.driverId);
-                const pos = a?.actual_position ?? null;
-                const hit = pos !== null && pos <= 3;
-                return (
-                  <tr>
-                    <th scope="row">{driverName(d)}</th>
-                    <td class="n num">{percent(c.p_win)}</td>
-                    <td class="n num">{pos === null ? "—" : `P${pos}`}</td>
-                    <td class:list={["n", "outcome", hit ? "hit" : "miss"]}>
-                      {hit ? "Podium hit" : "Miss"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <dl class="scores">
-            <div>
-              <dt>Log loss</dt>
-              <dd class="num">{score(last.result!.log_loss)}</dd>
-            </div>
-            <div>
-              <dt>Brier</dt>
-              <dd class="num">{score(last.result!.brier)}</dd>
-            </div>
-            <div>
-              <dt>Winner</dt>
-              <dd class:list={["outcome", last.result!.winner_hit ? "hit" : "miss"]}>
-                {last.result!.winner_hit ? "Hit" : "Miss"}
-              </dd>
-            </div>
-            <div>
-              <dt>Podium</dt>
-              <dd class="num">{last.result!.podium_hits} of 3</dd>
-            </div>
-          </dl>
+  {next && nextRace && nextPred && (
+    <section class="wrap band next" aria-labelledby="next-h">
+      <div class="card-soft next-card">
+        <div class="when">
+          <p class="eyebrow">
+            Round {next.round}, {next.season}
+          </p>
+          <h2 id="next-h" class="h3">
+            {next.name}
+          </h2>
+          <p class="muted where">
+            {nextCircuit?.name}, {nextCircuit?.locality}, {nextCircuit?.country}
+          </p>
+          <p class="body-sm label-cd">Race starts in</p>
+          <Countdown startsAt={next.starts_at} />
+          <SessionTimes sessions={next.sessions} />
         </div>
-        <p class="more">
-          <a href={`/races/${lastRace.season}/${lastRace.slug}/`}>
-            See the full {lastRace.name} result
+
+        <div class="card who-wins">
+          <div class="panel-head">
+            <h3 class="title">Most likely winner</h3>
+            <span class="badge badge-soft">{SNAPSHOT_LABEL[nextPred.snapshot]}</span>
+          </div>
+          <ol class="contenders">
+            {contenders.map((c, i) => {
+              const d = drivers.get(c.driverId)!;
+              const t = teams.get(c.team_entity_id)!;
+              return (
+                <li class="rise" style={`--i:${i}`}>
+                  <TeamMarker colour={t.colour_on_light} name={t.name} />
+                  <span class="cname">
+                    {driverName(d)}
+                    <span class="cteam">{t.short_name}</span>
+                  </span>
+                  <span class="cbar">
+                    <ProbabilityBar value={c.p_win} columnMax={maxWin} index={i} />
+                  </span>
+                  <span class="num cpct">{percent(c.p_win)}</span>
+                </li>
+              );
+            })}
+          </ol>
+          {nextPred.snapshot === "pre_weekend" && (
+            <p class="body-sm muted reduced">
+              Two features only: championship points and share of team points. Qualifying and
+              practice are not in it yet.
+            </p>
+          )}
+          <Provenance
+            generatedAt={nextPred.generated_at}
+            revision={nextPred.revision}
+            commit={nextPred.published_commit}
+          />
+          <a class="btn btn-outline" href={`/races/${nextRace.season}/${nextRace.slug}/`}>
+            Full field and factors
           </a>
-        </p>
+        </div>
       </div>
     </section>
   )}
 
-  <section class="band band-soft">
-    <div class="wrap">
-      <p class="eyebrow">Season so far</p>
-      <h2>{scored.length === 0 ? "Nothing scored yet" : `${scored.length} races scored`}</h2>
-      <dl class="summary">
-        <div>
-          <dt>Winner called</dt>
-          <dd class="num">
-            {wins} of {scored.length}
-          </dd>
+  <section class="wrap band" aria-labelledby="record-h">
+    {!last ? (
+      <div class="card-soft empty">
+        <p class="eyebrow">Track record</p>
+        <h2 id="record-h" class="h2">
+          {firstRace
+            ? `Scoring begins with the ${firstRace.name}.`
+            : "Scoring begins with the first published prediction."}
+        </h2>
+        <p class="lead empty-lead">
+          {firstRace
+            ? `Round ${firstRace.round} is the first race with a prediction published before the weekend began. Nothing is scored until it has run.`
+            : "Nothing is scored until a race with a published prediction has run."}
+        </p>
+        <ul class="coming">
+          <li class="rise" style="--i:0">
+            <strong>How each prediction scored.</strong> Log loss and Brier score, beside a baseline
+            that saw the same information: championship order for the pre-weekend call, qualifying
+            order for the post-qualifying one.
+          </li>
+          <li class="rise" style="--i:1">
+            <strong>What it called.</strong> Whether the winner was the favourite, how many podium
+            places it caught, and the predicted top three next to where they finished.
+          </li>
+          <li class="rise" style="--i:2">
+            <strong>The season so far.</strong> Winner calls, podium places and average log loss,
+            once four races are scored. Fewer than that is too few to summarise.
+          </li>
+        </ul>
+        <a class="btn btn-outline" href="/track-record/">
+          Open the track record
+        </a>
+      </div>
+    ) : (
+      <div class="scored">
+        <div class="section-head">
+          <p class="eyebrow">Last scored race</p>
+          <h2 id="record-h">
+            {lastRace?.name}, {SNAPSHOT_LABEL[last.snapshot].toLowerCase()}.
+          </h2>
         </div>
-        <div>
-          <dt>Podium places</dt>
-          <dd class="num">
-            {podiums} of {scored.length * 3}
-          </dd>
+        <div class="receipt">
+          <div class="scroller">
+            <table class="table">
+              <caption class="sr-only">
+                The three drivers given the highest win probability, and where each finished.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Predicted top three</th>
+                  <th scope="col" class="n">
+                    Win
+                  </th>
+                  <th scope="col" class="n">
+                    Finished
+                  </th>
+                  <th scope="col">Outcome</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lastTop.map((c, i) => {
+                  const d = drivers.get(c.driverId)!;
+                  const a = actualById.get(c.driverId);
+                  const pos = a?.actual_position ?? null;
+                  return (
+                    <tr class="rise" style={`--i:${i}`}>
+                      <th scope="row">{driverName(d)}</th>
+                      <td class="n num">{percent(c.p_win)}</td>
+                      <td class="n num">{pos === null ? (a?.status ?? "—") : `P${pos}`}</td>
+                      <td>{pos !== null && pos <= 3 ? "Podium" : "Missed the podium"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <dl class="figures">
+            <div>
+              <dt>Log loss</dt>
+              <dd class="num">{score(last.result!.log_loss)}</dd>
+            </div>
+            {last.result!.baseline && (
+              <div>
+                <dt>{last.result!.baseline.name}</dt>
+                <dd class="num">{score(last.result!.baseline.log_loss)}</dd>
+              </div>
+            )}
+            <div>
+              <dt>Winner</dt>
+              <dd>{last.result!.winner_hit ? "Called" : "Missed"}</dd>
+            </div>
+            <div>
+              <dt>Podium places</dt>
+              <dd class="num">{last.result!.podium_hits} of 3</dd>
+            </div>
+          </dl>
         </div>
-        <div>
-          <dt>Mean log loss</dt>
-          <dd class="num">{score(meanLogLoss)}</dd>
-        </div>
-        <div>
-          <dt>Data freshness</dt>
-          <dd>
-            <time datetime={meta.generated_at}>{formatUtc(meta.generated_at)}</time>
-          </dd>
-        </div>
-      </dl>
-      <p class="more">
-        <a href="/track-record/">Every prediction, including the misses</a>
-      </p>
+
+        {summarised.length === 0 ? (
+          <p class="notice season-wait">
+            <span class="badge badge-ink">Season</span>
+            <span>
+              Season figures appear once four races are scored in a snapshot. So far:{" "}
+              {series.map((s, i) => (
+                <>
+                  {i > 0 && ", "}
+                  {SNAPSHOT_LABEL[s.snapshot].toLowerCase()} <span class="num">{s.n}</span>
+                </>
+              ))}
+              .
+            </span>
+          </p>
+        ) : (
+          summarised.map((s) => (
+            <div class="season">
+              <h3 class="title">{SNAPSHOT_LABEL[s.snapshot]}, season so far</h3>
+              <dl class="figures">
+                <div>
+                  <dt>Races scored</dt>
+                  <dd class="num">{s.n}</dd>
+                </div>
+                <div>
+                  <dt>Winner called</dt>
+                  <dd class="num">
+                    {s.wins} of {s.n}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Podium places</dt>
+                  <dd class="num">
+                    {s.podiums} of {s.n * 3}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Average log loss</dt>
+                  <dd class="num">{score(s.logLoss!)}</dd>
+                </div>
+              </dl>
+            </div>
+          ))
+        )}
+        <p>
+          <a class="btn btn-soft" href="/track-record/">
+            Every prediction, including the misses
+          </a>
+        </p>
+      </div>
+    )}
+  </section>
+
+  <section class="wrap band how" aria-labelledby="how-h">
+    <div class="section-head">
+      <p class="eyebrow">How it works</p>
+      <h2 id="how-h">Published first, scored after.</h2>
+    </div>
+    <div class="cards">
+      <a class="card rise" style="--i:0" href="/methodology/">
+        <h3 class="h4">Two calls per race.</h3>
+        <p class="muted">
+          One before the cars run, from championship form alone. One after qualifying, when the grid
+          is known. They are scored separately and never averaged together.
+        </p>
+      </a>
+      <a class="card rise" style="--i:1" href="/methodology/">
+        <h3 class="h4">Measured against a baseline.</h3>
+        <p class="muted">
+          On the 2026 holdout the model was indistinguishable from simply taking qualifying order.
+          Each race is scored beside that baseline so the comparison stays in view.
+        </p>
+      </a>
+      <a class="card rise" style="--i:2" href="/track-record/">
+        <h3 class="h4">Nothing is rewritten.</h3>
+        <p class="muted">
+          Predictions are committed before the session. A correction is a new revision beside the
+          original, and only one published in time is ever scored.
+        </p>
+      </a>
     </div>
   </section>
 </BaseLayout>
@@ -214,162 +348,200 @@ const jsonLd = [
 <style>
   .hero {
     display: grid;
-    gap: var(--space-xxl);
-    align-items: start;
+    justify-items: center;
+    text-align: center;
+    gap: var(--space-lg);
+    padding-top: var(--space-xxl);
+    padding-bottom: var(--space-xl);
   }
-  @media (min-width: 900px) {
+  @media (min-width: 1024px) {
     .hero {
-      grid-template-columns: 1.1fr 1fr;
+      padding-top: var(--space-section);
     }
   }
-  .sub {
-    color: var(--colour-on-dark-soft);
-    margin: var(--space-sm) 0 var(--space-lg);
+  .kicker {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-xs);
   }
-  .panel {
-    background: var(--colour-surface-dark-elevated);
-    border-radius: var(--radius-xl);
-    padding: var(--space-xl);
+  .hero h1 {
+    max-width: 14ch;
+  }
+  .hero .lead {
+    max-width: 44ch;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-sm);
+  }
+
+  .next {
+    padding-top: var(--space-lg);
+  }
+  .next-card {
+    display: grid;
+    gap: var(--space-xl);
+  }
+  @media (min-width: 900px) {
+    .next-card {
+      grid-template-columns: 1fr 1.1fr;
+      align-items: start;
+    }
+  }
+  .when {
+    display: grid;
+    gap: var(--space-xs);
+  }
+  .where {
+    margin-bottom: var(--space-lg);
+  }
+  .label-cd {
+    color: var(--colour-text-muted);
+  }
+  .when :global(.sessions) {
+    margin-top: var(--space-lg);
+  }
+  .who-wins {
+    display: grid;
+    gap: var(--space-lg);
   }
   .panel-head {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
-    align-items: baseline;
-    gap: var(--space-sm);
-    margin-bottom: var(--space-lg);
-  }
-  .panel h2 {
-    font-size: 18px;
-    font-weight: 600;
-  }
-  .snap {
-    font-size: 12px;
-    color: var(--colour-on-dark-soft);
-  }
-  .contenders {
-    list-style: none;
-    margin: 0 0 var(--space-lg);
-    padding: 0;
-    display: grid;
-    gap: var(--space-base);
-  }
-  .contenders li {
-    display: grid;
-    grid-template-columns: 4px 1fr 1fr auto;
     align-items: center;
     gap: var(--space-sm);
   }
+  .contenders {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-md);
+  }
+  .contenders li {
+    display: grid;
+    grid-template-columns: 14px minmax(0, 1fr) 6ch;
+    align-items: center;
+    gap: var(--space-xs) var(--space-sm);
+  }
+  /* Narrow: the bar takes its own line under the name rather than squeezing it. */
+  .cbar {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+  @media (min-width: 480px) {
+    .contenders li {
+      grid-template-columns: 14px minmax(0, 1.3fr) minmax(0, 1fr) 6ch;
+    }
+    .cbar {
+      grid-column: auto;
+      grid-row: auto;
+    }
+  }
   .cname {
-    color: var(--colour-on-dark);
-    font-size: 15px;
+    font-weight: var(--weight-strong);
+    line-height: 1.25;
   }
   .cteam {
     display: block;
     font-size: 12px;
-    color: var(--colour-on-dark-soft);
+    line-height: 1.33;
+    font-weight: var(--weight-text);
+    color: var(--colour-text-muted);
   }
   .cpct {
-    color: var(--colour-on-dark);
-    font-size: 15px;
+    text-align: right;
+    font-weight: var(--weight-strong);
   }
-  /* Derived from a token rather than a new hex: the track is decorative and
-     only needs to sit under a white fill on the dark panel. */
-  .cbar :global(.track) {
-    background: color-mix(in srgb, var(--colour-on-dark) 14%, transparent);
-  }
-  .cbar :global(.fill) {
-    background: var(--colour-on-dark);
-  }
-  .cta {
-    display: inline-block;
-    background: var(--colour-action);
-    color: var(--colour-on-action);
-    font-weight: 600;
-    padding: 12px 20px;
-    border-radius: var(--radius-pill);
-  }
-  .cta:hover {
-    background: var(--colour-action-active);
-    text-decoration: none;
+  .who-wins .btn {
+    justify-self: start;
   }
 
-  .receipt {
+  .empty {
+    display: grid;
+    gap: var(--space-lg);
+    padding: var(--space-xl) var(--space-lg);
+  }
+  @media (min-width: 900px) {
+    .empty {
+      padding: var(--space-xxl);
+    }
+  }
+  .empty h2 {
+    max-width: 20ch;
+  }
+  .empty-lead {
+    max-width: 52ch;
+  }
+  .coming {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-sm);
+  }
+  @media (min-width: 900px) {
+    .coming {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  .coming li {
+    background: var(--colour-canvas);
+    border-radius: var(--rounded-sm);
+    padding: var(--space-md);
+    font-size: 14px;
+    line-height: 1.43;
+    color: var(--colour-text-muted);
+  }
+  .coming strong {
+    display: block;
+    margin-bottom: var(--space-xxs);
+    color: var(--colour-ink);
+    font-size: 16px;
+  }
+  .empty .btn {
+    justify-self: start;
+  }
+
+  .scored {
     display: grid;
     gap: var(--space-xl);
-    margin-top: var(--space-lg);
+  }
+  .receipt {
+    display: grid;
+    gap: var(--space-lg);
   }
   @media (min-width: 900px) {
     .receipt {
-      grid-template-columns: 2fr 1fr;
+      grid-template-columns: 1.6fr 1fr;
+      align-items: start;
+    }
+    .receipt .figures {
+      grid-template-columns: 1fr 1fr;
     }
   }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-  th,
-  td {
-    text-align: left;
-    padding: var(--space-sm) var(--space-xs);
-    font-weight: 400;
-  }
-  thead th {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
-    border-bottom: 1px solid var(--colour-hairline);
-  }
-  tbody tr {
-    border-bottom: 1px solid var(--colour-hairline);
-  }
-  tbody th {
-    color: var(--colour-ink);
-    font-weight: 600;
-  }
-  .n {
-    text-align: right;
-  }
-  .outcome {
-    font-weight: 600;
-    font-size: 13px;
-  }
-  .hit {
-    color: var(--colour-positive);
-  }
-  .miss {
-    color: var(--colour-negative);
-  }
-  .scores,
-  .summary {
+  .season {
     display: grid;
-    gap: var(--space-base);
-    margin: var(--space-lg) 0 0;
+    gap: var(--space-md);
   }
-  .summary {
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+
+  .cards {
+    display: grid;
+    gap: var(--space-md);
   }
-  .scores div,
-  .summary div {
-    border-top: 1px solid var(--colour-hairline);
-    padding-top: var(--space-xs);
+  @media (min-width: 900px) {
+    .cards {
+      grid-template-columns: repeat(3, 1fr);
+    }
   }
-  dt {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
-  }
-  dd {
-    margin: var(--space-xxs) 0 0;
-    font-size: 18px;
-    color: var(--colour-ink);
-  }
-  .more {
-    margin-top: var(--space-lg);
-    font-size: 14px;
+  .cards .card {
+    display: grid;
+    gap: var(--space-sm);
+    align-content: start;
   }
 </style>
