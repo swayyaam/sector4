@@ -15,7 +15,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      # Full history, because tests/test_prediction_integrity.py audits every
+      # version of every committed prediction. A shallow clone would skip the
+      # one test that proves the track record was never edited after the fact.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:

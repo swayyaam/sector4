@@ -208,11 +208,26 @@ def run(eval_from: int = EVAL_FROM_SEASON) -> tuple[pd.DataFrame, dict]:
     results = results.merge(quali, on=["raceId", "driverId"], how="left")
     results["quali_pos"] = pd.to_numeric(results["quali_pos"], errors="coerce")
 
+    # Championship order: where the driver stood entering the race. This is the
+    # fair comparison for the pre-weekend snapshot, which cannot see qualifying
+    # and is effectively a standings model. Judging it against qualifying order
+    # would be scoring it on information it does not have.
+    standings = _rd(PROCESSED / "driver_standings.csv")[["raceId", "driverId", "position"]]
+    standings = standings.rename(columns={"position": "standing_pos"})
+    prev = races[["raceId", "year", "round", "order"]].sort_values("order").copy()
+    prev["prev_raceId"] = prev.groupby("year")["raceId"].shift(1)
+    results = results.merge(prev[["raceId", "prev_raceId"]], on="raceId", how="left")
+    results = results.merge(
+        standings.rename(columns={"raceId": "prev_raceId"}),
+        on=["prev_raceId", "driverId"], how="left")
+    results["standing_pos"] = pd.to_numeric(results["standing_pos"], errors="coerce")
+
     grid_prior = PositionPrior("grid_pos")
     quali_prior = PositionPrior("quali_pos")
+    standing_prior = PositionPrior("standing_pos")
     elo = Elo()
     scores = {"uniform": Score(), "grid order": Score(),
-              "qualifying order": Score(), "elo": Score()}
+              "qualifying order": Score(), "championship order": Score(), "elo": Score()}
     per_race = []
 
     for _, race in races.iterrows():
@@ -243,6 +258,7 @@ def run(eval_from: int = EVAL_FROM_SEASON) -> tuple[pd.DataFrame, dict]:
                 "uniform": uniform(ids, None),
                 "grid order": grid_prior.predict(started),
                 "qualifying order": quali_prior.predict(started),
+                "championship order": standing_prior.predict(started),
                 "elo": elo.predict(started),
             }
             for name, p in preds.items():
@@ -252,6 +268,7 @@ def run(eval_from: int = EVAL_FROM_SEASON) -> tuple[pd.DataFrame, dict]:
         # Learn only after predicting: this is the whole discipline.
         grid_prior.observe(started)
         quali_prior.observe(started)
+        standing_prior.observe(started)
         elo.observe(started)
 
     table = pd.DataFrame([s.as_dict(n) for n, s in scores.items()])

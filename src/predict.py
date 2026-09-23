@@ -40,6 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import diagnose as D  # noqa: E402
 import features as F  # noqa: E402
+import revisions as REV  # noqa: E402
 import finalists as FN  # noqa: E402
 import model as M  # noqa: E402
 
@@ -161,6 +162,23 @@ def top_factors(x: pd.DataFrame, cols: list[str], i: int) -> list[dict]:
     return sorted(out, key=lambda d: -d["magnitude"])[:4]
 
 
+def _fit_dnf(train: pd.DataFrame, test: pd.DataFrame, cols: list[str]) -> pd.Series:
+    """A logistic on the same features, for the retirement marginal."""
+    from sklearn.impute import SimpleImputer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    ids = test["driverId"].to_numpy()
+    y = train["dnf"].to_numpy()
+    if y.sum() < 20:
+        return pd.Series(float(y.mean()), index=ids)
+    pipe = make_pipeline(SimpleImputer(strategy="median"), StandardScaler(),
+                         LogisticRegression(max_iter=2000, C=0.5))
+    pipe.fit(train[cols].astype(float), y)
+    return pd.Series(pipe.predict_proba(test[cols].astype(float))[:, 1], index=ids)
+
+
 def build(season: int, rnd: int, snapshot: str) -> dict:
     tables = F.load_tables()
     race, completed = race_row(tables, season, rnd)
@@ -169,6 +187,14 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
     feats = F.build_race(tables, race, snapshot)
     if feats.empty:
         raise SystemExit(f"no entrants resolved for {season} round {rnd} at {snapshot}")
+    # build_race returns the keys and the features, and team_entity_id is
+    # neither, so it has to be joined back on. Without it a prediction cannot
+    # be rendered: no team name, no colour, nothing to group a garage by.
+    field = F.entrants(tables, race, snapshot)[["driverId", "team_entity_id"]]
+    feats = feats.merge(field, on="driverId", how="left")
+    missing = feats["team_entity_id"].isna().sum()
+    if missing:
+        raise SystemExit(f"{missing} drivers have no team_entity_id; refusing to publish")
 
     history = M.dataset(snapshot)
     train = history[history["order"] < int(race["order"])]
@@ -181,6 +207,13 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
     # says so rather than presenting the two as equivalent.
     model = D.SplineQuali(list(cols)) if "quali_position" in cols else D.Slim(list(cols))
     probs = model.fit_predict(train, feats)
+
+    # Those classes fit only the targets the scorer needs, so p_dnf comes back
+    # as zero. A published zero would be a claim that no car can retire, which
+    # is worse than a rough number. It is fitted here on the same features,
+    # separately, and MODEL_REPORT.md validated only p_win -- so this marginal
+    # is stated as unvalidated rather than implied to carry the same weight.
+    probs["dnf"] = _fit_dnf(train, feats, list(cols))
 
     ids = feats["driverId"].astype(int).to_numpy()
     p_win = np.clip(probs["win"].reindex(ids).to_numpy(dtype=float), 1e-9, None)
@@ -203,8 +236,7 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
         pt = max(top10[i], pp)
         drivers.append({
             "driverId": int(did),
-            "team_entity_id": str(feats.iloc[i]["team_entity_id"])
-            if "team_entity_id" in feats.columns else "",
+            "team_entity_id": str(feats.iloc[i]["team_entity_id"]),
             "p_win": pw, "p_podium": pp, "p_top10": pt,
             "p_dnf": round(float(p_dnf[i]), 6),
             "expected_position": round(float((dist[i] * np.arange(1, n + 1)).sum()), 6),
@@ -221,12 +253,15 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
         "model_version": MODEL_VERSION,
         "model_features": list(cols),
         "model_note": (
-            "Shipped specification, validated at this snapshot."
+            "Shipped specification, validated at this snapshot. The DNF "
+            "probability is a separate logistic on the same features and was "
+            "not part of that validation."
             if snapshot == F.POST else
             "Reduction of the shipped specification to the features available "
             "before the cars run. Qualifying position and practice pace do not "
             "exist yet, so this is a weaker model and was not separately "
-            "validated. See MODEL_REPORT.md."
+            "validated. The DNF probability is a separate logistic on the same "
+            "features. See MODEL_REPORT.md."
         ),
         "data_version": data_version(),
         "commit_sha": commit_sha(),
@@ -237,8 +272,8 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
     }
 
 
-def path_for(season: int, rnd: int, snapshot: str) -> Path:
-    return OUT / str(season) / f"{rnd:02d}-{snapshot}.json"
+def path_for(season: int, rnd: int, snapshot: str, revision: int = 1) -> Path:
+    return REV.revision_path(season, rnd, snapshot, revision, OUT)
 
 
 def _display(path: Path) -> str:
@@ -255,19 +290,60 @@ def main() -> int:
     ap.add_argument("--season", type=int, required=True)
     ap.add_argument("--round", type=int, required=True)
     ap.add_argument("--snapshot", choices=[F.PRE, F.POST], default=F.PRE)
+    ap.add_argument("--revise", action="store_true",
+                    help="publish a new revision of an existing prediction")
+    ap.add_argument("--reason", help="why the revision exists; required with --revise")
     args = ap.parse_args()
 
-    out = path_for(args.season, args.round, args.snapshot)
+    existing = REV.revisions(args.season, args.round, args.snapshot, OUT)
+    if existing and not args.revise:
+        raise SystemExit(
+            f"{existing[-1][1].name} is already published. Predictions are never "
+            "overwritten; publish a revision with --revise --reason \"...\".")
+    if args.revise and not existing:
+        raise SystemExit("--revise given, but there is nothing to revise.")
+    if args.revise and not (args.reason and args.reason.strip()):
+        raise SystemExit("--revise needs --reason: a revision nobody can explain proves nothing.")
+
+    if existing:
+        # A revision after the session starts could have seen the session. The
+        # scorer would ignore it anyway, so refuse rather than publish noise.
+        cutoff = REV.deadline(args.season, args.round, args.snapshot)
+        if REV.now_utc() >= cutoff:
+            raise SystemExit(f"the {args.snapshot} deadline ({cutoff:%Y-%m-%dT%H:%MZ}) has "
+                             "passed; a revision now could not be scored.")
+
+    revision = (existing[-1][0] + 1) if existing else 1
+    out = path_for(args.season, args.round, args.snapshot, revision)
     if out.exists():
         raise SystemExit(f"{out} already exists. Predictions are never overwritten.")
 
     pred = build(args.season, args.round, args.snapshot)
+    pred["revision"] = revision
+    if existing:
+        prev_rev, prev_path, prev = existing[-1]
+        pred["supersedes"] = prev_path.name
+        pred["revision_reason"] = args.reason.strip()
+
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(pred, indent=2) + "\n")
 
-    print(f"{args.season} R{args.round} {pred['race_name']} — {args.snapshot}")
+    if existing:
+        # The one sanctioned in-place change: two pointers on the file being
+        # superseded. The content digest excludes them, and is checked here so
+        # a bug in this block cannot quietly become a rewrite.
+        before = REV.content_digest(prev)
+        prev["superseded_by"] = out.name
+        prev["superseded_reason"] = pred["revision_reason"]
+        if REV.content_digest(prev) != before:
+            raise SystemExit("FATAL: superseding would change prediction content")
+        prev_path.write_text(json.dumps(prev, indent=2) + "\n")
+
+    print(f"{args.season} R{args.round} {pred['race_name']} — {args.snapshot}, revision {revision}")
     print(f"  generated {pred['generated_at']}  model {pred['model_version']}  "
           f"commit {pred['commit_sha']}")
+    if existing:
+        print(f"  supersedes {pred['supersedes']}: {pred['revision_reason']}")
     print(f"  trained on {pred['training_races']} races, {len(pred['model_features'])} features")
     for d in pred["drivers"][:5]:
         print(f"    driver {d['driverId']:>4}  win {d['p_win']:.3f}  podium {d['p_podium']:.3f}")

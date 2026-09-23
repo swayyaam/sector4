@@ -42,6 +42,18 @@ const MOCK_FILES = import.meta.glob("../data/mock/*.json", {
   import: "default",
 }) as RawFiles;
 
+/**
+ * Real pipeline output, when it exists. Built by src/build_site_data.py.
+ *
+ * The site prefers it over the fixtures automatically: there is no flag to
+ * forget to flip, and no way to ship real predictions while still showing the
+ * sample-data banner, or the reverse.
+ */
+const LIVE_FILES = import.meta.glob("../data/live/*.json", {
+  eager: true,
+  import: "default",
+}) as RawFiles;
+
 function basename(path: string): string {
   return path.slice(path.lastIndexOf("/") + 1);
 }
@@ -86,8 +98,14 @@ export function buildDataset(files: RawFiles): Dataset {
 
 let cached: Dataset | null = null;
 
+function hasPredictions(files: RawFiles): boolean {
+  return Object.keys(files).some((p) => basename(p).startsWith("prediction-"));
+}
+
 export function loadDataset(): Dataset {
-  if (!cached) cached = buildDataset(MOCK_FILES);
+  if (!cached) {
+    cached = buildDataset(hasPredictions(LIVE_FILES) ? LIVE_FILES : MOCK_FILES);
+  }
   return cached;
 }
 

@@ -188,6 +188,38 @@ export const predictionSchema = z
     data_version: z.string().min(1),
     commit_sha: z.string().regex(/^[0-9a-f]{7,40}$/),
     is_mock: z.boolean().default(false),
+    /** What the model actually used, so a page can say so rather than imply it. */
+    model_features: z.array(z.string().min(1)).optional(),
+    model_note: z.string().min(1).optional(),
+    /**
+     * Predictions are append-only. A correction before the session is a new
+     * revision, and the page shows every one, including the ones that did not
+     * count, so a reader can see what was published when.
+     */
+    revision: z.int().min(1).default(1),
+    published_commit: z
+      .string()
+      .regex(/^[0-9a-f]{7,40}$/)
+      .nullable()
+      .default(null),
+    revisions: z
+      .array(
+        z.object({
+          revision: z.int().min(1),
+          file: z.string().min(1),
+          generated_at: isoDateTime,
+          published_commit: z
+            .string()
+            .regex(/^[0-9a-f]{7,40}$/)
+            .nullable(),
+          supersedes: z.string().nullable().optional(),
+          superseded_by: z.string().nullable().optional(),
+          reason: z.string().nullable().optional(),
+          effective: z.boolean(),
+          late: z.boolean(),
+        }),
+      )
+      .default([]),
     drivers: z.array(driverPredictionSchema).min(1).max(30),
     result: raceResultSchema.nullable(),
   })

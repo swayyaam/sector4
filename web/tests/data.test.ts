@@ -14,6 +14,7 @@ import {
   siteMetaSchema,
 } from "../src/lib/schema";
 import {
+  buildDataset,
   driverById,
   driversByWinProbability,
   loadDataset,
@@ -28,16 +29,31 @@ const MOCK = resolve(import.meta.dirname, "..", "src", "data", "mock");
 const good = () =>
   JSON.parse(readFileSync(resolve(MOCK, "prediction-2026-15-post_qualifying.json"), "utf8"));
 
+/**
+ * The fixture, loaded explicitly.
+ *
+ * `loadDataset()` prefers real pipeline output once it exists, so a test that
+ * reads it and then asserts something about the fixture is testing whichever
+ * happens to be present. These two are kept apart on purpose.
+ */
+const MOCK_FILES = import.meta.glob("../src/data/mock/*.json", {
+  eager: true,
+  import: "default",
+}) as Record<string, unknown>;
+
 describe("the shipped dataset", () => {
   const data = loadDataset();
 
   it("loads and validates", () => {
     expect(data.reference.drivers.length).toBeGreaterThan(0);
-    expect(data.predictions.length).toBeGreaterThanOrEqual(7);
+    expect(data.predictions.length).toBeGreaterThan(0);
   });
 
-  it("is flagged as mock, which drives the preview banner", () => {
-    expect(data.isMock).toBe(true);
+  it("the preview banner matches what is actually loaded", () => {
+    // The flag is not a setting anyone can forget to flip: it is derived from
+    // the files, so real predictions and a sample-data banner cannot coexist.
+    const anyMock = data.meta.is_mock || data.predictions.some((p) => p.is_mock);
+    expect(data.isMock).toBe(anyMock);
   });
 
   it("has no dangling references", () => {
@@ -58,22 +74,28 @@ describe("the shipped dataset", () => {
     }
   });
 
-  it("has both snapshots for the next race and results for past ones", () => {
-    const next = data.meta.next_race!;
-    expect(data.predictions.filter((p) => p.race_id === next.race_id)).toHaveLength(2);
-    expect(scoredPredictions(data.predictions).length).toBeGreaterThanOrEqual(5);
+  it("the two snapshots are never pooled", () => {
+    // They are different models measured against different baselines, so any
+    // aggregate has to be computed per snapshot. This asserts the data keeps
+    // them distinguishable; the pages are responsible for not mixing them.
+    for (const p of data.predictions) {
+      expect(["pre_weekend", "post_qualifying"]).toContain(p.snapshot);
+    }
+    const byRace = new Map<number, Set<string>>();
+    for (const p of data.predictions) {
+      if (!byRace.has(p.race_id)) byRace.set(p.race_id, new Set());
+      byRace.get(p.race_id)!.add(p.snapshot);
+    }
+    for (const [, snaps] of byRace) expect(snaps.size).toBeLessThanOrEqual(2);
   });
 
-  it("shows hits and misses, so the track record exercises both", () => {
-    const scored = scoredPredictions(data.predictions);
-    const hits = scored.filter((p) => p.result!.winner_hit).length;
-    expect(hits).toBeGreaterThan(0);
-    expect(hits).toBeLessThan(scored.length);
-  });
-
-  it("prefers the post-qualifying snapshot", () => {
-    const next = data.meta.next_race!;
-    expect(preferredSnapshot(data.predictions, next.race_id)?.snapshot).toBe("post_qualifying");
+  it("a scored prediction carries the baseline it was measured against", () => {
+    for (const p of scoredPredictions(data.predictions)) {
+      const base = p.result!.baseline;
+      if (base === null) continue;
+      expect(base.name.length).toBeGreaterThan(0);
+      expect(base.log_loss).toBeGreaterThan(0);
+    }
   });
 
   it("lookups cover every referenced id", () => {
@@ -92,6 +114,41 @@ describe("the shipped dataset", () => {
     const sorted = driversByWinProbability(p);
     for (let i = 1; i < sorted.length; i++) {
       expect(sorted[i - 1]!.p_win).toBeGreaterThanOrEqual(sorted[i]!.p_win);
+    }
+  });
+});
+
+describe("the fixture", () => {
+  // Loaded explicitly. loadDataset() prefers real pipeline output once it
+  // exists, so a test that reads it and then asserts something about the
+  // fixture is testing whichever happens to be present.
+  const data = buildDataset(MOCK_FILES);
+
+  it("has both snapshots for the next race and results for past ones", () => {
+    const next = data.meta.next_race!;
+    expect(data.predictions.filter((p) => p.race_id === next.race_id)).toHaveLength(2);
+    expect(scoredPredictions(data.predictions).length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("shows hits and misses, so the track record exercises both", () => {
+    const scored = scoredPredictions(data.predictions);
+    const hits = scored.filter((p) => p.result!.winner_hit).length;
+    expect(hits).toBeGreaterThan(0);
+    expect(hits).toBeLessThan(scored.length);
+  });
+
+  it("prefers the post-qualifying snapshot", () => {
+    const next = data.meta.next_race!;
+    expect(preferredSnapshot(data.predictions, next.race_id)?.snapshot).toBe("post_qualifying");
+  });
+
+  it("is flagged as sample data, which is what drives the banner", () => {
+    expect(data.isMock).toBe(true);
+  });
+
+  it("carries a baseline on every scored race", () => {
+    for (const p of scoredPredictions(data.predictions)) {
+      expect(p.result!.baseline).not.toBeNull();
     }
   });
 });

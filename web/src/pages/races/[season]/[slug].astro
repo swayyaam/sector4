@@ -45,13 +45,16 @@ const result = scoredWith?.result ?? null;
 const now = new Date();
 const started = isPast(race.starts_at, now);
 
+const REPO = "https://github.com/swayyaam/sector4";
+
 const SNAPSHOT_LABEL: Record<Prediction["snapshot"], string> = {
   pre_weekend: "Pre-weekend",
   post_qualifying: "Post-qualifying",
 };
 const SNAPSHOT_BLURB: Record<Prediction["snapshot"], string> = {
-  pre_weekend: "Before any running: form, circuit history and car pace only.",
-  post_qualifying: "After qualifying, with the grid known.",
+  pre_weekend: "Published before any car runs, so it cannot see qualifying or practice pace.",
+  post_qualifying:
+    "Published after qualifying. It adds qualifying position and this weekend's practice pace, which is most of what the model knows.",
 };
 
 const actualById = new Map((result?.drivers ?? []).map((d) => [d.driverId, d]));
@@ -264,12 +267,58 @@ const jsonLd = [
           const rows = driversByWinProbability(s);
           return (
             <div class="panel" data-snap={s.snapshot}>
+              {s.snapshot === "pre_weekend" && (
+                <p class="reduction">
+                  <strong>This snapshot uses two features.</strong> Qualifying position and practice
+                  pace do not exist yet, so it falls back to championship points and share of team
+                  points. It is a weaker model than the post-qualifying one, not a different view of
+                  the same thing — the <a href="/methodology/">methodology page</a> says what the
+                  full model uses.
+                </p>
+              )}
               <p class="meta">
                 <strong>{SNAPSHOT_LABEL[s.snapshot]}.</strong> {SNAPSHOT_BLURB[s.snapshot]}{" "}
                 Generated <time datetime={s.generated_at}>{formatUtc(s.generated_at)}</time> · model{" "}
-                {s.model_version} · data {s.data_version} ·{" "}
-                <span class="num">{s.commit_sha.slice(0, 7)}</span>
+                {s.model_version} · data {s.data_version} · revision {s.revision} ·{" "}
+                {s.published_commit ? (
+                  <a href={`${REPO}/commit/${s.published_commit}`} rel="noopener">
+                    published in <span class="num">{s.published_commit.slice(0, 7)}</span>
+                  </a>
+                ) : (
+                  <span>not yet committed</span>
+                )}
               </p>
+              {s.revisions.length > 1 && (
+                <details class="revisions">
+                  <summary>
+                    Revision history — {s.revisions.length} published, revision {s.revision} counts
+                  </summary>
+                  <ol>
+                    {s.revisions.map((r) => (
+                      <li>
+                        <span class="num">r{r.revision}</span> · generated{" "}
+                        <time datetime={r.generated_at}>{formatUtc(r.generated_at)}</time> ·{" "}
+                        {r.published_commit ? (
+                          <a href={`${REPO}/commit/${r.published_commit}`} rel="noopener">
+                            <span class="num">{r.published_commit.slice(0, 7)}</span>
+                          </a>
+                        ) : (
+                          "uncommitted"
+                        )}{" "}
+                        ·{" "}
+                        <strong>
+                          {r.effective
+                            ? "the one that counts"
+                            : r.late
+                              ? "published after the session started — not scored"
+                              : "superseded"}
+                        </strong>
+                        {r.reason && <p class="reason">{r.reason}</p>}
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              )}
               <div class="scroller">
                 <ProbabilityTable
                   rows={rows}
@@ -523,6 +572,42 @@ const jsonLd = [
     display: none;
   }
 
+  .revisions {
+    font-size: 13px;
+    color: var(--colour-body);
+    margin: 0 0 var(--space-base);
+    max-width: 78ch;
+  }
+  .revisions summary {
+    cursor: pointer;
+    color: var(--colour-ink);
+    font-weight: 600;
+  }
+  .revisions ol {
+    margin: var(--space-sm) 0 0;
+    padding-left: var(--space-lg);
+    display: grid;
+    gap: var(--space-sm);
+  }
+  .revisions .reason {
+    margin: var(--space-xxs) 0 0;
+    color: var(--colour-muted);
+    line-height: 1.55;
+  }
+  .reduction {
+    border-left: 3px solid var(--colour-caution);
+    background: var(--colour-caution-surface);
+    padding: var(--space-sm) var(--space-base);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--colour-body);
+    max-width: 68ch;
+    margin-bottom: var(--space-base);
+  }
+  .reduction strong {
+    color: var(--colour-ink);
+  }
   .meta {
     font-size: 13px;
     color: var(--colour-muted);
