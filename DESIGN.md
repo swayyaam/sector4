@@ -589,7 +589,7 @@ The system above is silent on motion beyond marquees, and Sector 4 has no marque
 | `{motion.ease-standard}` | cubic-bezier(0.4, 0, 0.2, 1) | Anything moving between two resting states |
 
 ### Rules
-- **CSS only.** The single script on the site is the countdown, which already has to run; it adds a class when a value changes so CSS can animate the change. No animation library.
+- **CSS only.** The site runs two small scripts, neither of them for motion: the countdown, and the rewrite of UTC times into the reader's zone. The countdown adds a class when a value changes so CSS can animate the change. No animation library.
 - **Composited properties only.** Opacity, transform, colour, background colour and border colour. Never width, height, margin, padding, top or left, so no animation can move layout or register as layout shift. A bar fills by sliding a fixed-width fill in with `transform`, not by growing its width.
 - **Never on the largest element.** Page headings and hero leads do not animate in, so the largest contentful paint is never waiting on an animation.
 - **Once.** Entrance animations run on arrival and do not repeat on scroll.
@@ -603,6 +603,7 @@ The system above is silent on motion beyond marquees, and Sector 4 has no marque
 - **Probability bars:** fill from the left over `{motion.fill}`, after their row has arrived.
 - **Snapshot toggle:** the active pill slides between options in `{motion.base}`; the incoming panel's rows and numbers rise into place.
 - **Countdown:** the value that changed rises into place each minute.
+- **Disclosures:** the chevron turns in `{motion.base}`; the mobile menu rises into place.
 
 ## Accessibility
 
