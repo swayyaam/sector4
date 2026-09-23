@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import diagnose as D  # noqa: E402
 import features as F  # noqa: E402
 import revisions as REV  # noqa: E402
+import upcoming as UP  # noqa: E402
 import finalists as FN  # noqa: E402
 import model as M  # noqa: E402
 
@@ -209,6 +210,15 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
     race, completed = race_row(tables, season, rnd)
     cols = SHIPPED if snapshot == F.POST else PRE_WEEKEND_COLS
 
+    # A race that has not run has no weekend in data/processed. Its qualifying
+    # and practice are read from the fetched session data instead, onto
+    # in-memory copies of the tables; nothing is written or minted.
+    if snapshot == F.POST and not completed:
+        try:
+            tables = UP.augment(tables, race)
+        except UP.MissingWeekendData as e:
+            raise SystemExit(f"{season} round {rnd}: {e} Refusing.") from e
+
     feats = F.build_race(tables, race, snapshot)
     if feats.empty:
         raise SystemExit(f"no entrants resolved for {season} round {rnd} at {snapshot}")
@@ -332,13 +342,14 @@ def main() -> int:
     if args.revise and not (args.reason and args.reason.strip()):
         raise SystemExit("--revise needs --reason: a revision nobody can explain proves nothing.")
 
-    if existing:
-        # A revision after the session starts could have seen the session. The
-        # scorer would ignore it anyway, so refuse rather than publish noise.
-        cutoff = REV.deadline(args.season, args.round, args.snapshot)
-        if REV.now_utc() >= cutoff:
-            raise SystemExit(f"the {args.snapshot} deadline ({cutoff:%Y-%m-%dT%H:%MZ}) has "
-                             "passed; a revision now could not be scored.")
+    # Nothing is published after its deadline. A revision then could have seen
+    # the session; a first prediction then would be ignored by the scorer and
+    # sit in the record as noise. Either way it never reaches the repository.
+    cutoff = REV.deadline(args.season, args.round, args.snapshot)
+    if REV.now_utc() >= cutoff:
+        what = "a revision" if existing else "a first prediction"
+        raise SystemExit(f"the {args.snapshot} deadline ({cutoff:%Y-%m-%dT%H:%MZ}) has "
+                         f"passed; {what} published now could not be scored.")
 
     revision = (existing[-1][0] + 1) if existing else 1
     out = path_for(args.season, args.round, args.snapshot, revision)

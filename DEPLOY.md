@@ -215,14 +215,16 @@ everything and points to that sitemap.
   which is FP1 on every current weekend format. Publication
   means the prediction file is **committed and pushed**; the commit is the
   proof of when it was public.
-- **Post-qualifying** is published after qualifying and before the race starts.
-  **It is blocked at present; see [below](#post-qualifying-blocked).**
+- **Post-qualifying** is published after qualifying and before the race
+  starts.
 - **Scoring** happens after the result is in Jolpica. `fetch_jolpica.py` treats
   a race as finished four hours after its scheduled start, and results within
   30 days are re-fetched in case they are amended.
-- `predict.py` refuses to overwrite a prediction and refuses a revision after
-  its deadline. It does **not** refuse a first publication after the deadline.
-  The scorer ignores such a file as late, so check the time yourself.
+- `predict.py` refuses to overwrite a prediction, and refuses to write anything
+  after its deadline: a first prediction or a revision. The deadline is the
+  first session for pre-weekend and the race start for post-qualifying.
+- `predict.py` rebuilds its cached features by itself whenever the data is newer
+  than the cache. That takes about 100 seconds the first time after new data.
 - Session times for every upcoming race are in
   `web/src/data/live/reference.json`, in UTC.
 
@@ -290,12 +292,7 @@ Open a PR, let CI pass, merge. Merging deploys.
 
 ### 2. Before race N+1: pre-weekend prediction
 
-Before the first session of race N+1. The cached feature frames do not notice
-new results, so clear them first or the model trains without race N:
-
-```bash
-rm -rf data/features/
-```
+Before the first session of race N+1:
 
 ```bash
 ./.venv/bin/python src/predict.py --season 2026 --round N+1 --snapshot pre_weekend
@@ -328,28 +325,93 @@ on the same branch, commit it, open a PR and merge:
 git add web/src/data/live/ && git commit -m "feat: show the round N+1 prediction" && git push
 ```
 
-Optional between races, and needed before any post-qualifying prediction: bring
-in FastF1 practice data for completed races. It is a fetcher, so it runs alone:
+Optional between races: bring in FastF1 data for completed races, which the
+model trains on. It is a fetcher, so it runs alone:
 
 ```bash
 ./.venv/bin/python src/fetch_fastf1.py --seasons 2026
 ```
 
-### Post-qualifying: blocked
+### 3. After qualifying for race N+1: post-qualifying prediction
 
-The pipeline cannot yet produce a correct post-qualifying prediction for a race
-that has not run:
+Between the end of qualifying and the start of the race. The race has not run,
+so its weekend is read straight from the fetched session data rather than from
+`data/processed` (see `src/upcoming.py`). The field is the qualifying
+classification, never a previous race's.
 
-- `build_processed.py` keeps only completed races, so the upcoming race's
-  qualifying results never reach `data/processed/`.
-- `fetch_fastf1.py` works from that same races table, so the weekend's practice
-  sessions are never fetched.
-- `predict.py` would still produce a file. Its entrants would fall back to the
-  previous race, and every driver's qualifying position would be filled with
-  20. The file would be labelled post-qualifying and contain no qualifying
-  information.
+Wait until qualifying finished at least 90 minutes ago; `fetch_fastf1.py`
+will not load a session any sooner, so it is not cached half-written.
 
-Do not run `predict.py --snapshot post_qualifying` for an upcoming race until
-this is fixed. The fix is a pipeline change that gives the upcoming race's
-qualifying and practice a provisional race id, which is a decision about data,
-and a refusal in `predict.py` so the failure can never be silent.
+Fetch the qualifying classification from Jolpica, and wait for the process to
+exit:
+
+```bash
+./.venv/bin/python src/fetch_jolpica.py --seasons 2026
+```
+
+Fetch the weekend's practice and qualifying sessions from FastF1:
+
+```bash
+./.venv/bin/python src/fetch_fastf1.py --upcoming 2026 N+1
+```
+
+Its last lines must say `fetched Practice 1(...), Practice 2(...),
+Practice 3(...), Qualifying(...)`. On a sprint weekend there is only
+Practice 1. Then predict:
+
+```bash
+./.venv/bin/python src/predict.py --season 2026 --round N+1 --snapshot post_qualifying
+```
+
+If it refuses, the message names what is missing and which command to run. The
+usual case is that Jolpica has not published qualifying yet; wait and repeat
+the Jolpica fetch. It never fills a gap.
+
+Publish before the race starts:
+
+```bash
+git switch -c predict/2026-rN+1-post main
+```
+
+```bash
+git add predictions/2026/<N+1>-post_qualifying.json
+```
+
+```bash
+git commit -m "feat: publish the 2026 round N+1 post-qualifying prediction"
+```
+
+```bash
+git push -u origin predict/2026-rN+1-post
+```
+
+Then show it on the site, on the same branch, and open a PR and merge:
+
+```bash
+./.venv/bin/python src/build_site_data.py
+```
+
+```bash
+git add web/src/data/live/ && git commit -m "feat: show the round N+1 post-qualifying prediction" && git push
+```
+
+### This weekend: R15, Azerbaijan
+
+All times UTC, from the schedule in `web/src/data/live/reference.json`.
+
+| Session | Starts |
+|---|---|
+| Practice 1 | Thu 24 Sep, 08:30 |
+| Practice 2 | Thu 24 Sep, 12:00 |
+| Practice 3 | Fri 25 Sep, 08:30 |
+| Qualifying | Fri 25 Sep, 12:00 |
+| Race | Sat 26 Sep, 11:00 |
+
+- **Post-qualifying:** from Fri 25 Sep, 13:30 until Sat 26 Sep, 11:00. Run
+  section 3 with `N+1` = `15`: the files are
+  `predictions/2026/15-post_qualifying.json` and branch
+  `predict/2026-r15-post`.
+- **Scoring:** Sat 26 Sep, from 15:00, once Jolpica has the result. Run section
+  1 with `N` = `15`: score with `--round 15` on branch `score/2026-r15`. Both
+  R15 snapshots are scored, and each gets its first row on the track record.
+- **Deploy** stays on hold until the scoring is merged.

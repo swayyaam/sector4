@@ -63,6 +63,53 @@ class RateLimiter:
         self._hour.append(self._last)
 
 
+def cache_file(cache_dir: Path, path: str, params: dict) -> Path:
+    """Where one request's response is cached. Shared by the client and the
+    offline reader, so the two can never disagree about a file's name."""
+    safe = path.strip("/").replace("/", "_") or "root"
+    qs = urlencode(sorted(params.items())) if params else "none"
+    qs = qs.replace("&", "__").replace("=", "-")
+    return Path(cache_dir) / safe / f"{qs}.json"
+
+
+class CacheMiss(LookupError):
+    """The cache does not hold what was asked for. Fetching is a separate step."""
+
+
+def read_cached_all(path: str, cache_dir: Path = CACHE_DIR) -> list:
+    """The same merged rows as ``JolpicaClient.get_all``, from the disk cache only.
+
+    Never touches the network, so a reader such as predict.py can never become
+    a second fetcher running beside fetch_jolpica.py. A missing page, or pages
+    left over from two different fetches, raises CacheMiss instead of returning
+    a partial answer.
+    """
+    shape = shape_for(path)
+    pages, offset, total = [], 0, None
+    while True:
+        cp = cache_file(cache_dir, path, {"limit": MAX_LIMIT, "offset": offset})
+        if not cp.exists():
+            raise CacheMiss(f"{path} (offset {offset}) is not in the Jolpica cache; "
+                            "run src/fetch_jolpica.py first")
+        data = json.loads(cp.read_text())["MRData"]
+        page_total = int(data["total"])
+        if total is None:
+            total = page_total
+        elif page_total != total:
+            raise CacheMiss(f"cached pages of {path} come from different fetches (total "
+                            f"{total} and {page_total}); run src/fetch_jolpica.py again")
+        rows = data.get(shape["table"], {}).get(shape["list"], [])
+        pages.append(rows)
+        offset += MAX_LIMIT
+        if offset >= total or not rows:
+            break
+    merged = merge_pages(pages, shape)
+    if count_rows(merged, shape) != total:
+        raise CacheMiss(f"cached {path} holds {count_rows(merged, shape)} rows but reports "
+                        f"total={total}; run src/fetch_jolpica.py again")
+    return merged
+
+
 class JolpicaClient:
     def __init__(self, cache_dir: Path = CACHE_DIR, limiter: RateLimiter | None = None,
                  session: requests.Session | None = None):
@@ -75,10 +122,7 @@ class JolpicaClient:
 
     # ------------------------------------------------------------------ cache
     def _cache_path(self, path: str, params: dict) -> Path:
-        safe = path.strip("/").replace("/", "_") or "root"
-        qs = urlencode(sorted(params.items())) if params else "none"
-        qs = qs.replace("&", "__").replace("=", "-")
-        return self.cache_dir / safe / f"{qs}.json"
+        return cache_file(self.cache_dir, path, params)
 
     # ------------------------------------------------------------------- http
     def _request(self, path: str, params: dict) -> dict:

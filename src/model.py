@@ -64,14 +64,37 @@ def targets_frame() -> pd.DataFrame:
     return res[["raceId", "driverId", "year", "order", "finish_order", *TARGETS]]
 
 
+def feature_inputs() -> list[Path]:
+    """Everything a cached feature frame is computed from: the processed tables,
+    the FastF1 season laps, and the code that turns them into features."""
+    return (sorted(F.PROCESSED.glob("*.csv")) + sorted((F.ENRICHED / "laps").glob("*.csv"))
+            + [Path(F.__file__)])
+
+
+def cache_is_fresh(path: Path, inputs: list[Path] | None = None) -> bool:
+    """True when the cache exists and nothing it was built from has changed since.
+
+    A frame built before the latest race was merged would otherwise be served
+    forever, and a prediction trained on it would silently leave that race out.
+    """
+    if not path.exists():
+        return False
+    built = path.stat().st_mtime
+    return all(p.stat().st_mtime <= built for p in (inputs or feature_inputs()) if p.exists())
+
+
 def feature_frame(snapshot: str, rebuild: bool = False) -> pd.DataFrame:
-    """Features, cached because a full build is a hundred seconds."""
+    """Features, cached because a full build is a hundred seconds, and rebuilt
+    whenever the data or the feature code is newer than the cache."""
     CACHE.mkdir(parents=True, exist_ok=True)
     # CSV rather than parquet: the frame is four thousand rows, and parquet
     # would mean adding pyarrow for no benefit at this size.
     path = CACHE / f"{snapshot}.csv"
-    if path.exists() and not rebuild:
+    if not rebuild and cache_is_fresh(path):
         return pd.read_csv(path)
+    if path.exists() and not rebuild:
+        print(f"  {path.name}: the data is newer than the cached features; rebuilding",
+              file=sys.stderr)
     df = F.build(None, snapshot)
     df.to_csv(path, index=False)
     return df

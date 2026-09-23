@@ -50,3 +50,73 @@ def test_allows_a_complete_weekend_with_some_practice_gaps():
     # One driver without a practice lap is ordinary and was seen in training.
     P.check_post_qualifying_inputs(_tables([1183]), RACE,
                                    _feats([1, 2, 3], [0.0, None, 200.0]))
+
+
+# ------------------------------------------------------ nothing published late
+def _deadline_setup(monkeypatch, tmp_path, *, now_hour: int, existing: list):
+    from datetime import datetime, timezone
+
+    monkeypatch.setattr(P, "OUT", tmp_path)
+    monkeypatch.setattr(P.REV, "revisions", lambda *a, **k: existing)
+    fp1 = datetime(2026, 9, 24, 8, 30, tzinfo=timezone.utc)
+    monkeypatch.setattr(P.REV, "deadline", lambda *a, **k: fp1)
+    monkeypatch.setattr(P.REV, "now_utc",
+                        lambda: datetime(2026, 9, 24, now_hour, 0, tzinfo=timezone.utc))
+    monkeypatch.setattr(sys, "argv", ["predict.py", "--season", "2026", "--round", "16",
+                                      "--snapshot", "pre_weekend"])
+
+
+def test_a_first_prediction_after_its_deadline_is_refused(tmp_path, monkeypatch):
+    """The scorer would ignore it, so it is never written in the first place."""
+    _deadline_setup(monkeypatch, tmp_path, now_hour=9, existing=[])
+    monkeypatch.setattr(P, "build", lambda *a, **k: pytest.fail("built after the deadline"))
+    with pytest.raises(SystemExit, match="deadline .* a first prediction published now"):
+        P.main()
+    assert list(tmp_path.rglob("*.json")) == []
+
+
+def test_a_first_prediction_before_its_deadline_goes_ahead(tmp_path, monkeypatch):
+    _deadline_setup(monkeypatch, tmp_path, now_hour=7, existing=[])
+
+    class Built(Exception):
+        pass
+
+    def build(*a, **k):
+        raise Built()
+
+    monkeypatch.setattr(P, "build", build)
+    with pytest.raises(Built):
+        P.main()
+
+
+# ------------------------------------------------------ the feature cache
+def test_the_feature_cache_is_stale_once_any_input_is_newer(tmp_path):
+    import os
+
+    import model as M
+
+    cache, data, code = tmp_path / "post.csv", tmp_path / "results.csv", tmp_path / "features.py"
+    for f in (data, code):
+        f.write_text("x")
+    cache.write_text("x")
+    os.utime(data, (1_000, 1_000))
+    os.utime(code, (1_000, 1_000))
+    os.utime(cache, (2_000, 2_000))
+    assert M.cache_is_fresh(cache, [data, code])
+
+    os.utime(data, (3_000, 3_000))          # a race was merged after the cache was built
+    assert not M.cache_is_fresh(cache, [data, code])
+
+    os.utime(data, (1_000, 1_000))
+    os.utime(code, (3_000, 3_000))          # the feature code changed
+    assert not M.cache_is_fresh(cache, [data, code])
+
+    assert not M.cache_is_fresh(tmp_path / "missing.csv", [data])
+
+
+def test_the_cache_watches_the_processed_tables_and_the_feature_code():
+    import model as M
+
+    inputs = M.feature_inputs()
+    assert Path(M.F.__file__) in inputs
+    assert all(p.suffix in {".csv", ".py"} for p in inputs)
