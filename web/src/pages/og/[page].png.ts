@@ -22,8 +22,18 @@ const CARDS: Record<string, Omit<CardSpec, "isMock">> = {
   },
   credits: {
     eyebrow: "Credits",
-    title: "Sources and licences",
+    title: "Sources and licences.",
     subtitle: "Every dataset, typeface and outline this project builds on.",
+  },
+  privacy: {
+    eyebrow: "Privacy",
+    title: "This site collects nothing about you.",
+    subtitle: "No analytics, no cookies, no browser storage, nothing loaded from anyone else.",
+  },
+  terms: {
+    eyebrow: "Terms",
+    title: "The terms for using Sector 4.",
+    subtitle: "Not betting advice. Code MIT, data CC BY-NC-SA 4.0. Governed by the laws of India.",
   },
 };
 
