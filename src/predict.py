@@ -342,13 +342,14 @@ def main() -> int:
     if args.revise and not (args.reason and args.reason.strip()):
         raise SystemExit("--revise needs --reason: a revision nobody can explain proves nothing.")
 
-    if existing:
-        # A revision after the session starts could have seen the session. The
-        # scorer would ignore it anyway, so refuse rather than publish noise.
-        cutoff = REV.deadline(args.season, args.round, args.snapshot)
-        if REV.now_utc() >= cutoff:
-            raise SystemExit(f"the {args.snapshot} deadline ({cutoff:%Y-%m-%dT%H:%MZ}) has "
-                             "passed; a revision now could not be scored.")
+    # Nothing is published after its deadline. A revision then could have seen
+    # the session; a first prediction then would be ignored by the scorer and
+    # sit in the record as noise. Either way it never reaches the repository.
+    cutoff = REV.deadline(args.season, args.round, args.snapshot)
+    if REV.now_utc() >= cutoff:
+        what = "a revision" if existing else "a first prediction"
+        raise SystemExit(f"the {args.snapshot} deadline ({cutoff:%Y-%m-%dT%H:%MZ}) has "
+                         f"passed; {what} published now could not be scored.")
 
     revision = (existing[-1][0] + 1) if existing else 1
     out = path_for(args.season, args.round, args.snapshot, revision)
