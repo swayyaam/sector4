@@ -48,6 +48,9 @@ function fontData(file: string): Buffer {
   return Buffer.from(FONT_FILES[key]!.split(",")[1]!, "base64");
 }
 
+// Inter only, as on the site. Satori needs static TrueType faces, so the
+// 650 heading weight is rendered at 700, which DESIGN.md's note on substitutes
+// names as the static equivalent.
 const fonts = [
   {
     name: "Inter",
@@ -59,12 +62,6 @@ const fonts = [
     name: "Inter",
     data: fontData("inter-700.ttf"),
     weight: 700 as const,
-    style: "normal" as const,
-  },
-  {
-    name: "JetBrains Mono",
-    data: fontData("jetbrains-mono-500.ttf"),
-    weight: 500 as const,
     style: "normal" as const,
   },
 ];
@@ -95,27 +92,43 @@ export interface CardSpec {
   title: string;
   subtitle?: string;
   rows?: CardRow[];
+  /** Provenance under the rows: which snapshot, generated when. */
+  note?: string;
   /** Renders the same warning the site banner carries. Never optional in effect. */
   isMock: boolean;
+}
+
+/** The logomark: four bars in an ink squircle, the fourth in full white. */
+function logomark(): Node {
+  const bar = (fill: string) =>
+    el("div", { style: { width: "6px", height: "22px", borderRadius: "3px", background: fill } });
+  return el(
+    "div",
+    {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "4px",
+        width: "46px",
+        height: "46px",
+        borderRadius: "14px",
+        background: colour("primary"),
+      },
+    },
+    bar(colour("on-primary-soft")),
+    bar(colour("on-primary-soft")),
+    bar(colour("on-primary-soft")),
+    bar(colour("on-primary")),
+  );
 }
 
 function wordmark(): Node {
   return el(
     "div",
     { style: { display: "flex", alignItems: "center", gap: "14px" } },
-    el("div", {
-      style: {
-        width: "14px",
-        height: "30px",
-        borderRadius: "4px",
-        background: colour("action-on-dark"),
-      },
-    }),
-    el(
-      "div",
-      { style: { fontSize: "30px", fontWeight: 700, color: colour("on-dark") } },
-      "Sector 4",
-    ),
+    logomark(),
+    el("div", { style: { fontSize: "30px", fontWeight: 700, color: colour("ink") } }, "Sector 4"),
   );
 }
 
@@ -126,16 +139,15 @@ function mockBadge(): Node {
       style: {
         display: "flex",
         alignItems: "center",
-        background: colour("caution-surface"),
-        color: colour("caution"),
+        background: colour("primary"),
+        color: colour("on-primary"),
         fontSize: "22px",
         fontWeight: 700,
-        letterSpacing: "0.04em",
         padding: "10px 22px",
         borderRadius: "100px",
       },
     },
-    "SAMPLE DATA — NOT A REAL PREDICTION",
+    "Sample data, not a real prediction",
   );
 }
 
@@ -145,9 +157,9 @@ function row(r: CardRow): Node {
     { style: { display: "flex", alignItems: "center", gap: "16px", width: "100%" } },
     el("div", {
       style: {
-        width: "8px",
-        height: "46px",
-        borderRadius: "4px",
+        width: "18px",
+        height: "18px",
+        borderRadius: "30%",
         background: r.colour,
         flexShrink: 0,
       },
@@ -155,8 +167,8 @@ function row(r: CardRow): Node {
     el(
       "div",
       { style: { display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0 } },
-      el("div", { style: { fontSize: "27px", color: colour("on-dark") } }, r.name),
-      el("div", { style: { fontSize: "19px", color: colour("on-dark-soft") } }, r.team),
+      el("div", { style: { fontSize: "27px", fontWeight: 700, color: colour("ink") } }, r.name),
+      el("div", { style: { fontSize: "19px", color: colour("text-muted") } }, r.team),
     ),
     el(
       "div",
@@ -166,10 +178,9 @@ function row(r: CardRow): Node {
           justifyContent: "flex-end",
           width: "120px",
           flexShrink: 0,
-          fontSize: "30px",
-          fontFamily: "JetBrains Mono",
-          fontWeight: 500,
-          color: colour("on-dark"),
+          fontSize: "32px",
+          fontWeight: 700,
+          color: colour("ink"),
         },
       },
       r.value,
@@ -192,45 +203,51 @@ function card(spec: CardSpec): Node {
         width: hasRows ? "560px" : "1072px",
       },
     },
+    el("div", { style: { fontSize: "24px", color: colour("text-muted") } }, spec.eyebrow),
     el(
       "div",
       {
         style: {
-          fontSize: "22px",
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: colour("on-dark-soft"),
-        },
-      },
-      spec.eyebrow,
-    ),
-    el(
-      "div",
-      {
-        style: {
-          fontSize: hasRows ? "60px" : "68px",
+          fontSize: hasRows ? "60px" : "72px",
           fontWeight: 700,
-          lineHeight: 1.05,
-          color: colour("on-dark"),
+          lineHeight: 1,
+          color: colour("ink"),
         },
       },
       spec.title,
     ),
     ...(spec.subtitle
-      ? [el("div", { style: { fontSize: "28px", color: colour("on-dark-soft") } }, spec.subtitle)]
+      ? [el("div", { style: { fontSize: "28px", color: colour("text-muted") } }, spec.subtitle)]
       : []),
   );
 
-  const body = hasRows
+  const right = hasRows
+    ? el(
+        "div",
+        {
+          style: {
+            display: "flex",
+            flexDirection: "column",
+            gap: "20px",
+            width: "464px",
+            padding: "28px 32px",
+            borderRadius: "24px",
+            background: colour("canvas-soft"),
+          },
+        },
+        ...spec.rows!.map(row),
+        ...(spec.note
+          ? [el("div", { style: { fontSize: "18px", color: colour("text-muted") } }, spec.note)]
+          : []),
+      )
+    : null;
+
+  const body = right
     ? el(
         "div",
         { style: { display: "flex", gap: "48px", alignItems: "flex-end", width: "1072px" } },
         left,
-        el(
-          "div",
-          { style: { display: "flex", flexDirection: "column", gap: "20px", width: "464px" } },
-          ...spec.rows!.map(row),
-        ),
+        right,
       )
     : left;
 
@@ -243,22 +260,38 @@ function card(spec: CardSpec): Node {
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        background: colour("surface-dark"),
+        background: colour("canvas"),
         fontFamily: "Inter",
-        padding: "56px 64px",
       },
     },
     el(
       "div",
-      { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } },
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "48px 64px 0",
+        },
+      },
       wordmark(),
       ...(spec.isMock ? [mockBadge()] : []),
     ),
-    body,
+    el("div", { style: { display: "flex", padding: "0 64px" } }, body),
+    // The ink footer band, rounded at the top, as on every page.
     el(
       "div",
-      { style: { fontSize: "20px", color: colour("on-dark-soft") } },
-      "Unofficial fan project · not associated with the Formula 1 companies · not betting advice",
+      {
+        style: {
+          display: "flex",
+          padding: "22px 64px",
+          borderRadius: "24px 24px 0 0",
+          background: colour("primary"),
+          color: colour("on-primary-soft"),
+          fontSize: "20px",
+        },
+      },
+      "Unofficial fan project, not associated with the Formula 1 companies. Not betting advice.",
     ),
   );
 }

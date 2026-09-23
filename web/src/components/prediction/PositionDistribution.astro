@@ -1,0 +1,138 @@
+---
+/**
+ * Where the model's simulation places each driver in the finishing order.
+ *
+ * One small column chart per driver, all on one shared scale so a flat spread
+ * reads as uncertainty rather than being stretched to look confident. Columns
+ * inside the middle eight-in-ten of simulated finishes are ink; the tails are
+ * grey. The drawing is decorative: the sentence under it says the same thing
+ * in words, computed from the same published distribution.
+ */
+import TeamMarker from "./TeamMarker.astro";
+import { driverName, position } from "../../lib/format";
+import { distributionSummary } from "../../lib/distribution";
+import type { Driver, DriverPrediction, Team } from "../../lib/schema";
+
+interface Props {
+  rows: DriverPrediction[];
+  drivers: Map<number, Driver>;
+  teams: Map<string, Team>;
+}
+const { rows, drivers, teams } = Astro.props;
+const scale = Math.max(...rows.flatMap((r) => r.position_distribution));
+const n = rows[0]?.position_distribution.length ?? 0;
+---
+
+<ul class="dists">
+  {rows.map((r, i) => {
+    const d = drivers.get(r.driverId);
+    const t = teams.get(r.team_entity_id);
+    const s = distributionSummary(r.position_distribution);
+    return (
+      <li class="rise" style={`--i:${i}`}>
+        <p class="who">
+          {t && <TeamMarker colour={t.colour_on_light} name={t.name} />}
+          <span class="name">{d ? driverName(d) : `Driver ${r.driverId}`}</span>
+          <span class="team">{t?.short_name ?? "Unknown team"}</span>
+        </p>
+        <span class="cols" aria-hidden="true" style={`--i:${i}`}>
+          {r.position_distribution.map((p, k) => (
+            <span
+              class:list={["col", { in: k + 1 >= s.low && k + 1 <= s.high }]}
+              style={`height:${((p / scale) * 100).toFixed(1)}%`}
+            />
+          ))}
+        </span>
+        <p class="sum">
+          Most likely <span class="num">P{s.mode}</span>. At least eight in ten simulated finishes
+          between <span class="num">P{s.low}</span> and <span class="num">P{s.high}</span>; expected{" "}
+          <span class="num">{position(r.expected_position)}</span>.
+        </p>
+      </li>
+    );
+  })}
+</ul>
+<p class="axis caption" aria-hidden="true">
+  <span>P1</span>
+  <span>Finishing position, one column each</span>
+  <span>P{n}</span>
+</p>
+
+<style>
+  .dists {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-xs);
+  }
+  @media (min-width: 900px) {
+    .dists {
+      grid-template-columns: 1fr 1fr;
+      column-gap: var(--space-xl);
+    }
+  }
+  li {
+    display: grid;
+    gap: var(--space-xs);
+    padding: var(--space-md) 0;
+    border-bottom: 1px solid var(--colour-hairline);
+  }
+  .who {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: 14px;
+    line-height: 1.43;
+  }
+  .name {
+    font-weight: var(--weight-strong);
+  }
+  .team {
+    color: var(--colour-text-muted);
+  }
+  /*
+   * Heights are fixed in the markup; the entrance scales the chart up from its
+   * baseline with transform, so nothing here changes layout.
+   */
+  @keyframes grow {
+    from {
+      transform: scaleY(0);
+    }
+  }
+  /* One animation per chart, not one per column: 22 instead of 484. */
+  .cols {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 48px;
+    border-bottom: 1px solid var(--colour-hairline);
+    transform-origin: bottom;
+    animation: grow var(--motion-fill) var(--motion-ease-out) backwards;
+    animation-delay: calc(
+      min(var(--i, 0), var(--motion-stagger-steps)) * var(--motion-stagger) + var(--motion-quick)
+    );
+  }
+  .col {
+    flex: 1;
+    min-width: 0;
+    background: var(--colour-hairline);
+    border-radius: 3px 3px 0 0;
+  }
+  /* Inside the eight-in-ten range, ink; the tails, a hairline grey. */
+  .col.in {
+    background: var(--colour-ink);
+  }
+  .sum {
+    font-size: 14px;
+    line-height: 1.43;
+    color: var(--colour-text-muted);
+  }
+  .axis {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-top: var(--space-sm);
+    color: var(--colour-text-muted);
+  }
+</style>

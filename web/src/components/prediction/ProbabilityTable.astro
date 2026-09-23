@@ -2,9 +2,10 @@
 /**
  * Full-field probability table.
  *
- * No zebra striping — it fights the team markers. Numbers are mono and
- * right-aligned; names carry a team marker plus the team's short name so the
- * colour is never doing the work alone.
+ * ex-data-table-cell chrome from DESIGN.md. Numbers use tabular figures and
+ * are right-aligned; names carry a team marker plus the team's short name so
+ * the colour is never doing the work alone. Rows arrive in order and their
+ * bars fill after them.
  */
 import ProbabilityBar from "./ProbabilityBar.astro";
 import TeamMarker from "./TeamMarker.astro";
@@ -21,7 +22,7 @@ const { rows, drivers, teams, caption } = Astro.props;
 const maxWin = Math.max(...rows.map((r) => r.p_win));
 ---
 
-<table>
+<table class="table probs">
   <caption class="sr-only">{caption}</caption>
   <thead>
     <tr>
@@ -32,8 +33,8 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
       <th scope="col" class="n">
         Win
       </th>
-      <th scope="col" class="bar">
-        Relative
+      <th scope="col" class="barcol">
+        <span class="sr-only">Win, relative to the favourite</span>
       </th>
       <th scope="col" class="n">
         Podium
@@ -45,7 +46,7 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
         DNF
       </th>
       <th scope="col" class="n">
-        Exp. pos
+        Expected
       </th>
     </tr>
   </thead>
@@ -54,22 +55,22 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
       const d = drivers.get(r.driverId);
       const t = teams.get(r.team_entity_id);
       return (
-        <tr>
-          <td class="pos num">{i + 1}</td>
+        <tr class="rise" style={`--i:${i}`}>
+          <td class="pos num dim">{i + 1}</td>
           <th scope="row">
             <span class="who">
-              {t && <TeamMarker colour={t.colour} name={t.name} />}
+              {t && <TeamMarker colour={t.colour_on_light} name={t.name} />}
               <span>
                 <span class="name">{d ? driverName(d) : `Driver ${r.driverId}`}</span>
                 <span class="team">{t?.short_name ?? "Unknown team"}</span>
               </span>
             </span>
           </th>
-          <td class="n num" data-label="Win">
+          <td class="n num win" data-label="Win">
             {percent(r.p_win)}
           </td>
-          <td class="bar">
-            <ProbabilityBar value={r.p_win} columnMax={maxWin} />
+          <td class="barcol">
+            <ProbabilityBar value={r.p_win} columnMax={maxWin} index={i} />
           </td>
           <td class="n num" data-label="Podium">
             {percent(r.p_podium)}
@@ -80,7 +81,7 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
           <td class="n num dim" data-label="DNF">
             {percent(r.p_dnf)}
           </td>
-          <td class="n num dim" data-label="Exp. pos">
+          <td class="n num dim" data-label="Expected">
             {position(r.expected_position)}
           </td>
         </tr>
@@ -90,41 +91,15 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
 </table>
 
 <style>
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-  th,
-  td {
-    padding: var(--space-base) var(--space-xs);
-    text-align: left;
-    font-weight: 400;
-  }
-  thead th {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
-    border-bottom: 1px solid var(--colour-hairline);
-    padding-bottom: var(--space-xs);
-  }
-  tbody tr {
-    border-bottom: 1px solid var(--colour-hairline);
-  }
-  tbody tr:hover {
-    background: var(--colour-surface-soft);
-  }
-  .n {
-    text-align: right;
+  .probs {
+    min-width: 0;
   }
   .pos {
-    width: 2.5rem;
-    color: var(--colour-muted);
+    width: 3rem;
   }
-  .bar {
+  .barcol {
     width: 22%;
+    min-width: 120px;
   }
   .who {
     display: flex;
@@ -134,22 +109,26 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
   .name {
     display: block;
     color: var(--colour-ink);
-    font-weight: 600;
     font-size: 16px;
+    line-height: 1.38;
+    font-weight: var(--weight-strong);
   }
   .team {
     display: block;
-    font-size: 13px;
-    color: var(--colour-muted);
+    font-size: 12px;
+    line-height: 1.33;
+    font-weight: var(--weight-text);
+    color: var(--colour-text-muted);
   }
-  .dim {
-    color: var(--colour-muted);
+  .win {
+    color: var(--colour-ink);
+    font-weight: var(--weight-strong);
   }
 
-  /* Below 640px the table becomes two-line blocks rather than scrolling. */
+  /* Below 640px each row becomes a two-line block rather than scrolling. */
   @media (max-width: 639px) {
     thead,
-    .bar,
+    .barcol,
     .pos {
       display: none;
     }
@@ -157,7 +136,7 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: var(--space-xxs) var(--space-sm);
-      padding: var(--space-sm) 0;
+      padding: var(--space-sm) var(--space-xs);
     }
     tbody th {
       grid-column: 1 / -1;
@@ -166,16 +145,13 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
     tbody td {
       padding: 0;
       text-align: left;
-      font-size: 13px;
+      font-size: 14px;
+      white-space: nowrap;
     }
     /* Decorative: the <th> in thead still names the column for assistive tech. */
     tbody td::before {
       content: attr(data-label) " ";
-      color: var(--colour-muted);
-    }
-    tbody td .num,
-    tbody td {
-      white-space: nowrap;
+      color: var(--colour-text-muted);
     }
   }
 </style>

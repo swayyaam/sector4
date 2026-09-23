@@ -1,68 +1,145 @@
 ---
-const { path } = Astro.props as { path: string };
+/**
+ * The floating nav pill from DESIGN.md: a centred canvas-soft stadium that
+ * detaches from the page edge and stays on screen. On narrow screens the links
+ * fold behind a Menu pill — a <details>, so it needs no script.
+ */
+import Logomark from "./Logomark.astro";
+
+interface Props {
+  path: string;
+  next: { season: number; slug: string } | null;
+}
+const { path, next } = Astro.props;
 const links = [
   { href: "/track-record/", label: "Track record" },
   { href: "/methodology/", label: "Methodology" },
 ];
+const nextHref = next ? `/races/${next.season}/${next.slug}/` : null;
+const current = (href: string) => (path.startsWith(href) ? "page" : undefined);
 ---
 
 <header>
-  <div class="wrap bar">
+  <div class="pill">
     <a href="/" class="brand" aria-label="Sector 4 home">
-      <span class="mark" aria-hidden="true"></span>Sector 4
+      <Logomark size={28} />
+      <span>Sector 4</span>
     </a>
-    <nav aria-label="Main">
+
+    <nav aria-label="Main" class="wide">
       {links.map((l) => (
-        <a href={l.href} class:list={["link", { on: path.startsWith(l.href) }]}>
+        <a href={l.href} class="link" aria-current={current(l.href)}>
           {l.label}
         </a>
       ))}
+      {nextHref && (
+        <a href={nextHref} class="btn btn-primary cta" aria-current={current(nextHref)}>
+          Next race
+        </a>
+      )}
     </nav>
+
+    <details class="narrow">
+      <summary class="btn btn-outline">Menu</summary>
+      <nav aria-label="Main" class="drop">
+        {nextHref && (
+          <a href={nextHref} class="link" aria-current={current(nextHref)}>
+            Next race
+          </a>
+        )}
+        {links.map((l) => (
+          <a href={l.href} class="link" aria-current={current(l.href)}>
+            {l.label}
+          </a>
+        ))}
+      </nav>
+    </details>
   </div>
 </header>
 
 <style>
   header {
-    border-bottom: 1px solid var(--colour-hairline);
+    position: sticky;
+    top: var(--space-sm);
+    z-index: 5;
+    padding: var(--space-sm) var(--space-md) 0;
   }
-  .bar {
-    height: 64px;
+  .pill {
+    position: relative;
+    max-width: 1152px;
+    margin: 0 auto;
+    min-height: 60px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-lg);
+    gap: var(--space-md);
+    padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-md);
+    background: var(--colour-canvas-soft);
+    border-radius: var(--rounded-full);
   }
   .brand {
     display: inline-flex;
     align-items: center;
     gap: var(--space-xs);
+    min-height: 44px;
     color: var(--colour-ink);
-    font-weight: 600;
-    font-size: 16px;
-  }
-  .brand:hover {
+    font-size: 18px;
+    font-weight: var(--weight-heading);
     text-decoration: none;
   }
-  .mark {
-    width: 10px;
-    height: 20px;
-    border-radius: var(--radius-xs);
-    background: var(--colour-action);
-  }
-  nav {
-    display: flex;
-    gap: var(--space-lg);
+  .wide {
+    display: none;
+    align-items: center;
+    gap: var(--space-xxs);
   }
   .link {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--colour-body);
-  }
-  .link:hover {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 var(--space-md);
+    border-radius: var(--rounded-full);
     color: var(--colour-ink);
+    font-size: 16px;
+    font-weight: var(--weight-strong);
     text-decoration: none;
   }
-  .link.on {
-    color: var(--colour-action);
+  .link:hover {
+    background: var(--colour-field);
+  }
+  /* The current page: the white pill of the segmented control. */
+  .link[aria-current="page"] {
+    background: var(--colour-canvas);
+  }
+  .cta {
+    margin-left: var(--space-xs);
+  }
+
+  .narrow summary {
+    list-style: none;
+    cursor: pointer;
+  }
+  .narrow summary::-webkit-details-marker {
+    display: none;
+  }
+  .drop {
+    position: absolute;
+    right: 0;
+    top: calc(100% + var(--space-xs));
+    display: grid;
+    gap: var(--space-xxs);
+    min-width: 220px;
+    padding: var(--space-xs);
+    background: var(--colour-canvas-soft);
+    border-radius: var(--rounded-md);
+    animation: rise var(--motion-base) var(--motion-ease-out) both;
+  }
+
+  @media (min-width: 720px) {
+    .wide {
+      display: flex;
+    }
+    .narrow {
+      display: none;
+    }
   }
 </style>

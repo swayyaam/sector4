@@ -10,71 +10,90 @@ const lastRace = last ? races.get(last.race_id) : undefined;
 ---
 
 <BaseLayout title="Page not found" description="That page does not exist on Sector 4.">
-  <section class="band">
-    <div class="wrap">
-      <p class="eyebrow num">404</p>
-      <h1>That page does not exist</h1>
-      <p class="lede">
-        Race pages live at <span class="num">/races/&lt;season&gt;/&lt;race-slug&gt;/</span>, and
-        only for races a prediction was published for. If you followed a link from elsewhere on this
-        site, that is a bug worth reporting.
-      </p>
-      <ul class="links">
-        {next && (
-          <li>
-            <a href={`/races/${next.season}/${next.slug}/`}>{next.name}</a>
-            <span class="meta">The next race</span>
-          </li>
-        )}
-        {lastRace && (
-          <li>
-            <a href={`/races/${lastRace.season}/${lastRace.slug}/`}>{lastRace.name}</a>
-            <span class="meta">The most recent result</span>
-          </li>
-        )}
-        <li>
-          <a href="/track-record/">Track record</a>
-          <span class="meta">Every prediction, scored</span>
+  <section class="wrap hero">
+    <p class="display num" aria-hidden="true">
+      404
+    </p>
+    <h1 class="h2">That page does not exist.</h1>
+    <p class="lead">
+      Race pages live at <span class="num">/races/&lt;season&gt;/&lt;race-slug&gt;/</span>, and only
+      for races a prediction was published for. If you followed a link from elsewhere on this site,
+      that is a bug worth reporting.
+    </p>
+  </section>
+
+  <section class="wrap band">
+    <ul class="links">
+      {next && (
+        <li class="rise" style="--i:0">
+          <a class="card" href={`/races/${next.season}/${next.slug}/`}>
+            <span class="title">{next.name}</span>
+            <span class="body-sm muted">The next race</span>
+          </a>
         </li>
-        <li>
-          <a href="/methodology/">Methodology</a>
-          <span class="meta">How the numbers are made</span>
+      )}
+      {lastRace && (
+        <li class="rise" style="--i:1">
+          <a class="card" href={`/races/${lastRace.season}/${lastRace.slug}/`}>
+            <span class="title">{lastRace.name}</span>
+            <span class="body-sm muted">The most recent scored race</span>
+          </a>
         </li>
-        <li>
-          <a href="/">Home</a>
-          <span class="meta">Start again</span>
-        </li>
-      </ul>
-    </div>
+      )}
+      <li class="rise" style="--i:2">
+        <a class="card" href="/track-record/">
+          <span class="title">Track record</span>
+          <span class="body-sm muted">Every prediction, scored</span>
+        </a>
+      </li>
+      <li class="rise" style="--i:3">
+        <a class="card" href="/methodology/">
+          <span class="title">Methodology</span>
+          <span class="body-sm muted">How the numbers are made</span>
+        </a>
+      </li>
+      <li class="rise" style="--i:4">
+        <a class="card" href="/">
+          <span class="title">Home</span>
+          <span class="body-sm muted">Start again</span>
+        </a>
+      </li>
+    </ul>
   </section>
 </BaseLayout>
 
 <style>
-  .lede {
-    max-width: 62ch;
-    color: var(--colour-body);
-    margin-top: var(--space-sm);
-    line-height: 1.65;
+  .hero {
+    display: grid;
+    justify-items: center;
+    text-align: center;
+    gap: var(--space-md);
+    padding-top: var(--space-xxl);
+  }
+  @media (min-width: 1024px) {
+    .hero {
+      padding-top: var(--space-section);
+    }
+  }
+  .hero .lead {
+    max-width: 52ch;
   }
   .links {
     list-style: none;
-    margin: var(--space-xl) 0 0;
+    margin: 0 auto;
     padding: 0;
     display: grid;
-    gap: var(--space-base);
-    max-width: 480px;
+    gap: var(--space-md);
+    max-width: 960px;
   }
-  .links li {
-    border-top: 1px solid var(--colour-hairline);
-    padding-top: var(--space-sm);
+  @media (min-width: 720px) {
+    .links {
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    }
   }
-  .links a {
-    font-weight: 600;
-  }
-  .meta {
-    display: block;
-    font-size: 13px;
-    color: var(--colour-muted);
-    margin-top: var(--space-xxs);
+  .links .card {
+    display: grid;
+    gap: var(--space-xxs);
+    height: 100%;
   }
 </style>

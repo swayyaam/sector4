@@ -2,14 +2,15 @@
   <!--
     Four timing bars: three sectors plus the one this project is named for.
     Hex values are literal because a favicon is fetched on its own and cannot
-    reach the stylesheet's tokens. They mirror --colour-surface-dark,
-    --colour-muted and --colour-action.
+    reach the stylesheet's tokens. They mirror --colour-primary,
+    --colour-on-primary-soft and --colour-on-primary, and the 30% corner is
+    DESIGN.md's app-icon squircle.
   -->
-  <rect width="32" height="32" rx="7" fill="#0a0b0d"/>
-  <g fill="#6f757e">
-    <rect x="6" y="9" width="4" height="14" rx="1.5"/>
-    <rect x="12" y="9" width="4" height="14" rx="1.5"/>
-    <rect x="18" y="9" width="4" height="14" rx="1.5"/>
+  <rect width="32" height="32" rx="9.6" fill="#141414"/>
+  <g fill="#adadad">
+    <rect x="6" y="9" width="4" height="14" rx="2"/>
+    <rect x="12" y="9" width="4" height="14" rx="2"/>
+    <rect x="18" y="9" width="4" height="14" rx="2"/>
   </g>
-  <rect x="24" y="9" width="4" height="14" rx="1.5" fill="#6d28d9"/>
+  <rect x="24" y="9" width="4" height="14" rx="2" fill="#ffffff"/>
 </svg>

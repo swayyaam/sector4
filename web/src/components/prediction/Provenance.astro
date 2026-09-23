@@ -1,0 +1,34 @@
+---
+/**
+ * The line every displayed prediction carries: when it was generated, which
+ * revision it is, and the commit that published it. One component, so no page
+ * can show a prediction without it or phrase it differently.
+ */
+import { commitUrl } from "../../lib/site";
+import { formatUtc } from "../../lib/time";
+
+interface Props {
+  generatedAt: string;
+  revision: number;
+  commit: string | null;
+  model?: string | undefined;
+  data?: string | undefined;
+}
+const { generatedAt, revision, commit, model, data } = Astro.props;
+const parts = [
+  model ? `model ${model}` : null,
+  data ? `data ${data}` : null,
+  `revision ${revision}`,
+].filter(Boolean);
+---
+
+<!-- One line on purpose: a line break between these elements renders as a space before the commas. -->
+<!-- prettier-ignore -->
+<p class="provenance caption">Generated <time datetime={generatedAt} data-local>{formatUtc(generatedAt)}</time>, {parts.join(", ")}, {commit ? <a href={commitUrl(commit)} rel="noopener">published in <span class="num">{commit.slice(0, 7)}</span></a> : "not yet committed"}.</p>
+
+<style>
+  .provenance {
+    color: var(--colour-text-muted);
+    max-width: 78ch;
+  }
+</style>

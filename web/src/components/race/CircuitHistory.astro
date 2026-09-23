@@ -1,0 +1,99 @@
+---
+/**
+ * What happened at this circuit before this race.
+ *
+ * From reference.circuit_history, built by src/build_site_data.py over the same
+ * window as the model's circuit features. A circuit with no history says so;
+ * it never shows a stand-in figure.
+ */
+import type { Circuit, CircuitHistory } from "../../lib/schema";
+import { percent } from "../../lib/format";
+interface Props {
+  history: CircuitHistory | undefined;
+  circuit: Circuit;
+  season: number;
+}
+const { history: h, circuit, season } = Astro.props;
+const span =
+  h && h.first_season !== null && h.last_season !== null
+    ? h.first_season === h.last_season
+      ? `${h.first_season}`
+      : `${h.first_season}–${h.last_season}`
+    : null;
+---
+
+{!h || h.prior_races === 0 ? (
+  <p class="notice">
+    <span class="badge badge-ink">New</span>
+    <span>
+      No race has been run at {circuit.name} before this one, so there is no history to show and the
+      model has none to use.
+    </span>
+  </p>
+) : (
+  <div class="history">
+    <dl class="figures">
+      <div class="rise" style="--i:0">
+        <dt>Average position change</dt>
+        <dd class="num">{h.mean_position_change!.toFixed(1)} places</dd>
+      </div>
+      <div class="rise" style="--i:1">
+        <dt>Entries that retired</dt>
+        <dd class="num">{percent(h.retirement_rate!, 0)}</dd>
+      </div>
+      <div class="rise" style="--i:2">
+        <dt>Won from grid slot 1</dt>
+        <dd class="num">
+          {h.grid_one_wins} of {h.grid_one_races}
+        </dd>
+      </div>
+    </dl>
+    <p class="body-sm muted scope">
+      From the {h.prior_races} {h.prior_races === 1 ? "race" : "races"} at {circuit.name} before
+      this one, {span}.
+      {h.last_season !== null && h.last_season < 2026 && season >= 2026 && (
+        <> All of them were run before the 2026 regulations.</>
+      )}
+    </p>
+    <details class="defs disclosure body-sm">
+      <summary>How these are counted</summary>
+      <ul>
+        <li>
+          <strong>Average position change</strong> is the mean of the gap between grid slot and
+          finishing position, over every car that started from a grid slot. It is the model's own
+          circuit feature. Low means the grid order mostly holds.
+        </li>
+        <li>
+          <strong>Entries that retired</strong> is the share of entries classified as retired, also
+          a model feature.
+        </li>
+        <li>
+          <strong>Won from grid slot 1</strong> counts the car that started first, not the fastest
+          qualifier: a penalty can move the pole-sitter back, and the results record where each car
+          started.
+        </li>
+      </ul>
+    </details>
+  </div>
+)}
+
+<style>
+  .history {
+    display: grid;
+    gap: var(--space-md);
+  }
+  .scope {
+    max-width: 68ch;
+  }
+  .defs ul {
+    margin: 0;
+    padding-left: var(--space-lg);
+    display: grid;
+    gap: var(--space-xs);
+    max-width: 68ch;
+    color: var(--colour-text-muted);
+  }
+  .defs strong {
+    color: var(--colour-ink);
+  }
+</style>

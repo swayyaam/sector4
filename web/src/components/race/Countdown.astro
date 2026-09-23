@@ -1,74 +1,115 @@
 ---
 /**
- * Countdown to the race.
+ * Countdown to a session.
  *
- * The server renders a correct, complete value from a fixed UTC instant. The
- * island only refines it to the minute and to the viewer's local zone, so the
- * page is right before any JS runs and right after — this is progressive
- * enhancement, not a loading state.
+ * The server renders a complete value from a fixed UTC instant, so the page is
+ * right before any script runs. The script brings it up to the minute on load
+ * without animating, then each minute the unit that changed rises into place:
+ * the class that runs the animation is CSS, the script only re-adds it. Every
+ * unit has a fixed width in tabular figures, so a changing digit moves nothing.
  */
-import { countdown, formatCountdown, formatUtc } from "../../lib/time";
+import { countdown } from "../../lib/time";
 interface Props {
   startsAt: string;
   now?: Date;
 }
 const { startsAt, now = new Date() } = Astro.props;
-const initial = formatCountdown(countdown(now, new Date(startsAt)));
+const c = countdown(now, new Date(startsAt));
+const units = [
+  { key: "d", value: c.days, label: "days" },
+  { key: "h", value: c.hours, label: "hours" },
+  { key: "m", value: c.minutes, label: "minutes" },
+];
 ---
 
-<p class="cd" data-starts={startsAt}>
-  <span class="num" data-cd>
-    {initial}
-  </span>
-  <span class="at">
-    <time datetime={startsAt} data-local>
-      {formatUtc(startsAt)}
-    </time>
-  </span>
-</p>
+<div class="cd" data-starts={startsAt}>
+  <p class="units" data-live hidden={c.past}>
+    {units.map((u) => (
+      <span class="u">
+        <span class="v num" data-u={u.key}>
+          {u.value}
+        </span>
+        <span class="k">{u.label}</span>
+      </span>
+    ))}
+  </p>
+  <p class="done h3" data-done hidden={!c.past}>
+    Under way or complete
+  </p>
+</div>
 
 <script>
-  const el = document.querySelector<HTMLElement>(".cd");
-  if (el) {
-    const target = new Date(el.dataset.starts!);
-    const out = el.querySelector<HTMLElement>("[data-cd]")!;
-    const local = el.querySelector<HTMLElement>("[data-local]")!;
-    local.textContent = target.toLocaleString(undefined, {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZoneName: "short",
-    });
-    const tick = () => {
-      const ms = target.getTime() - Date.now();
+  for (const el of document.querySelectorAll<HTMLElement>(".cd[data-starts]")) {
+    const target = new Date(el.dataset.starts!).getTime();
+    const live = el.querySelector<HTMLElement>("[data-live]")!;
+    const done = el.querySelector<HTMLElement>("[data-done]")!;
+    const cells = {
+      d: el.querySelector<HTMLElement>('[data-u="d"]')!,
+      h: el.querySelector<HTMLElement>('[data-u="h"]')!,
+      m: el.querySelector<HTMLElement>('[data-u="m"]')!,
+    };
+    const set = (cell: HTMLElement, value: number, animate: boolean) => {
+      const text = String(value);
+      if (cell.textContent?.trim() === text) return;
+      cell.textContent = text;
+      if (!animate) return;
+      cell.classList.remove("tick");
+      void cell.offsetWidth; // restart the CSS animation
+      cell.classList.add("tick");
+    };
+    const tick = (animate: boolean) => {
+      const ms = target - Date.now();
       if (ms <= 0) {
-        out.textContent = "Under way or complete";
-        return;
+        live.hidden = true;
+        done.hidden = false;
+        return false;
       }
       const m = Math.floor(ms / 60000);
-      const d = Math.floor(m / 1440);
-      const h = Math.floor((m % 1440) / 60);
-      out.textContent = d > 0 ? `${d}d ${h}h ${m % 60}m` : `${h}h ${m % 60}m`;
+      set(cells.d, Math.floor(m / 1440), animate);
+      set(cells.h, Math.floor((m % 1440) / 60), animate);
+      set(cells.m, m % 60, animate);
+      return true;
     };
-    tick();
-    setInterval(tick, 60000);
+    if (tick(false)) {
+      // Align to the minute boundary, then tick once a minute.
+      const wait = (target - Date.now()) % 60000;
+      setTimeout(() => {
+        tick(true);
+        const id = setInterval(() => tick(true) || clearInterval(id), 60000);
+      }, wait + 50);
+    }
   }
 </script>
 
 <style>
-  .cd {
+  .units {
     display: flex;
-    flex-direction: column;
+    gap: var(--space-lg);
+  }
+  .u {
+    display: grid;
     gap: var(--space-xxs);
   }
-  .cd .num {
-    font-size: 32px;
-    color: var(--colour-on-dark);
+  .v {
+    display: inline-block;
+    min-width: 2ch;
+    font-size: clamp(40px, 8vw, 56px);
+    line-height: 1;
+    font-weight: var(--weight-heading);
+    color: var(--colour-ink);
   }
-  .at {
-    font-size: 13px;
-    color: var(--colour-on-dark-soft);
+  .k {
+    font-size: 14px;
+    line-height: 1.43;
+    color: var(--colour-text-muted);
+  }
+  @keyframes tick {
+    from {
+      opacity: 0;
+      transform: translateY(var(--motion-rise));
+    }
+  }
+  .v:global(.tick) {
+    animation: tick var(--motion-enter) var(--motion-ease-out);
   }
 </style>

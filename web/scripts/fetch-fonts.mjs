@@ -1,9 +1,9 @@
 /**
- * Download the two typefaces into the repo.
+ * Download the typeface into the repo.
  *
  * Self-hosted rather than linked: a third-party font request is a render-
  * blocking round trip to another origin, and it leaks every visitor's IP to
- * that origin. Both families are SIL OFL, so redistributing them here is fine.
+ * that origin. Inter is SIL OFL, so redistributing it here is fine.
  * Only the latin subset is taken, which is what the site renders.
  */
 import { writeFileSync, existsSync, mkdirSync } from "node:fs";
@@ -18,10 +18,7 @@ const OG_OUT = join(HERE, "..", "src", "assets", "fonts");
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
-const FAMILIES = [
-  { css: "Inter:wght@400;600;700", name: "inter" },
-  { css: "JetBrains+Mono:wght@500", name: "jetbrains-mono" },
-];
+const FAMILIES = [{ css: "Inter:wght@400;600;700", name: "inter" }];
 
 mkdirSync(OUT, { recursive: true });
 
@@ -53,20 +50,18 @@ for (const fam of FAMILIES) {
 }
 
 // ---------------------------------------------------------------- build only
-// The same two families again as TrueType, for the Open Graph card renderer.
+// The same family again as TrueType, for the Open Graph card renderer.
 // Requested without a modern User-Agent, which is what makes Google serve ttf.
 mkdirSync(OG_OUT, { recursive: true });
 
 const OG_FACES = [
   { family: "Inter", weight: 400, file: "inter-400.ttf" },
   { family: "Inter", weight: 700, file: "inter-700.ttf" },
-  { family: "JetBrains Mono", weight: 500, file: "jetbrains-mono-500.ttf" },
 ];
 
-const ogCss = await fetch(
-  "https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono:wght@500",
-  { headers: { "User-Agent": "Wget/1.21" } },
-).then((r) => r.text());
+const ogCss = await fetch("https://fonts.googleapis.com/css2?family=Inter:wght@400;700", {
+  headers: { "User-Agent": "Wget/1.21" },
+}).then((r) => r.text());
 
 const faces = ogCss.split("@font-face").slice(1);
 for (const face of OG_FACES) {

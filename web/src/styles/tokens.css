@@ -1,87 +1,82 @@
 /*
- * Design tokens. The single source of truth for colour in the site.
+ * Design tokens. The single source of truth for colour and motion in the site.
  *
- * Values come from DESIGN.md and must stay in step with it: tests/contrast.test.ts
- * parses BOTH this file and DESIGN.md's contrast table, so a token changed here
- * without updating the document (or vice versa) fails the build, as does any
- * change that drops a documented pairing below its WCAG level.
+ * Values come from DESIGN.md at the repo root and must stay in step with it:
+ * tests/contrast.test.ts parses BOTH this file and DESIGN.md's front matter,
+ * roles table and contrast table, so a token changed here without updating
+ * the document (or vice versa) fails the build, as does any change that drops
+ * a text colour below AA on a surface it can appear on.
  *
- * Never inline a hex value anywhere else in the codebase.
+ * Colour names are DESIGN.md's names exactly. Never inline a hex value
+ * anywhere else in the codebase.
  */
 :root {
-  /* action — the only interactive colour */
-  --colour-action: #6d28d9;
-  --colour-action-active: #5b21b6;
-  --colour-action-disabled: #c4b5fd;
-  --colour-action-on-dark: #b39dfb;
+  /* brand */
+  --colour-primary: #141414;
+  --colour-on-primary: #ffffff;
+  --colour-on-primary-soft: #adadad;
 
   /* text */
-  --colour-ink: #0a0b0d;
-  --colour-body: #5b616e;
-  --colour-body-strong: #0a0b0d;
-  --colour-muted: #636971;
-  --colour-muted-soft: #a8acb3;
+  --colour-ink: #141414;
+  --colour-ink-soft: #262626;
+  --colour-text-muted: #5c5c5c;
+  --colour-text-faint: #6b6b6b;
 
-  /* hairlines */
-  --colour-hairline: #dee1e6;
-  --colour-hairline-soft: #eef0f3;
-
-  /* surfaces */
+  /* surfaces, lightest first: the tint ladder */
   --colour-canvas: #ffffff;
-  --colour-surface-soft: #f7f7f7;
-  --colour-surface-card: #ffffff;
-  --colour-surface-strong: #eef0f3;
-  --colour-surface-dark: #0a0b0d;
-  --colour-surface-dark-elevated: #16181c;
+  --colour-canvas-soft: #f3f3f3;
+  --colour-field: #f0f0f0;
 
-  /* on-colour text */
-  --colour-on-action: #ffffff;
-  --colour-on-dark: #ffffff;
-  --colour-on-dark-soft: #a8acb3;
+  /* lines */
+  --colour-hairline-soft: #f0f0f0;
+  --colour-hairline: #e0e0e0;
 
-  /* outcome semantics — text colour only, never a fill */
-  --colour-positive: #00794f;
-  --colour-positive-on-dark: #3ddc97;
-  --colour-negative: #b3121f;
-  --colour-negative-on-dark: #ff6b78;
+  /* the one hue: the upcoming race, once per page */
+  --colour-accent: #0060f0;
 
-  /* caution — preview banner and data-quality warnings only */
-  --colour-caution: #8a5a00;
-  --colour-caution-surface: #fdf6e3;
-
-  /* radii */
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-pill: 100px;
-  --radius-full: 9999px;
+  /* rounded */
+  --rounded-none: 0px;
+  --rounded-sm: 16px;
+  --rounded-md: 24px;
+  --rounded-full: 9999px;
 
   /* spacing */
   --space-xxs: 4px;
   --space-xs: 8px;
   --space-sm: 12px;
-  --space-base: 16px;
-  --space-md: 20px;
+  --space-md: 16px;
   --space-lg: 24px;
   --space-xl: 32px;
   --space-xxl: 48px;
-  --space-section: 96px;
+  --space-section: 80px;
+  --space-section-lg: 120px;
+
+  /* type: Inter standing in for Saans, per DESIGN.md's note on substitutes */
+  --font-sans: Inter, "Inter Fallback", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --weight-light: 300;
+  --weight-text: 450;
+  --weight-strong: 600;
+  --weight-heading: 650;
 
   /* motion */
-  --motion-instant: 0ms;
-  --motion-fast: 120ms;
-  --motion-base: 180ms;
-  --motion-slow: 260ms;
-  --ease-out: cubic-bezier(0.2, 0, 0, 1);
-  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-quick: 120ms;
+  --motion-base: 200ms;
+  --motion-enter: 360ms;
+  --motion-fill: 700ms;
+  --motion-stagger: 30ms;
+  --motion-stagger-steps: 12;
+  --motion-rise: 6px;
+  --motion-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --motion-fast: 0ms;
+    --motion-quick: 0ms;
     --motion-base: 0ms;
-    --motion-slow: 0ms;
+    --motion-enter: 0ms;
+    --motion-fill: 0ms;
+    --motion-stagger: 0ms;
+    --motion-rise: 0px;
   }
 }

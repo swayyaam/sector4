@@ -1,8 +1,17 @@
 {
   "data_version": "v0.1.1-data+20260921",
-  "generated_at": "2026-09-22T23:36:31Z",
+  "generated_at": "2026-09-22T23:51:22Z",
   "is_mock": false,
-  "last_completed_race": null,
+  "last_completed_race": {
+    "race_id": 1182,
+    "season": 2026,
+    "round": 14,
+    "name": "Spanish Grand Prix",
+    "slug": "spanish-grand-prix",
+    "circuit_id": 81,
+    "starts_at": "2026-09-13T13:00:00Z"
+  },
+  "last_scored_race": null,
   "next_race": {
     "race_id": 1183,
     "season": 2026,

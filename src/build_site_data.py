@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import features as F  # noqa: E402
 import revisions as REV  # noqa: E402
-from predict import OUT as PRED_DIR, upcoming_race  # noqa: E402
+from predict import OUT as PRED_DIR, race_row, upcoming_race  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "web" / "src" / "data" / "live"
@@ -52,6 +52,13 @@ def load_mock_colours() -> dict[str, tuple[str, str]]:
         return {}
     ref = json.loads(path.read_text())
     return {t["team_entity_id"]: (t["colour"], t["colour_on_light"]) for t in ref["teams"]}
+
+
+# Jolpica's schedule keys, and the names the site shows for them.
+SESSION_KEYS = (("FirstPractice", "Practice 1"), ("SecondPractice", "Practice 2"),
+                ("ThirdPractice", "Practice 3"), ("SprintShootout", "Sprint Shootout"),
+                ("SprintQualifying", "Sprint Qualifying"), ("Sprint", "Sprint"),
+                ("Qualifying", "Qualifying"))
 
 
 def schedule_rows(seasons: tuple[int, ...], known: set[tuple[int, int]]) -> list[dict]:
@@ -84,14 +91,15 @@ def schedule_rows(seasons: tuple[int, ...], known: set[tuple[int, int]]) -> list
                 "slug": _slug(r["raceName"]), "circuit_id": int(match.iloc[0]["circuitId"]),
                 "starts_at": f"{r['date']}T{time}",
                 "regs_era": str(races.loc[races["year"] == season, "regs_era"].iloc[0]),
-                "_sessions": [
+                # Every session the schedule lists, sprint weekends included,
+                # in the order they run. Leaving the sprint out would publish a
+                # weekend that is missing two of its sessions.
+                "sessions": sorted([
                     {"name": label, "starts_at": f"{s['date']}T{s.get('time') or '00:00:00Z'}"}
-                    for key, label in (("FirstPractice", "Practice 1"),
-                                       ("SecondPractice", "Practice 2"),
-                                       ("ThirdPractice", "Practice 3"),
-                                       ("Qualifying", "Qualifying"))
+                    for key, label in SESSION_KEYS
                     if (s := r.get(key))
                 ] + [{"name": "Race", "starts_at": f"{r['date']}T{time}"}],
+                    key=lambda x: x["starts_at"]),
             })
             nxt += 1
     return out
@@ -178,6 +186,55 @@ def build_reference(races_wanted: set[int], extra_circuits: set[int] = frozenset
 
     return {"drivers": out_drivers, "teams": out_teams,
             "circuits": out_circuits, "races": out_races}
+
+
+def circuit_history(tables: dict, race: pd.Series, race_id: int) -> dict:
+    """What happened at this circuit before this race, for the race page.
+
+    The window and two of the definitions are the model's own:
+    circuit_overtaking_difficulty and circuit_dnf_rate in src/features.py, read
+    through the same _prior() cut. The page then describes what the model saw,
+    not a second calculation that could disagree with it. Wins from grid slot
+    one is new here and uses the same window.
+
+    A circuit with no history returns zeros and nulls, never a stand-in figure.
+    """
+    prior = F._prior(tables, int(race["order"]))
+    here = prior[prior["circuitId"] == int(race["circuitId"])]
+    n = int(here["raceId"].nunique())
+    out = {"race_id": int(race_id), "circuit_id": int(race["circuitId"]), "prior_races": n,
+           "first_season": None, "last_season": None, "mean_position_change": None,
+           "retirement_rate": None, "grid_one_wins": None, "grid_one_races": None}
+    if n == 0:
+        return out
+    grid = pd.to_numeric(here["grid"], errors="coerce")
+    fin = pd.to_numeric(here["positionOrder"], errors="coerce")
+    moved = (grid - fin).abs()[grid > 0]
+    # Grid slot one, not pole: a penalty can move the pole-sitter back, and the
+    # results table records where each car started, not who qualified fastest.
+    front = here[grid == 1]
+    out.update({
+        "first_season": int(here["year"].min()), "last_season": int(here["year"].max()),
+        "mean_position_change": round(float(moved.mean()), 4) if len(moved) else None,
+        "retirement_rate": round(float(here["is_dnf"].mean()), 4),
+        "grid_one_races": int(front["raceId"].nunique()),
+        "grid_one_wins": int(front.loc[fin[grid == 1] == 1, "raceId"].nunique()),
+    })
+    return out
+
+
+def last_completed(races: pd.DataFrame) -> pd.Series | None:
+    """The most recent race with results in data/processed.
+
+    Not the most recent scored race: the site states how current its data is,
+    and that is a property of the pipeline, not of the track record. Before the
+    first race is scored the two differ, and conflating them left this null.
+    """
+    res = F._rd(F.PROCESSED / "results.csv")
+    done = races[races["raceId"].isin(set(res["raceId"].astype(int)))]
+    if done.empty:
+        return None
+    return done.sort_values(["year", "round"]).iloc[-1]
 
 
 def published_commit(path: Path) -> str | None:
@@ -327,9 +384,17 @@ def main() -> int:
              for _, r in races[races["raceId"].isin(wanted)].iterrows()}
     future = schedule_rows(SEASONS, known)
     reference = build_reference(wanted, {r["circuit_id"] for r in future})
-    sessions_by_race = {r["race_id"]: r.pop("_sessions") for r in future}
+    sessions_by_race = {r["race_id"]: r["sessions"] for r in future}
     reference["races"].extend(future)
     reference["races"].sort(key=lambda r: (r["season"], r["round"]))
+
+    tables = F.load_tables()
+    by_key = {(r["season"], r["round"]): r for r in reference["races"]}
+    reference["circuit_history"] = []
+    for season, rnd in sorted({(p["season"], p["round"]) for p in preds}):
+        row, _ = race_row(tables, season, rnd)
+        reference["circuit_history"].append(
+            circuit_history(tables, row, by_key[(season, rnd)]["race_id"]))
 
     SITE.mkdir(parents=True, exist_ok=True)
     (SITE / "reference.json").write_text(json.dumps(reference, indent=2) + "\n")
@@ -339,26 +404,29 @@ def main() -> int:
 
     done = [p for p in preds if p["result"]]
     latest = max((p for p in done), key=lambda p: (p["season"], p["round"]), default=None)
+    ref_keys = ("race_id", "season", "round", "name", "slug", "circuit_id", "starts_at")
     meta = {
         "data_version": preds[0]["data_version"],
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "is_mock": False,
         "last_completed_race": None,
+        "last_scored_race": None,
         "next_race": None,
         "pipeline": pipeline_summary(),
     }
+    completed = last_completed(races)
+    if completed is not None:
+        r = by_key[(int(completed["year"]), int(completed["round"]))]
+        meta["last_completed_race"] = {k: r[k] for k in ref_keys}
     if latest:
         r = next(x for x in reference["races"] if x["race_id"] == latest["race_id"])
-        meta["last_completed_race"] = {k: r[k] for k in
-                                       ("race_id", "season", "round", "name", "slug",
-                                        "circuit_id", "starts_at")}
+        meta["last_scored_race"] = {k: r[k] for k in ref_keys}
     upcoming_ids = {p["race_id"] for p in preds if p["result"] is None}
     following = sorted((r for r in reference["races"] if r["race_id"] in upcoming_ids),
                        key=lambda r: (r["season"], r["round"]))
     if following:
         r = following[0]
-        meta["next_race"] = {**{k: r[k] for k in ("race_id", "season", "round", "name", "slug",
-                                                  "circuit_id", "starts_at")},
+        meta["next_race"] = {**{k: r[k] for k in ref_keys},
                              "sessions": sessions_by_race.get(r["race_id"],
                                                               [{"name": "Race",
                                                                 "starts_at": r["starts_at"]}])}

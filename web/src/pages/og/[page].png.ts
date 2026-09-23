@@ -6,18 +6,18 @@ import { pngResponse, renderCard, type CardSpec } from "../../lib/og";
 const CARDS: Record<string, Omit<CardSpec, "isMock">> = {
   default: {
     eyebrow: "Formula 1",
-    title: "Predictions, scored in public",
+    title: "Predictions, scored in public.",
     subtitle:
       "Win, podium and top-ten probabilities — and an honest record of how they turned out.",
   },
   "track-record": {
     eyebrow: "Track record",
-    title: "Every prediction, including the misses",
+    title: "Every prediction, including the misses.",
     subtitle: "Log loss, Brier score and podium hits for each race, scored against the result.",
   },
   methodology: {
     eyebrow: "Methodology",
-    title: "How the numbers are made",
+    title: "How the numbers are made.",
     subtitle: "The data, the snapshots, the scoring rules, and what the model cannot see.",
   },
   credits: {

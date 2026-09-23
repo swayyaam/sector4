@@ -7,6 +7,18 @@ const { predictions, meta, isMock } = loadDataset();
 const pipe = meta.pipeline;
 const fmt = new Intl.NumberFormat("en-GB");
 const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((a, b) => a - b);
+
+const contents = [
+  { id: "model", label: "The model" },
+  { id: "data", label: "The data" },
+  { id: "snapshots", label: "Two snapshots" },
+  { id: "predicted", label: "What is predicted" },
+  { id: "scoring", label: "Scoring" },
+  { id: "rejected", label: "Tried and rejected" },
+  { id: "evaluation", label: "Evaluation" },
+  { id: "bugs", label: "Two scorer bugs" },
+  { id: "limits", label: "What it cannot see" },
+];
 ---
 
 <BaseLayout
@@ -15,20 +27,25 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
   image="/og/methodology.png"
   breadcrumbs={[{ name: "Methodology", path: "/methodology/" }]}
 >
-  <section class="band band-dark">
-    <div class="wrap">
-      <p class="eyebrow">Methodology</p>
-      <h1>How the numbers are made</h1>
-      <p class="sub">
-        A prediction you cannot check is a claim, not a forecast. Everything below is here so the
-        numbers on this site can be argued with.
-      </p>
-    </div>
+  <section class="wrap hero">
+    <p class="eyebrow">Methodology</p>
+    <h1>How the numbers are made.</h1>
+    <p class="lead">
+      A prediction you cannot check is a claim, not a forecast. Everything below is here so the
+      numbers on this site can be argued with.
+    </p>
+    <nav aria-label="On this page" class="contents">
+      {contents.map((c, i) => (
+        <a class="btn btn-soft rise" style={`--i:${i}`} href={`#${c.id}`}>
+          {c.label}
+        </a>
+      ))}
+    </nav>
   </section>
 
-  <section class="band">
-    <div class="wrap prose">
-      <h2>What the model is, and what it is not</h2>
+  <section id="model" class="wrap band chapter">
+    <h2 class="h3">What the model is, and what it is not.</h2>
+    <div class="prose">
       <p>
         The model is a logistic regression with <strong>four inputs</strong>: where the driver
         qualified, their best practice lap relative to the fastest car, their championship points,
@@ -37,39 +54,48 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
         fifteenth and sixteenth.
       </p>
       <p>
+        That is the post-qualifying model. Before the cars run, qualifying and practice do not
+        exist, so the pre-weekend snapshot reduces to the two inputs that do: championship points
+        and share of team points. It is a weaker model, not a different view of the same one.
+      </p>
+      <p>
         Four inputs is not a simplification made for the sake of the explanation. Larger versions
         were built and measured — nineteen features, twenty-two, thirty-three — and every one of
         them scored worse. Circuit history, tyre data and driver-against-teammate form were all
         tried, and all three made the predictions less accurate rather than more.
       </p>
-      <p class="flag">
-        <strong>The model has not been shown to beat a simple baseline.</strong> The baseline is
-        qualifying order: the historical chance of winning from each grid slot, and nothing else.
-        Across 2019–2025 the model scored better, but that comparison is what chose the model, so it
-        flatters it. The one clean out-of-sample test — the 2026 season, held back from every
-        decision and scored once — was <strong>inconclusive</strong>. The model was ahead on
-        average, and well inside the range that fourteen races of a regulation-reset season cannot
-        separate from chance.
-      </p>
+      <div class="callout">
+        <p>
+          <strong>The model has not been shown to beat a simple baseline.</strong> The baseline is
+          qualifying order: the historical chance of winning from each grid slot, and nothing else.
+          Across 2019–2025 the model scored better, but that comparison is what chose the model, so
+          it flatters it. The one clean out-of-sample test — the 2026 season, held back from every
+          decision and scored once — was <strong>inconclusive</strong>. The model was ahead on
+          average, and well inside the range that fourteen races of a regulation-reset season cannot
+          separate from chance.
+        </p>
+      </div>
       <p>
         So this site does not claim that the model beats qualifying order. What it does claim is
-        that the probabilities are well calibrated — when it says 20%, that happens about one time
-        in five — and <a href="/track-record/">the track record</a> prints the baseline's score
+        that the win probabilities are well calibrated — when it says 20%, that happens about one
+        time in five — and <a href="/track-record/">the track record</a> prints the baseline's score
         beside the model's on every race, so the question is yours to settle rather than ours.
       </p>
     </div>
   </section>
 
   {isMock && (
-    <section class="band band-soft">
-      <div class="wrap prose">
-        <h2>What is running right now</h2>
-        <p class="flag">
-          <strong>The numbers on these pages are sample data, not the model's output.</strong> The
-          model described above exists and has been measured, but this site is still showing
-          probabilities generated to exercise the layout — a Plackett–Luce draw over a plausible
-          field, scored against invented results. They say nothing about any real race.
-        </p>
+    <section class="wrap band chapter">
+      <h2 class="h3">What is running right now.</h2>
+      <div class="prose">
+        <div class="callout">
+          <p>
+            <strong>The numbers on these pages are sample data, not the model's output.</strong> The
+            model described above exists and has been measured, but this site is still showing
+            probabilities generated to exercise the layout — a Plackett–Luce draw over a plausible
+            field, scored against invented results. They say nothing about any real race.
+          </p>
+        </div>
         <p>
           Real predictions are being written one race at a time, each committed before the session
           it predicts and scored afterwards in a separate step, so the record cannot be edited once
@@ -81,43 +107,57 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
     </section>
   )}
 
-  <section class="band band-soft">
-    <div class="wrap prose">
-      <h2>The data</h2>
+  <section id="data" class="wrap band chapter">
+    <h2 class="h3">The data.</h2>
+    <div class="prose">
       <p>
         Results, qualifying, grids, laps, pit stops and status codes come from the Ergast schema:
         the Kaggle Formula 1 World Championship export for 1950 to 2024, and the Jolpica F1 API for
         2025 onward. Session telemetry, timing and weather from 2018 onward come from FastF1.
       </p>
       <p>Five rules govern that pipeline, and they are enforced rather than intended.</p>
-      <ul>
-        <li>
-          <strong>Nothing is invented.</strong> A missing value stays missing and is flagged. No
-          interpolation, no back-filling, no plausible substitutes.
-        </li>
-        <li>
-          <strong>Provenance travels with the row.</strong> Every record carries the source it came
-          from, so any figure can be traced back to the file it was read from.
-        </li>
-        <li>
-          <strong>Conflicts are logged, not resolved quietly.</strong> Where two sources disagree,
-          both values are recorded with the evidence, and the resolution is a documented decision
-          rather than a silent preference.
-        </li>
-        <li>
-          <strong>Time is UTC.</strong> Stored in UTC, rendered in your zone by the page. Original
-          local date fields are kept as they were.
-        </li>
-        <li>
-          <strong>Builds are deterministic.</strong> The same inputs produce byte-identical outputs,
-          which is what makes a change reviewable at all.
-        </li>
-      </ul>
+      <dl class="defs">
+        <div class="rise" style="--i:0">
+          <dt>Nothing is invented.</dt>
+          <dd>
+            A missing value stays missing and is flagged. No interpolation, no back-filling, no
+            plausible substitutes.
+          </dd>
+        </div>
+        <div class="rise" style="--i:1">
+          <dt>Provenance travels with the row.</dt>
+          <dd>
+            Every record carries the source it came from, so any figure can be traced back to the
+            file it was read from.
+          </dd>
+        </div>
+        <div class="rise" style="--i:2">
+          <dt>Conflicts are logged, not resolved quietly.</dt>
+          <dd>
+            Where two sources disagree, both values are recorded with the evidence, and the
+            resolution is a documented decision rather than a silent preference.
+          </dd>
+        </div>
+        <div class="rise" style="--i:3">
+          <dt>Time is UTC.</dt>
+          <dd>
+            Stored in UTC, rendered in your zone by the page. Original local date fields are kept as
+            they were.
+          </dd>
+        </div>
+        <div class="rise" style="--i:4">
+          <dt>Builds are deterministic.</dt>
+          <dd>
+            The same inputs produce byte-identical outputs, which is what makes a change reviewable
+            at all.
+          </dd>
+        </div>
+      </dl>
       {pipe && (
-        <Fragment>
-          <h3 class="sub-h">What that adds up to</h3>
+        <>
+          <h3 class="title sub-h">What that adds up to</h3>
           <div class="scroller">
-            <table>
+            <table class="table">
               <caption class="sr-only">
                 Row counts per table, split by the source each row came from.
               </caption>
@@ -136,8 +176,8 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(pipe.tables).map(([name, t]) => (
-                  <tr>
+                {Object.entries(pipe.tables).map(([name, t], i) => (
+                  <tr class="rise" style={`--i:${i}`}>
                     <th scope="row">{name.replace(/_/g, " ")}</th>
                     <td class="n num">{fmt.format(t.rows)}</td>
                     <td class="n num dim">{fmt.format(t.by_source.kaggle ?? 0)}</td>
@@ -147,7 +187,7 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
               </tbody>
             </table>
           </div>
-          <dl class="summary">
+          <dl class="figures">
             <div>
               <dt>Seasons covered</dt>
               <dd class="num">
@@ -180,7 +220,7 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
             is layered on top from FastF1, and is used to fit the model but never published — see{" "}
             <a href="/credits/">credits</a>.
           </p>
-        </Fragment>
+        </>
       )}
       <p>
         The current data version is <span class="num">{meta.data_version}</span>. Sources and
@@ -189,52 +229,75 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
     </div>
   </section>
 
-  <section class="band">
-    <div class="wrap prose">
-      <h2>Two snapshots per race</h2>
+  <section id="snapshots" class="wrap band chapter">
+    <h2 class="h3">Two snapshots per race.</h2>
+    <div class="prose">
       <p>
-        A prediction is only meaningful with a timestamp on it, so each race gets up to two, and
-        neither is ever revised after the fact.
+        A prediction is only meaningful with a timestamp on it, so each race gets up to two. Neither
+        is changed after its deadline: the first session of the weekend for pre-weekend, the start
+        of the race for post-qualifying. A correction before then is published as a new revision
+        beside the original, and the race page shows both.
       </p>
       <dl class="defs">
-        <dt>Pre-weekend</dt>
-        <dd>
-          Published before any car runs. It sees season form, car pace, circuit history and
-          reliability, and knows nothing about the grid.
-        </dd>
-        <dt>Post-qualifying</dt>
-        <dd>
-          Published after qualifying, with the grid known, including penalties. This is the sharper
-          of the two and the one a race page shows by default.
-        </dd>
+        <div>
+          <dt>Pre-weekend</dt>
+          <dd>
+            Published before any car runs. It uses two inputs, championship points and share of team
+            points, and knows nothing about qualifying or practice. Scored beside championship
+            order.
+          </dd>
+        </div>
+        <div>
+          <dt>Post-qualifying</dt>
+          <dd>
+            Published after qualifying, with the qualifying order and this weekend's practice pace
+            known. It uses qualifying position rather than the grid, so penalties applied afterwards
+            are not in it; <a href="#limits">why is below</a>. This is the sharper of the two and
+            the one a race page shows by default. Scored beside qualifying order.
+          </dd>
+        </div>
       </dl>
       <p>
         Both remain on the race page afterwards. Comparing them is the honest way to see how much of
-        the prediction was the grid and how much was everything else.
+        the prediction was qualifying and how much was everything else.
       </p>
     </div>
   </section>
 
-  <section class="band band-soft">
-    <div class="wrap prose">
-      <h2>What is predicted</h2>
+  <section id="predicted" class="wrap band chapter">
+    <h2 class="h3">What is predicted.</h2>
+    <div class="prose">
       <p>For every driver in the field, each snapshot gives:</p>
-      <ul>
-        <li>
-          <strong>Win, podium, top ten</strong> — the probability of finishing there or better.
-        </li>
-        <li>
-          <strong>DNF</strong> — the probability of not being classified as a finisher.
-        </li>
-        <li>
-          <strong>Expected position</strong> — the mean of the driver's full finishing-position
-          distribution, not a rounded guess at a place.
-        </li>
-        <li>
-          <strong>Top factors</strong> — the handful of inputs moving that driver's number most,
-          with direction and relative weight.
-        </li>
-      </ul>
+      <dl class="defs">
+        <div>
+          <dt>Win, podium, top ten</dt>
+          <dd>
+            The probability of finishing there or better. Only the win probability has been
+            validated; podium and top ten follow from it through one simulation of the whole race.
+          </dd>
+        </div>
+        <div>
+          <dt>DNF</dt>
+          <dd>
+            The probability of not being classified as a finisher. It is fitted separately from the
+            rest and has not been validated.
+          </dd>
+        </div>
+        <div>
+          <dt>Expected position</dt>
+          <dd>
+            The mean of the driver's full finishing-position distribution, not a rounded guess at a
+            place. The distribution itself is drawn on each race page.
+          </dd>
+        </div>
+        <div>
+          <dt>Top factors</dt>
+          <dd>
+            The handful of inputs moving that driver's number most, with direction and relative
+            weight. Weights only, never a lap time or any timing value.
+          </dd>
+        </div>
+      </dl>
       <p>
         Those numbers have to hold together, so the build checks them rather than trusting them.
         Across a field of {fieldSizes.join(" or ")} drivers, win probabilities must sum to one,
@@ -247,165 +310,205 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
     </div>
   </section>
 
-  <section class="band">
-    <div class="wrap prose">
-      <h2>How a prediction is scored</h2>
+  <section id="scoring" class="wrap band chapter">
+    <h2 class="h3">How a prediction is scored.</h2>
+    <div class="prose">
       <p>
-        Scoring happens once, against the snapshot that was public before the race started, and the
-        result is never recomputed. Four numbers per race:
+        Scoring happens once, against the latest revision published before that snapshot's deadline,
+        and the result is never recomputed. A revision published after its deadline is listed on the
+        race page and never scored. Four numbers per race:
       </p>
       <dl class="defs">
-        <dt>Log loss</dt>
-        <dd>
-          <span class="num">−ln p</span>, where <span class="num">p</span> is the probability given
-          to the driver who actually won. It punishes confident misses hard, which is the point: a
-          model that says 60% and is wrong should hurt more than one that says 20% and is wrong.
-          Lower is better.
-        </dd>
-        <dt>Brier score</dt>
-        <dd>
-          The squared error of the whole win distribution, summed over every driver, with one for
-          the winner and zero for everybody else. Unlike log loss it is bounded, so a single
-          catastrophic race cannot dominate a season. Lower is better.
-        </dd>
-        <dt>Winner called</dt>
-        <dd>
-          Whether the driver given the highest win probability won. Crude, and included because it
-          is the number everyone actually checks.
-        </dd>
-        <dt>Podium places</dt>
-        <dd>
-          How many of the three drivers given the highest podium probability finished on the podium,
-          out of three.
-        </dd>
+        <div>
+          <dt>Log loss</dt>
+          <dd>
+            <span class="num">−ln p</span>, where <span class="num">p</span> is the probability
+            given to the driver who actually won. It punishes confident misses hard, which is the
+            point: a model that says 60% and is wrong should hurt more than one that says 20% and is
+            wrong. Lower is better.
+          </dd>
+        </div>
+        <div>
+          <dt>Brier score</dt>
+          <dd>
+            The squared error of the whole win distribution, summed over every driver, with one for
+            the winner and zero for everybody else. Unlike log loss it is bounded, so a single
+            catastrophic race cannot dominate a season. Lower is better.
+          </dd>
+        </div>
+        <div>
+          <dt>Winner called</dt>
+          <dd>
+            Whether the driver given the highest win probability won. Crude, and included because it
+            is the number everyone actually checks.
+          </dd>
+        </div>
+        <div>
+          <dt>Podium places</dt>
+          <dd>
+            How many of the three drivers given the highest podium probability finished on the
+            podium, out of three.
+          </dd>
+        </div>
       </dl>
       <p>
         A log loss means nothing without a reference, so{" "}
-        <a href="/track-record/">the track record</a>
-        prints two of them: what a uniform random pick over the same field would have scored, which
-        is the floor, and what qualifying order scored, which is the bar. Both are computed the same
-        way as the model's own number, on the same race, from data available before it started.
+        <a href="/track-record/">the track record</a> prints two: what a uniform random pick over
+        the same field would have scored, which is the floor, and what a baseline that saw the same
+        information scored, which is the bar. That is qualifying order for the post-qualifying
+        snapshot and championship order for the pre-weekend one. Both are computed the same way as
+        the model's own number, on the same race, from data available before it started.
       </p>
     </div>
   </section>
 
-  <section class="band band-soft">
-    <div class="wrap prose">
-      <h2>What was tried and rejected</h2>
+  <section id="rejected" class="wrap band chapter">
+    <h2 class="h3">What was tried and rejected.</h2>
+    <div class="prose">
       <p>
         The four features are not a first guess that happened to work. Larger and cleverer models
         were built, measured against the same baseline on the same races, and found worse.
       </p>
       <dl class="defs">
-        <dt>Nine features that measured as noise</dt>
-        <dd>
-          Circuit history, tyre data and driver-against-teammate form — nine columns across three
-          groups. Not one of them differed from zero at 95% confidence, and adding them moved the
-          log loss the wrong way: 1.3286 with form alone, 1.3480 once circuit history was added,
-          1.3765 once tyre data was.
-        </dd>
-        <dt>A gradient-boosted tree model</dt>
-        <dd>
-          It memorised its training set — 0.0069 log loss on data it had seen against 0.2155 on data
-          it had not. Regularising it heavily closed that gap to 0.0256 and it still scored worse
-          than the simple model at race level.
-        </dd>
-        <dt>An Elo rating</dt>
-        <dd>
-          2.0256 against the baseline's 1.4340. A rating that sees only the driver cannot see the
-          car, and in this sport the car is most of the answer.
-        </dd>
-        <dt>A ranking model with simulated race orders</dt>
-        <dd>
-          It produced a coherent joint distribution, which the four marginals do not, but it lost to
-          the baseline by a margin that did not depend on chance. Its simulation still supplies the
-          position distributions shown on race pages.
-        </dd>
+        <div>
+          <dt>Nine features that measured as noise</dt>
+          <dd>
+            Circuit history, tyre data and driver-against-teammate form — nine columns across three
+            groups. Not one of them differed from zero at 95% confidence, and adding them moved the
+            log loss the wrong way: 1.3286 with form alone, 1.3480 once circuit history was added,
+            1.3765 once tyre data was.
+          </dd>
+        </div>
+        <div>
+          <dt>A gradient-boosted tree model</dt>
+          <dd>
+            It memorised its training set — 0.0069 log loss on data it had seen against 0.2155 on
+            data it had not. Regularising it heavily closed that gap to 0.0256 and it still scored
+            worse than the simple model at race level.
+          </dd>
+        </div>
+        <div>
+          <dt>An Elo rating</dt>
+          <dd>
+            2.0256 against the baseline's 1.4340. A rating that sees only the driver cannot see the
+            car, and in this sport the car is most of the answer.
+          </dd>
+        </div>
+        <div>
+          <dt>A ranking model with simulated race orders</dt>
+          <dd>
+            It produced a coherent joint distribution, which the four marginals do not, but it lost
+            to the baseline by a margin that did not depend on chance. Its simulation still supplies
+            the position distributions shown on race pages.
+          </dd>
+        </div>
       </dl>
     </div>
   </section>
 
-  <section class="band">
-    <div class="wrap prose">
-      <h2>How the model is evaluated</h2>
+  <section id="evaluation" class="wrap band chapter">
+    <h2 class="h3">How the model is evaluated.</h2>
+    <div class="prose">
       <p>
         Each race is predicted by a model fitted on races strictly before it and on nothing else.
         That is slow — the model is refitted for every race — and it is the only way the comparison
         against a baseline that works the same way means anything.
       </p>
       <dl class="defs">
-        <dt>Bootstrap intervals, resampled over races</dt>
-        <dd>
-          Not over driver rows. Twenty drivers in one race are not twenty pieces of evidence: if the
-          model misreads the car, it misreads all twenty at once.
-        </dd>
-        <dt>Paired against the baseline</dt>
-        <dd>Race by race, so a run of unusually hard races cannot decide the comparison.</dd>
-        <dt>Calibration beside discrimination</dt>
-        <dd>
-          Discrimination asks whether the ordering is right. Calibration asks whether a stated 20%
-          happens about one time in five. This site publishes the number itself, so the second
-          question is the one that matters, and a model with a better log loss and worse calibration
-          would be the wrong choice here.
-        </dd>
+        <div>
+          <dt>Bootstrap intervals, resampled over races</dt>
+          <dd>
+            Not over driver rows. Twenty drivers in one race are not twenty pieces of evidence: if
+            the model misreads the car, it misreads all twenty at once.
+          </dd>
+        </div>
+        <div>
+          <dt>Paired against the baseline</dt>
+          <dd>Race by race, so a run of unusually hard races cannot decide the comparison.</dd>
+        </div>
+        <div>
+          <dt>Calibration beside discrimination</dt>
+          <dd>
+            Discrimination asks whether the ordering is right. Calibration asks whether a stated 20%
+            happens about one time in five. This site publishes the number itself, so the second
+            question is the one that matters, and a model with a better log loss and worse
+            calibration would be the wrong choice here.
+          </dd>
+        </div>
       </dl>
-      <p class="flag">
-        The evidence that the model beats the baseline is <strong>in-sample</strong>. The comparison
-        across 2019–2025 is what chose this model, so it flatters it. The one clean test — 2026,
-        held back from every decision and scored once — was inconclusive.{" "}
-        <a href="/track-record/">The track record</a> is the real ongoing test, and it starts empty.
-      </p>
+      <div class="callout">
+        <p>
+          The evidence that the model beats the baseline is <strong>in-sample</strong>. The
+          comparison across 2019–2025 is what chose this model, so it flatters it. The one clean
+          test — 2026, held back from every decision and scored once — was inconclusive.{" "}
+          <a href="/track-record/">The track record</a> is the real ongoing test, and it starts
+          empty.
+        </p>
+      </div>
     </div>
   </section>
 
-  <section class="band band-soft">
-    <div class="wrap prose">
-      <h2>Two bugs in the scorer, and how they were caught</h2>
+  <section id="bugs" class="wrap band chapter">
+    <h2 class="h3">Two bugs in the scorer, and how they were caught.</h2>
+    <div class="prose">
       <p>
         Both were found by the cheapest thing in the project, and both would have quietly flattered
         every number measured afterwards.
       </p>
       <dl class="defs">
-        <dt>A uniform guess scored a 99.4% hit rate</dt>
-        <dd>
-          The field arrives sorted by finishing position, so picking the highest probability fell
-          back on row order and handed a tied predictor the winner every time. Breaking ties by
-          driver id instead gave 19.9% — still wrong, because the lowest id in this era belongs to a
-          driver who won a fifth of those races. Ties are now settled by expectation, and a uniform
-          guess scores exactly one in twenty, which is arithmetic rather than judgement.
-        </dd>
-        <dt>A ranking model gave the actual winner zero</dt>
-        <dd>
-          It scored five times worse than a random guess, assigning a near-certainty to one driver
-          in most races, because its confidence was tuned on the same races it had learned from.
-          Every accuracy metric looked healthy while this happened — the winner hit rate sat at 52%.
-          Only the probabilities showed it.
-        </dd>
+        <div>
+          <dt>A uniform guess scored a 99.4% hit rate</dt>
+          <dd>
+            The field arrives sorted by finishing position, so picking the highest probability fell
+            back on row order and handed a tied predictor the winner every time. Breaking ties by
+            driver id instead gave 19.9% — still wrong, because the lowest id in this era belongs to
+            a driver who won a fifth of those races. Ties are now settled by expectation, and a
+            uniform guess scores exactly one in twenty, which is arithmetic rather than judgement.
+          </dd>
+        </div>
+        <div>
+          <dt>A ranking model gave the actual winner zero</dt>
+          <dd>
+            It scored five times worse than a random guess, assigning a near-certainty to one driver
+            in most races, because its confidence was tuned on the same races it had learned from.
+            Every accuracy metric looked healthy while this happened — the winner hit rate sat at
+            52%. Only the probabilities showed it.
+          </dd>
+        </div>
       </dl>
     </div>
   </section>
 
-  <section class="band">
-    <div class="wrap prose">
-      <h2>What this cannot predict</h2>
-      <ul>
-        <li>
-          <strong>Safety cars and first-lap incidents.</strong> A large part of what separates the
-          prediction from the result, and irreducible rather than a gap to be closed.
-        </li>
-        <li>
-          <strong>Weather on the day.</strong> A dry forecast that turns wet rearranges a race, and
-          a probability published on a Tuesday cannot know that.
-        </li>
-        <li>
-          <strong>Reliability.</strong> Modelled as a rate, which is the right shape for a season
-          and useless for a particular car on a particular afternoon.
-        </li>
-        <li>
-          <strong>Anything not in the data.</strong> Team orders, an undisclosed upgrade, a driver
-          racing unwell.
-        </li>
-      </ul>
+  <section id="limits" class="wrap band chapter">
+    <h2 class="h3">What this cannot predict.</h2>
+    <div class="prose">
+      <dl class="defs">
+        <div>
+          <dt>Safety cars and first-lap incidents</dt>
+          <dd>
+            A large part of what separates the prediction from the result, and irreducible rather
+            than a gap to be closed.
+          </dd>
+        </div>
+        <div>
+          <dt>Weather on the day</dt>
+          <dd>
+            A dry forecast that turns wet rearranges a race, and a probability published on a
+            Tuesday cannot know that.
+          </dd>
+        </div>
+        <div>
+          <dt>Reliability</dt>
+          <dd>
+            Modelled as a rate, which is the right shape for a season and useless for a particular
+            car on a particular afternoon.
+          </dd>
+        </div>
+        <div>
+          <dt>Anything not in the data</dt>
+          <dd>Team orders, an undisclosed upgrade, a driver racing unwell.</dd>
+        </div>
+      </dl>
       <p>
         There is also one feature deliberately missing. <strong>Grid position</strong> is strictly
         better information than qualifying position because it includes penalties, and it is
@@ -418,112 +521,79 @@ const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((
 </BaseLayout>
 
 <style>
-  .sub {
-    color: var(--colour-on-dark-soft);
-    margin-top: var(--space-sm);
-    max-width: 62ch;
+  .hero {
+    display: grid;
+    gap: var(--space-md);
+    padding-top: var(--space-xxl);
+    padding-bottom: var(--space-md);
   }
-  .prose h2 {
-    font-size: 26px;
-    margin-bottom: var(--space-base);
+  @media (min-width: 1024px) {
+    .hero {
+      padding-top: var(--space-section);
+    }
   }
-  .prose p,
-  .prose li {
-    color: var(--colour-body);
-    margin-bottom: var(--space-base);
-    line-height: 1.65;
+  .hero h1 {
+    max-width: 16ch;
   }
-  .prose strong {
-    color: var(--colour-ink);
+  .hero .lead {
+    max-width: 52ch;
   }
-  .prose ul {
-    padding-left: var(--space-lg);
-    margin-bottom: var(--space-base);
+  .contents {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-top: var(--space-md);
   }
-  .prose li {
-    margin-bottom: var(--space-sm);
+
+  /* A chapter: its heading in the left column, the reading in the right. */
+  .chapter {
+    display: grid;
+    gap: var(--space-lg);
+    scroll-margin-top: 88px;
   }
+  @media (min-width: 900px) {
+    .chapter {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+      gap: var(--space-xxl);
+      align-items: start;
+    }
+    .chapter > h2 {
+      position: sticky;
+      top: 96px;
+    }
+  }
+  .prose {
+    display: grid;
+    gap: var(--space-md);
+    max-width: 68ch;
+  }
+
   .defs {
-    margin: 0 0 var(--space-base);
+    display: grid;
+    margin: 0;
+    border-top: 1px solid var(--colour-hairline);
+  }
+  .defs > div {
+    display: grid;
+    gap: var(--space-xxs);
+    padding: var(--space-md) 0;
+    border-bottom: 1px solid var(--colour-hairline);
   }
   .defs dt {
-    font-weight: 600;
-    color: var(--colour-ink);
-    margin-top: var(--space-base);
+    font-weight: var(--weight-strong);
   }
   .defs dd {
-    margin: var(--space-xxs) 0 0;
-    color: var(--colour-body);
-    line-height: 1.65;
-  }
-  .sub-h {
-    font-size: 18px;
-    margin: var(--space-xl) 0 var(--space-base);
-  }
-  .scroller {
-    overflow-x: auto;
-    margin-bottom: var(--space-lg);
-  }
-  table {
-    width: 100%;
-    min-width: 420px;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-  th,
-  td {
-    text-align: left;
-    padding: var(--space-xs);
-    font-weight: 400;
-  }
-  thead th {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
-    border-bottom: 1px solid var(--colour-hairline);
-  }
-  tbody tr {
-    border-bottom: 1px solid var(--colour-hairline);
-  }
-  tbody th {
-    color: var(--colour-ink);
-    font-weight: 600;
-  }
-  .n {
-    text-align: right;
-  }
-  .dim {
-    color: var(--colour-muted);
-  }
-  .summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: var(--space-base);
-    margin: 0 0 var(--space-lg);
-  }
-  .summary div {
-    border-top: 1px solid var(--colour-hairline);
-    padding-top: var(--space-xs);
-  }
-  .summary dt {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
     margin: 0;
+    color: var(--colour-text-muted);
   }
-  .summary dd {
-    margin: var(--space-xxs) 0 0;
-    font-size: 18px;
-    color: var(--colour-ink);
+
+  .callout {
+    background: var(--colour-canvas-soft);
+    border-radius: var(--rounded-sm);
+    padding: var(--space-md) var(--space-lg);
   }
-  .flag {
-    border-left: 3px solid var(--colour-caution);
-    background: var(--colour-caution-surface);
-    padding: var(--space-base) var(--space-lg);
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+
+  .sub-h {
+    margin-top: var(--space-md);
   }
 </style>

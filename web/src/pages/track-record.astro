@@ -2,44 +2,60 @@
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import { loadDataset, raceById, predictionsForRace } from "../lib/data";
 import { score } from "../lib/format";
+import {
+  BASELINE_FOR,
+  SCORED_SUMMARY_MINIMUM,
+  SERIES,
+  SNAPSHOT_LABEL,
+  type Snapshot,
+} from "../lib/snapshots";
 import { formatUtc } from "../lib/time";
-import type { Prediction } from "../lib/schema";
 
 const { reference, predictions, meta } = loadDataset();
 const races = raceById(reference);
+const byRound = (a: { season: number; round: number }, b: { season: number; round: number }) =>
+  a.season - b.season || a.round - b.round;
 
 // Predicted but not yet run. Listed so the record cannot be read as a
 // selection of the races that happened to go well.
 const pending = predictions
   .filter((p) => p.result === null)
   .filter((p, i, all) => all.findIndex((q) => q.race_id === p.race_id) === i)
-  .sort((a, b) => a.season - b.season || a.round - b.round);
+  .sort(byRound);
+
+// The first race anything was published for: every race before it ran before
+// there was a prediction to score.
+const firstPredicted = [...predictions].sort(byRound)[0];
+const firstRace = firstPredicted ? races.get(firstPredicted.race_id) : undefined;
 
 /**
  * The two snapshots are kept apart, always.
  *
  * They are different models judged against different baselines: post-qualifying
- * sees the grid and practice pace and is measured against qualifying order;
- * pre-weekend sees neither and is measured against championship order. Pooling
- * them would produce an average that describes neither, and would flatter the
- * weaker of the two by mixing it with the stronger.
+ * sees the qualifying order and practice pace and is measured against
+ * qualifying order; pre-weekend sees neither and is measured against
+ * championship order. Pooling them would produce an average that describes
+ * neither, and would flatter the weaker of the two by mixing it with the
+ * stronger.
  */
-function series(snapshot: Prediction["snapshot"]) {
+function series(snapshot: Snapshot) {
   const scored = predictions
     .filter((p) => p.snapshot === snapshot && p.result !== null)
-    .sort((a, b) => b.season - a.season || b.round - a.round);
+    .sort((a, b) => byRound(b, a));
   const n = scored.length;
   const withBase = scored.filter((p) => p.result!.baseline !== null);
   const meanField = n ? scored.reduce((a, p) => a + p.drivers.length, 0) / n : 0;
+  const upcoming = predictions
+    .filter((p) => p.snapshot === snapshot && p.result === null)
+    .sort(byRound)[0];
   return {
     snapshot,
     scored,
     races: n,
+    upcoming: upcoming ? races.get(upcoming.race_id) : undefined,
     wins: scored.filter((p) => p.result!.winner_hit).length,
     podiums: scored.reduce((a, p) => a + p.result!.podium_hits, 0),
     meanLogLoss: n ? scored.reduce((a, p) => a + p.result!.log_loss, 0) / n : 0,
-    meanBrier: n ? scored.reduce((a, p) => a + p.result!.brier, 0) / n : 0,
-    baselineName: withBase[0]?.result!.baseline!.name ?? null,
     baselineRaces: withBase.length,
     meanBaseline: withBase.length
       ? withBase.reduce((a, p) => a + p.result!.baseline!.log_loss, 0) / withBase.length
@@ -51,10 +67,15 @@ function series(snapshot: Prediction["snapshot"]) {
   };
 }
 
-const allSeries = [series("post_qualifying"), series("pre_weekend")];
+const allSeries = SERIES.map(series);
 const totalScored = allSeries.reduce((a, s) => a + s.races, 0);
 
-const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qualifying" } as const;
+const BLURB: Record<Snapshot, string> = {
+  post_qualifying:
+    "Published after qualifying, so it sees the qualifying order and this weekend's practice pace. Scored beside qualifying order.",
+  pre_weekend:
+    "Published before any car runs. It cannot see qualifying or practice, so it uses two features and is scored beside championship order: judging it against qualifying order would score it on information it does not have.",
+};
 ---
 
 <BaseLayout
@@ -62,356 +83,345 @@ const SNAPSHOT_LABEL = { pre_weekend: "Pre-weekend", post_qualifying: "Post-qual
   description={
     totalScored
       ? "Every Sector 4 prediction scored against the result, with the baseline's score beside it on every race."
-      : "Predictions published in advance. Nothing scored yet — the first race is still to come."
+      : "Predictions published in advance. Nothing scored yet: the first race is still to come."
   }
   image="/og/track-record.png"
   breadcrumbs={[{ name: "Track record", path: "/track-record/" }]}
 >
-  <section class="band band-dark">
-    <div class="wrap">
-      <p class="eyebrow">Track record</p>
-      <h1>Every prediction, including the misses</h1>
-      <p class="sub">
-        Each race is scored against the snapshot published before it started. Nothing is
-        recalculated afterwards, and no race is left out. The baseline's score for the same race
-        sits beside the model's, so you can judge whether the model is adding anything.
-      </p>
-    </div>
+  <section class="wrap hero">
+    <p class="eyebrow">Track record</p>
+    <h1>Every prediction, including the misses.</h1>
+    <p class="lead">
+      Each race is scored against the snapshot published before it started. Nothing is recalculated
+      afterwards and no race is left out. The baseline's score for the same race sits beside the
+      model's, so you can judge whether the model adds anything.
+    </p>
   </section>
 
   {totalScored === 0 && (
-    <section class="band">
-      <div class="wrap">
-        <h2>Nothing scored yet</h2>
-        <p class="note">
-          Predictions are published before the session they predict and scored afterwards, in a
-          separate step, so the record cannot be edited once a result is known. The first race has
-          not run. When it does, its scores appear here — whichever way they go.
-        </p>
-      </div>
-    </section>
-  )}
-
-  {allSeries.map((s, i) => (
-    <section class:list={["band", i % 2 === 1 ? "band-soft" : ""]}>
-      <div class="wrap">
-        <p class="eyebrow">{SNAPSHOT_LABEL[s.snapshot]}</p>
-        <h2>
-          {s.races === 0
-            ? `${SNAPSHOT_LABEL[s.snapshot]} — no races scored yet`
-            : `${s.races} ${s.races === 1 ? "race" : "races"} scored`}
+    <section class="wrap band" aria-labelledby="empty-h">
+      <div class="card-soft empty">
+        <h2 id="empty-h" class="h2">
+          {firstRace
+            ? `Scoring begins with the ${firstRace.name}.`
+            : "Scoring begins with the first published prediction."}
         </h2>
-        <p class="note">
-          {s.snapshot === "post_qualifying"
-            ? "Published after qualifying, so it sees the grid and this weekend's practice pace. Measured against qualifying order."
-            : "Published before any car runs. It cannot see qualifying or practice, so it uses two features and is measured against championship order — judging it against qualifying order would score it on information it does not have."}
+        <p class="lead">
+          {firstRace
+            ? `Round ${firstRace.round} is the first race with a prediction published before the weekend began. When it has run, it becomes the first row below, whichever way it goes.`
+            : "When a race with a published prediction has run, it becomes the first row below, whichever way it goes."}
         </p>
-
-        {s.races > 0 && (
-          <Fragment>
-            <dl class="summary">
-              <div>
-                <dt>Winner called</dt>
-                <dd class="num">
-                  {s.wins} of {s.races}
-                </dd>
-              </div>
-              <div>
-                <dt>Podium places</dt>
-                <dd class="num">
-                  {s.podiums} of {s.races * 3}
-                </dd>
-              </div>
-              <div>
-                <dt>Model, mean log loss</dt>
-                <dd class="num">{score(s.meanLogLoss)}</dd>
-              </div>
-              <div>
-                <dt>{s.baselineName ?? "Baseline"}, mean</dt>
-                <dd class="num">{s.baselineRaces ? score(s.meanBaseline) : "—"}</dd>
-              </div>
-              <div>
-                <dt>Races the model won</dt>
-                <dd class="num">
-                  {s.modelBetter} of {s.baselineRaces}
-                </dd>
-              </div>
-            </dl>
-            <p class="note">
-              A uniform pick over the same field would score {score(s.uniformLogLoss)}. Lower is
-              better, and beating that is the floor rather than the goal.{" "}
-              <a href="/methodology/">How the scores are computed</a>.
-            </p>
-
-            <div class="scroller">
-              <table>
-                <caption class="sr-only">
-                  {SNAPSHOT_LABEL[s.snapshot]} predictions, most recent first, with the baseline's
-                  score for the same race.
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col" class="pos">
-                      Rd
-                    </th>
-                    <th scope="col">Race</th>
-                    <th scope="col">Winner</th>
-                    <th scope="col" class="n">
-                      Podium
-                    </th>
-                    <th scope="col" class="n">
-                      Log loss
-                    </th>
-                    <th scope="col" class="n">
-                      Baseline
-                    </th>
-                    <th scope="col" class="n">
-                      Brier
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {s.scored.map((p) => {
-                    const race = races.get(p.race_id)!;
-                    const r = p.result!;
-                    return (
-                      <tr>
-                        <td class="pos num">{p.round}</td>
-                        <th scope="row">
-                          <a href={`/races/${race.season}/${race.slug}/`}>{race.name}</a>
-                          <span class="season num">{race.season}</span>
-                        </th>
-                        <td
-                          class:list={["outcome", r.winner_hit ? "hit" : "miss"]}
-                          data-label="Winner"
-                        >
-                          {r.winner_hit ? "Hit" : "Miss"}
-                        </td>
-                        <td class="n num" data-label="Podium">
-                          {r.podium_hits} of 3
-                        </td>
-                        <td class="n num" data-label="Log loss">
-                          {score(r.log_loss)}
-                        </td>
-                        <td
-                          class:list={[
-                            "n",
-                            "num",
-                            r.baseline && r.log_loss < r.baseline.log_loss ? "hit" : "dim",
-                          ]}
-                          data-label="Baseline"
-                        >
-                          {r.baseline ? score(r.baseline.log_loss) : "—"}
-                        </td>
-                        <td class="n num" data-label="Brier">
-                          {score(r.brier)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Fragment>
-        )}
-      </div>
-    </section>
-  ))}
-
-  {pending.length > 0 && (
-    <section class="band">
-      <div class="wrap">
-        <h2>Published, not yet scored</h2>
-        <p class="note">
-          These predictions are already public. They will appear above with their scores once the
-          race has run, whichever way they go.
-        </p>
-        <ul class="pending">
-          {pending.map((p) => {
-            const race = races.get(p.race_id)!;
-            const snapshots = predictionsForRace(predictions, p.race_id);
-            return (
-              <li>
-                <a href={`/races/${race.season}/${race.slug}/`}>{race.name}</a>
-                <span class="meta">
-                  Round {race.round} ·{" "}
-                  {snapshots.map((s) => SNAPSHOT_LABEL[s.snapshot]).join(" and ")} ·{" "}
-                  <time datetime={race.starts_at}>{formatUtc(race.starts_at)}</time>
-                </span>
-                {snapshots
-                  .filter((s) => s.revisions.length > 1)
-                  .map((s) => (
-                    <span class="meta">
-                      {SNAPSHOT_LABEL[s.snapshot]}: {s.revisions.length} revisions published,
-                      revision {s.revision} counts ·{" "}
-                      <a href={`/races/${race.season}/${race.slug}/`}>see why</a>
-                    </span>
-                  ))}
-              </li>
-            );
-          })}
+        <ul class="coming">
+          <li class="rise" style="--i:0">
+            <strong>A row per race.</strong> Whether the winner was called, how many podium places
+            were, log loss and Brier score, and the baseline's log loss on the same race.
+          </li>
+          <li class="rise" style="--i:1">
+            <strong>Two separate series.</strong> Post-qualifying and pre-weekend are different
+            models against different baselines. They are never averaged together.
+          </li>
+          <li class="rise" style="--i:2">
+            <strong>Season figures after four.</strong> Winner calls, podium places, average log
+            loss and how often the model beat its baseline, once a series has four races scored.
+          </li>
         </ul>
       </div>
     </section>
   )}
 
-  <section class="band band-soft">
-    <div class="wrap">
-      <p class="note">
-        Data version <span class="num">{meta.data_version}</span>, generated{" "}
-        <time datetime={meta.generated_at}>{formatUtc(meta.generated_at)}</time>. Scores are
-        computed from the stored probabilities, not from the rounded figures shown here. The two
-        snapshots are never pooled: they are different models measured against different baselines,
-        and an average across them would describe neither.
-      </p>
-    </div>
+  {allSeries.map((s) => (
+    <section class="wrap band" aria-labelledby={`${s.snapshot}-h`}>
+      <div class="section-head">
+        <p class="eyebrow">{SNAPSHOT_LABEL[s.snapshot]}</p>
+        <h2 id={`${s.snapshot}-h`} class="h3">
+          {s.races === 0
+            ? "No races scored yet."
+            : `${s.races} ${s.races === 1 ? "race" : "races"} scored.`}
+        </h2>
+        <p>{BLURB[s.snapshot]}</p>
+      </div>
+
+      {s.races >= SCORED_SUMMARY_MINIMUM ? (
+        <>
+          <dl class="figures summary">
+            <div class="rise" style="--i:0">
+              <dt>Winner called</dt>
+              <dd class="num">
+                {s.wins} of {s.races}
+              </dd>
+            </div>
+            <div class="rise" style="--i:1">
+              <dt>Podium places</dt>
+              <dd class="num">
+                {s.podiums} of {s.races * 3}
+              </dd>
+            </div>
+            <div class="rise" style="--i:2">
+              <dt>Model, mean log loss</dt>
+              <dd class="num">{score(s.meanLogLoss)}</dd>
+            </div>
+            <div class="rise" style="--i:3">
+              <dt>Baseline, mean log loss</dt>
+              <dd class="num">{s.baselineRaces ? score(s.meanBaseline) : "—"}</dd>
+            </div>
+            <div class="rise" style="--i:4">
+              <dt>Races the model beat it</dt>
+              <dd class="num">
+                {s.modelBetter} of {s.baselineRaces}
+              </dd>
+            </div>
+          </dl>
+          <p class="note">
+            The baseline is {BASELINE_FOR[s.snapshot]}. A uniform pick over the same field would
+            score {score(s.uniformLogLoss)}. Lower is better, and beating that is the floor rather
+            than the goal. <a href="/methodology/#scoring">How the scores are computed</a>.
+          </p>
+        </>
+      ) : (
+        <p class="notice">
+          <span class="badge badge-ink">Season</span>
+          <span>
+            Season figures appear once four races are scored in this snapshot.{" "}
+            {s.races === 0 ? "None so far." : `${s.races} so far.`} The baseline is{" "}
+            {BASELINE_FOR[s.snapshot]}.
+          </span>
+        </p>
+      )}
+
+      <div class="scroller">
+        <table class="table record">
+          <caption class="sr-only">
+            {SNAPSHOT_LABEL[s.snapshot]} predictions, most recent first, with the{" "}
+            {BASELINE_FOR[s.snapshot]} baseline's score for the same race.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Rd</th>
+              <th scope="col">Race</th>
+              <th scope="col">Winner</th>
+              <th scope="col" class="n">
+                Podium
+              </th>
+              <th scope="col" class="n">
+                Log loss
+              </th>
+              <th scope="col" class="n">
+                Baseline
+              </th>
+              <th scope="col">Beat it</th>
+              <th scope="col" class="n">
+                Brier
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {s.races === 0 ? (
+              <tr class="none">
+                <td colspan="8">
+                  {s.upcoming
+                    ? `The first row will be the ${s.upcoming.name}, once it has run.`
+                    : `No ${SNAPSHOT_LABEL[s.snapshot].toLowerCase()} prediction has been published yet.`}
+                </td>
+              </tr>
+            ) : (
+              s.scored.map((p, i) => {
+                const race = races.get(p.race_id)!;
+                const r = p.result!;
+                return (
+                  <tr class="rise" style={`--i:${i}`}>
+                    <td class="num dim">{p.round}</td>
+                    <th scope="row">
+                      <a href={`/races/${race.season}/${race.slug}/`}>{race.name}</a>
+                      <span class="season num">{race.season}</span>
+                    </th>
+                    <td>{r.winner_hit ? "Called" : "Missed"}</td>
+                    <td class="n num">{r.podium_hits} of 3</td>
+                    <td class="n num">{score(r.log_loss)}</td>
+                    <td class="n num dim">{r.baseline ? score(r.baseline.log_loss) : "—"}</td>
+                    <td>{r.baseline ? (r.log_loss < r.baseline.log_loss ? "Yes" : "No") : "—"}</td>
+                    <td class="n num">{score(r.brier)}</td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  ))}
+
+  {pending.length > 0 && (
+    <section class="wrap band" aria-labelledby="pending-h">
+      <div class="section-head">
+        <p class="eyebrow">Pending</p>
+        <h2 id="pending-h" class="h3">
+          Published, not yet scored.
+        </h2>
+        <p>
+          These predictions are already public. They move into the tables above once the race has
+          run, whichever way they go.
+        </p>
+      </div>
+      <ul class="pending">
+        {pending.map((p, i) => {
+          const race = races.get(p.race_id)!;
+          const snapshots = predictionsForRace(predictions, p.race_id);
+          return (
+            <li class="rise" style={`--i:${i}`}>
+              <a class="card pending-card" href={`/races/${race.season}/${race.slug}/`}>
+                <span class="title">{race.name}</span>
+                <span class="body-sm muted">
+                  Round {race.round} of {race.season}, starts{" "}
+                  <time datetime={race.starts_at} data-local>
+                    {formatUtc(race.starts_at)}
+                  </time>
+                </span>
+                <span class="badges">
+                  {snapshots.map((s) => (
+                    <span class="badge badge-soft">
+                      {s.revisions.length > 1
+                        ? `${SNAPSHOT_LABEL[s.snapshot]}, ${s.revisions.length} revisions, revision ${s.revision} counts`
+                        : SNAPSHOT_LABEL[s.snapshot]}
+                    </span>
+                  ))}
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  )}
+
+  <section class="wrap band">
+    <p class="note">
+      Scores are computed from the stored probabilities, not from the rounded figures shown here.
+      The two snapshots are never pooled: they are different models measured against different
+      baselines, and an average across them would describe neither.
+    </p>
+    <!-- prettier-ignore -->
+    <p class="note">Data version <span class="num">{meta.data_version}</span>, built <time datetime={meta.generated_at} data-local>{formatUtc(meta.generated_at)}</time>.</p>
   </section>
 </BaseLayout>
 
 <style>
-  .sub {
-    color: var(--colour-on-dark-soft);
-    margin-top: var(--space-sm);
-    max-width: 62ch;
-  }
-  .summary {
+  .hero {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--space-base);
-    margin: var(--space-lg) 0 0;
+    gap: var(--space-md);
+    padding-top: var(--space-xxl);
+    padding-bottom: var(--space-md);
   }
-  .summary div {
-    border-top: 1px solid var(--colour-hairline);
-    padding-top: var(--space-xs);
+  @media (min-width: 1024px) {
+    .hero {
+      padding-top: var(--space-section);
+    }
   }
-  dt {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
+  .hero h1 {
+    max-width: 16ch;
   }
-  dd {
-    margin: var(--space-xxs) 0 0;
-    font-size: 20px;
+  .hero .lead {
+    max-width: 52ch;
+  }
+
+  .empty {
+    display: grid;
+    gap: var(--space-lg);
+    padding: var(--space-xl) var(--space-lg);
+  }
+  @media (min-width: 900px) {
+    .empty {
+      padding: var(--space-xxl);
+    }
+  }
+  .empty h2 {
+    max-width: 20ch;
+  }
+  .empty .lead {
+    max-width: 52ch;
+  }
+  .coming {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-sm);
+  }
+  @media (min-width: 900px) {
+    .coming {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  .coming li {
+    background: var(--colour-canvas);
+    border-radius: var(--rounded-sm);
+    padding: var(--space-md);
+    font-size: 14px;
+    line-height: 1.43;
+    color: var(--colour-text-muted);
+  }
+  .coming strong {
+    display: block;
+    margin-bottom: var(--space-xxs);
     color: var(--colour-ink);
+    font-size: 16px;
+  }
+
+  .summary {
+    margin-bottom: var(--space-md);
+  }
+  .notice {
+    margin-bottom: var(--space-lg);
   }
   .note {
-    margin-top: var(--space-lg);
     font-size: 14px;
-    color: var(--colour-muted);
+    line-height: 1.43;
+    color: var(--colour-text-muted);
     max-width: 68ch;
+    margin-bottom: var(--space-lg);
   }
-  .scroller {
-    overflow-x: auto;
-    margin-top: var(--space-lg);
-  }
-  table {
-    width: 100%;
+  .record {
     min-width: 720px;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-  th,
-  td {
-    text-align: left;
-    padding: var(--space-sm) var(--space-xs);
-    font-weight: 400;
-    white-space: nowrap;
-  }
-  thead th {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--colour-muted);
-    border-bottom: 1px solid var(--colour-hairline);
-  }
-  tbody tr {
-    border-bottom: 1px solid var(--colour-hairline);
-  }
-  tbody th {
-    font-weight: 600;
   }
   .season {
-    display: block;
+    margin-left: var(--space-xs);
     font-size: 12px;
-    color: var(--colour-muted);
+    font-weight: var(--weight-text);
+    color: var(--colour-text-muted);
   }
-  .snap {
-    color: var(--colour-muted);
+  .none td {
+    padding: var(--space-lg) var(--space-md);
+    color: var(--colour-text-muted);
   }
-  .pos {
-    width: 3ch;
-    color: var(--colour-muted);
-  }
-  .n {
-    text-align: right;
-  }
-  .outcome {
-    font-weight: 600;
-  }
-  .hit {
-    color: var(--colour-positive);
-  }
-  .miss {
-    color: var(--colour-negative);
-  }
-  /* Below 640px the row becomes a block. A horizontal scroller put every score
-     — the whole point of the page — off the right edge of a phone. */
-  @media (max-width: 639px) {
-    .scroller {
-      overflow-x: visible;
-    }
-    table {
-      min-width: 0;
-    }
-    thead,
-    .pos {
-      display: none;
-    }
-    tbody tr {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--space-xxs) var(--space-sm);
-      padding: var(--space-sm) 0;
-    }
-    tbody th {
-      grid-column: 1 / -1;
-      padding: 0 0 var(--space-xs);
-    }
-    tbody td {
-      padding: 0;
-      text-align: left;
-      font-size: 13px;
-      white-space: nowrap;
-    }
-    /* Decorative: the <th> in thead still names the column for assistive tech. */
-    tbody td::before {
-      content: attr(data-label) " ";
-      color: var(--colour-muted);
-      font-weight: 400;
-    }
+  .table tbody tr.none:hover {
+    background: transparent;
   }
 
   .pending {
     list-style: none;
-    margin: var(--space-lg) 0 0;
+    margin: 0;
     padding: 0;
     display: grid;
-    gap: var(--space-base);
+    gap: var(--space-md);
   }
-  .pending li {
-    border-top: 1px solid var(--colour-hairline);
-    padding-top: var(--space-sm);
+  @media (min-width: 900px) {
+    .pending {
+      grid-template-columns: repeat(2, 1fr);
+    }
   }
-  .pending a {
-    font-weight: 600;
+  .pending-card {
+    display: grid;
+    gap: var(--space-xs);
+    height: 100%;
   }
-  .pending .meta {
-    display: block;
-    font-size: 13px;
-    color: var(--colour-muted);
-    margin-top: var(--space-xxs);
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-top: var(--space-xs);
+  }
+  /* On a hovered card the soft badge would vanish into the same tint. */
+  .pending-card:hover .badge-soft,
+  .pending-card:focus-visible .badge-soft {
+    background: var(--colour-canvas);
   }
 </style>

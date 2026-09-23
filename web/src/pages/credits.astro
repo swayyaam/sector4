@@ -22,60 +22,62 @@ const groups = [...new Set(credits.sources.map((s) => s.kind))].map((kind) => ({
   image="/og/credits.png"
   breadcrumbs={[{ name: "Credits", path: "/credits/" }]}
 >
-  <section class="band band-dark">
-    <div class="wrap">
-      <p class="eyebrow">Credits</p>
-      <h1>Sources and licences</h1>
-      <p class="sub">
-        None of this is original data. Everything below was made by somebody else and published
-        under terms that allow it to be used here.
-      </p>
-    </div>
+  <section class="wrap hero">
+    <p class="eyebrow">Credits</p>
+    <h1>Sources and licences.</h1>
+    <p class="lead">
+      None of this is original data. Everything below was made by somebody else and published under
+      terms that allow it to be used here.
+    </p>
   </section>
 
   {groups.map((group) => (
-    <section class:list={["band", group.kind === "Data" ? "" : "band-soft"]}>
-      <div class="wrap">
-        <h2>{group.kind}</h2>
-        <ul class="sources">
-          {group.items.map((s) => (
-            <li>
-              <h3>
-                <a href={s.url} rel="noopener">
-                  {s.title}
-                </a>
-              </h3>
-              <p class="by">{s.author}</p>
-              <p class="use">{s.used_for}</p>
-              <p class="lic">
-                <a href={s.licence_url} rel="noopener">
-                  {s.licence}
-                </a>
-              </p>
-              {s.notice && <p class="notice">{s.notice}</p>}
-            </li>
-          ))}
-        </ul>
-      </div>
+    <section class="wrap band" aria-labelledby={`g-${group.kind}`}>
+      <h2 id={`g-${group.kind}`} class="h3 group-h">
+        {group.kind}
+      </h2>
+      <ul class="sources">
+        {group.items.map((s, i) => (
+          <li class="card rise" style={`--i:${i}`}>
+            <h3 class="title">
+              <a href={s.url} rel="noopener">
+                {s.title}
+              </a>
+            </h3>
+            <p class="body-sm muted">{s.author}</p>
+            <p class="use">{s.used_for}</p>
+            <p>
+              <a class="btn btn-soft lic" href={s.licence_url} rel="noopener">
+                {s.licence}
+              </a>
+            </p>
+            {s.notice && <p class="body-sm muted">{s.notice}</p>}
+          </li>
+        ))}
+      </ul>
     </section>
   ))}
 
-  <section class="band">
-    <div class="wrap prose">
-      <h2>What that means for this project</h2>
+  <section class="wrap band chapter" aria-labelledby="means-h">
+    <h2 id="means-h" class="h3">
+      What that means for this project.
+    </h2>
+    <div class="prose">
       <p>
         The current season's data reaches this site under CC BY-NC-SA 4.0. Those terms are not
         severable from the rest of the dataset, so Sector 4 is a non-commercial project and stays
         one: no advertising, no paid tier, no data resale. Anything built on it inherits the same
         terms.
       </p>
-      <p>
-        Formula 1's own timing data is stricter still. It is copyright Formula One World
-        Championship Limited, licensed for personal and non-commercial use, and may not be
-        republished without written consent. It is used to fit the model and never shown here. No
-        lap time, sector time, telemetry channel or weather reading from that source appears on this
-        site or in the repository.
-      </p>
+      <div class="callout">
+        <p>
+          <strong>Formula 1's own timing data is stricter still.</strong> It is copyright Formula
+          One World Championship Limited, licensed for personal and non-commercial use, and may not
+          be republished without written consent. It is used to fit the model and never shown here.
+          No lap time, sector time, telemetry channel or weather reading from that source appears on
+          this site or in the repository.
+        </p>
+      </div>
       <p>
         <a href={DATA_LICENSE_URL} rel="noopener">
           DATA_LICENSE.md
@@ -98,19 +100,27 @@ const groups = [...new Set(credits.sources.map((s) => s.kind))].map((kind) => ({
         used anywhere on this site. The team colours are plain hex values used as data markers, and
         every one of them appears beside a text label so the colour is never doing the work alone.
       </p>
-      <p class="meta">{credits.note}</p>
+      <p class="body-sm muted">{credits.note}</p>
     </div>
   </section>
 </BaseLayout>
 
 <style>
-  .sub {
-    color: var(--colour-on-dark-soft);
-    margin-top: var(--space-sm);
-    max-width: 62ch;
+  .hero {
+    display: grid;
+    gap: var(--space-md);
+    padding-top: var(--space-xxl);
+    padding-bottom: var(--space-md);
   }
-  h2 {
-    font-size: 26px;
+  @media (min-width: 1024px) {
+    .hero {
+      padding-top: var(--space-section);
+    }
+  }
+  .hero .lead {
+    max-width: 52ch;
+  }
+  .group-h {
     margin-bottom: var(--space-lg);
   }
   .sources {
@@ -118,49 +128,45 @@ const groups = [...new Set(credits.sources.map((s) => s.kind))].map((kind) => ({
     margin: 0;
     padding: 0;
     display: grid;
-    gap: var(--space-xl);
+    gap: var(--space-md);
   }
   @media (min-width: 768px) {
     .sources {
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     }
   }
   .sources li {
-    border-top: 1px solid var(--colour-hairline);
-    padding-top: var(--space-base);
-  }
-  h3 {
-    font-size: 18px;
-    margin-bottom: var(--space-xxs);
-  }
-  .by {
-    font-size: 13px;
-    color: var(--colour-muted);
-    margin-bottom: var(--space-sm);
+    display: grid;
+    gap: var(--space-xs);
+    align-content: start;
   }
   .use {
-    font-size: 14px;
-    color: var(--colour-body);
-    line-height: 1.6;
-    margin-bottom: var(--space-sm);
+    margin: var(--space-xs) 0;
   }
   .lic {
-    font-size: 13px;
-    font-weight: 600;
+    min-height: 36px;
+    font-size: 14px;
   }
-  .notice {
-    font-size: 13px;
-    color: var(--colour-muted);
-    margin-top: var(--space-xs);
-    line-height: 1.6;
+
+  .chapter {
+    display: grid;
+    gap: var(--space-lg);
   }
-  .prose p {
-    color: var(--colour-body);
-    line-height: 1.65;
-    margin-bottom: var(--space-base);
+  @media (min-width: 900px) {
+    .chapter {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+      gap: var(--space-xxl);
+      align-items: start;
+    }
   }
-  .prose .meta {
-    font-size: 13px;
-    color: var(--colour-muted);
+  .prose {
+    display: grid;
+    gap: var(--space-md);
+    max-width: 68ch;
+  }
+  .callout {
+    background: var(--colour-canvas-soft);
+    border-radius: var(--rounded-sm);
+    padding: var(--space-md) var(--space-lg);
   }
 </style>

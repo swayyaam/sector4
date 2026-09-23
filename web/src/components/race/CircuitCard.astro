@@ -11,7 +11,7 @@ interface Props {
 const { circuit } = Astro.props;
 ---
 
-<figure class="card">
+<figure class="card-soft outline">
   {circuit.track_path ? (
     <svg
       viewBox={circuit.track_view_box ?? "0 0 1000 1000"}
@@ -27,11 +27,11 @@ const { circuit } = Astro.props;
     </div>
   )}
   <figcaption>
-    <h3>{circuit.name}</h3>
-    <p class="loc">
+    <p class="title">{circuit.name}</p>
+    <p class="muted body-sm">
       {circuit.locality}, {circuit.country}
     </p>
-    <p class="credit">
+    <p class="credit caption">
       Outline: <a href="https://github.com/bacinger/f1-circuits">f1-circuits</a> by Tomislav
       Bacinger, MIT
     </p>
@@ -39,18 +39,17 @@ const { circuit } = Astro.props;
 </figure>
 
 <style>
-  .card {
+  .outline {
     margin: 0;
-    border: 1px solid var(--colour-hairline);
-    border-radius: var(--radius-xl);
-    padding: var(--space-xl);
+    display: grid;
+    gap: var(--space-lg);
   }
   .map {
     display: block;
     width: 100%;
     height: auto;
     aspect-ratio: 1;
-    max-height: 260px;
+    max-height: 280px;
   }
   .map path {
     fill: none;
@@ -63,22 +62,14 @@ const { circuit } = Astro.props;
     display: grid;
     place-items: center;
     aspect-ratio: 1;
-    max-height: 260px;
-    background: var(--colour-surface-strong);
-    border-radius: var(--radius-lg);
-    color: var(--colour-muted);
-    font-size: 13px;
-  }
-  figcaption {
-    margin-top: var(--space-base);
-  }
-  .loc {
+    max-height: 280px;
+    background: var(--colour-field);
+    border-radius: var(--rounded-sm);
+    color: var(--colour-text-muted);
     font-size: 14px;
-    color: var(--colour-body);
   }
   .credit {
-    font-size: 13px;
-    color: var(--colour-muted);
     margin-top: var(--space-xs);
+    color: var(--colour-text-muted);
   }
 </style>
