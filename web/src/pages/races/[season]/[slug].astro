@@ -412,12 +412,10 @@ const jsonLd = [
     </div>
     <p class="note">
       Regulations era <span class="num">{race.regs_era}</span>, which bounds the history the model
-      treats as comparable. Data version <span class="num">{meta.data_version}</span>, built{" "}
-      <time datetime={meta.generated_at} data-local>
-        {formatUtc(meta.generated_at)}
-      </time>
-      .
+      treats as comparable.
     </p>
+    <!-- prettier-ignore -->
+    <p class="note">Data version <span class="num">{meta.data_version}</span>, built <time datetime={meta.generated_at} data-local>{formatUtc(meta.generated_at)}</time>.</p>
   </section>
 </BaseLayout>
 
