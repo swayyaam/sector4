@@ -1,0 +1,13 @@
+constructorRef,constructorId,is_new
+alpine,214,False
+aston_martin,117,False
+audi,216,True
+cadillac,217,True
+ferrari,6,False
+haas,210,False
+mclaren,1,False
+mercedes,131,False
+rb,215,False
+red_bull,9,False
+sauber,15,False
+williams,3,False
