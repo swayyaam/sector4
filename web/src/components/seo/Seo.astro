@@ -10,7 +10,7 @@ interface Props {
   jsonLd?: Record<string, unknown>[];
 }
 const { title, description, path, image = "/og/default.png", imageAlt, jsonLd = [] } = Astro.props;
-const site = Astro.site ?? new URL("https://sector4.dev");
+const site = Astro.site!;
 const canonical = new URL(path, site).href;
 const fullTitle = path === "/" ? title : `${title} · Sector 4`;
 const ogImage = new URL(image, site).href;
