@@ -64,18 +64,7 @@
       "licence": "SIL Open Font License 1.1",
       "licence_url": "https://openfontlicense.org/",
       "url": "https://rsms.me/inter/",
-      "used_for": "All text on the site, self-hosted.",
-      "notice": null
-    },
-    {
-      "id": "jetbrains-mono",
-      "kind": "Typeface",
-      "title": "JetBrains Mono",
-      "author": "JetBrains",
-      "licence": "SIL Open Font License 1.1",
-      "licence_url": "https://openfontlicense.org/",
-      "url": "https://www.jetbrains.com/lp/mono/",
-      "used_for": "Every number, so digits line up across rows.",
+      "used_for": "All text on the site, including every number (in tabular figures), self-hosted.",
       "notice": null
     }
   ]

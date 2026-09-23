@@ -23,7 +23,7 @@ deployment, any change of hosting, and any commercial decision.
 | [FastF1](#fastf1-and-the-underlying-formula-1-timing-data) | The library itself | MIT | Yes |
 | [Formula 1 live timing](#fastf1-and-the-underlying-formula-1-timing-data) | Session timing, telemetry, weather, race control | **© Formula One World Championship Limited. Personal, non-commercial use only. No republication without prior written consent.** | **No** |
 | [f1-circuits](#f1-circuits) | Circuit outlines | MIT | Yes |
-| [Inter](#typefaces), [JetBrains Mono](#typefaces) | Typefaces | SIL OFL 1.1 | Yes |
+| [Inter](#typefaces) | Typeface | SIL OFL 1.1 | Yes |
 
 The two binding constraints, in one sentence each:
 
@@ -200,8 +200,7 @@ Circuit geometry, projected to the SVG outlines on each race page.
 ## Typefaces
 
 - Inter, Rasmus Andersson — <https://rsms.me/inter/>
-- JetBrains Mono, JetBrains — <https://www.jetbrains.com/lp/mono/>
-- Both **SIL Open Font License 1.1** — <https://openfontlicense.org/>
+- **SIL Open Font License 1.1** — <https://openfontlicense.org/>
 
 Self-hosted and redistributed with the site, which the OFL permits.
 
