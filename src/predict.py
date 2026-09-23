@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import diagnose as D  # noqa: E402
 import features as F  # noqa: E402
 import revisions as REV  # noqa: E402
+import upcoming as UP  # noqa: E402
 import finalists as FN  # noqa: E402
 import model as M  # noqa: E402
 
@@ -208,6 +209,15 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
     tables = F.load_tables()
     race, completed = race_row(tables, season, rnd)
     cols = SHIPPED if snapshot == F.POST else PRE_WEEKEND_COLS
+
+    # A race that has not run has no weekend in data/processed. Its qualifying
+    # and practice are read from the fetched session data instead, onto
+    # in-memory copies of the tables; nothing is written or minted.
+    if snapshot == F.POST and not completed:
+        try:
+            tables = UP.augment(tables, race)
+        except UP.MissingWeekendData as e:
+            raise SystemExit(f"{season} round {rnd}: {e} Refusing.") from e
 
     feats = F.build_race(tables, race, snapshot)
     if feats.empty:
