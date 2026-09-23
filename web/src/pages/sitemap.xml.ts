@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { loadDataset } from "../lib/data";
 
 /**
- * Hand-rolled rather than an integration: the site has four fixed pages and one
+ * Hand-rolled rather than an integration: the site has six fixed pages and one
  * page per predicted race, and the list has to leave out the Open Graph images
  * and the 404, which a directory crawl would happily include.
  */
@@ -16,6 +16,8 @@ export const GET: APIRoute = ({ site }) => {
     { path: "/track-record/", priority: "0.8", changefreq: "weekly" },
     { path: "/methodology/", priority: "0.5", changefreq: "monthly" },
     { path: "/credits/", priority: "0.3", changefreq: "monthly" },
+    { path: "/privacy/", priority: "0.2", changefreq: "monthly" },
+    { path: "/terms/", priority: "0.2", changefreq: "monthly" },
     ...reference.races
       .filter((r) => predicted.has(r.race_id))
       .sort((a, b) => b.season - a.season || b.round - a.round)

@@ -1,0 +1,14 @@
+---
+/**
+ * The privacy contact, from src/data/legal.json. Until it is supplied it
+ * renders as visibly unset rather than as a plausible address, and a
+ * production deployment refuses to build (integrations/publish-guards.mjs).
+ */
+import { LEGAL } from "../../lib/legal";
+---
+
+{LEGAL.contact_email ? (
+  <a href={`mailto:${LEGAL.contact_email}`}>{LEGAL.contact_email}</a>
+) : (
+  <span class="badge badge-ink">Contact email not yet set</span>
+)}

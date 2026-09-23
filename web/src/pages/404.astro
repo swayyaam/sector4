@@ -10,7 +10,7 @@ const lastRace = last ? races.get(last.race_id) : undefined;
 ---
 
 <BaseLayout title="Page not found" description="That page does not exist on Sector 4.">
-  <section class="wrap hero">
+  <section class="wrap page-hero centred">
     <p class="display num" aria-hidden="true">
       404
     </p>
@@ -63,20 +63,9 @@ const lastRace = last ? races.get(last.race_id) : undefined;
 </BaseLayout>
 
 <style>
-  .hero {
-    display: grid;
+  .centred {
     justify-items: center;
     text-align: center;
-    gap: var(--space-md);
-    padding-top: var(--space-xxl);
-  }
-  @media (min-width: 1024px) {
-    .hero {
-      padding-top: var(--space-section);
-    }
-  }
-  .hero .lead {
-    max-width: 52ch;
   }
   .links {
     list-style: none;

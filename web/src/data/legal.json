@@ -1,0 +1,15 @@
+{
+  "operator": "Swayam Mishra",
+  "operator_country": "India",
+  "contact_email": "swayammishra1504@gmail.com",
+  "jurisdiction_city": "Dhamtari, Chhattisgarh",
+  "last_updated": "2026-09-23",
+  "hosting": {
+    "provider": "Vercel Inc.",
+    "provider_country": "United States",
+    "plan": "Hobby",
+    "runtime_log_retention": "one hour",
+    "privacy_notice": "https://vercel.com/legal/privacy-policy",
+    "dpa": "https://vercel.com/legal/dpa"
+  }
+}

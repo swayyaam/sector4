@@ -1,0 +1,8 @@
+---
+/** The one last-updated date both legal pages print, from src/data/legal.json. */
+import { LEGAL, lastUpdated } from "../../lib/legal";
+---
+
+<p class="body-sm muted">
+  Last updated <time datetime={LEGAL.last_updated}>{lastUpdated()}</time>.
+</p>

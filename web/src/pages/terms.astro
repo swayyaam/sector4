@@ -1,0 +1,220 @@
+---
+/*
+ * DRAFTED WITHOUT LEGAL REVIEW. These terms were written for this specific
+ * site and have not been reviewed by a lawyer.
+ *
+ * The claim about the model must stay consistent with MODEL_REPORT.md section
+ * 6: nothing here may say or imply that the model beats qualifying order.
+ * Licence statements must match DATA_LICENSE.md and LICENSE. Facts it depends
+ * on (operator, contact, jurisdiction, dates) live in src/data/legal.json and
+ * are shared with /privacy/.
+ */
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import Contact from "../components/legal/Contact.astro";
+import Updated from "../components/legal/Updated.astro";
+import { LEGAL } from "../lib/legal";
+import { REPO } from "../lib/site";
+
+const blob = `${REPO}/blob/main`;
+const history = `${REPO}/commits/main/web/src/pages/terms.astro`;
+---
+
+<BaseLayout
+  title="Terms"
+  description="The terms for using Sector 4: what the predictions are and are not, the licences on its code and data, and the law that governs them."
+  image="/og/terms.png"
+  breadcrumbs={[{ name: "Terms", path: "/terms/" }]}
+>
+  <section class="wrap page-hero">
+    <p class="eyebrow">Terms</p>
+    <h1>The terms for using Sector 4.</h1>
+    <p class="lead">
+      Sector 4 is free and non-commercial. Using it means accepting these terms, which are short
+      because the site is simple.
+    </p>
+    <Updated />
+  </section>
+
+  <section id="what" class="wrap band chapter">
+    <h2 class="h3">What Sector 4 is.</h2>
+    <div class="prose">
+      <p>
+        An unofficial, non-commercial fan project run by {LEGAL.operator}, an individual based in{" "}
+        {LEGAL.operator_country}. It is not affiliated with, endorsed by or connected to Formula 1,
+        the Formula One group of companies, the FIA, or any team or driver.
+      </p>
+    </div>
+  </section>
+
+  <section id="predictions" class="wrap band chapter">
+    <h2 class="h3">What the predictions are.</h2>
+    <div class="prose">
+      <p>
+        Statistical estimates, published for analysis and entertainment. They are not betting advice
+        and not a tipping service, and nothing on the site is a recommendation to bet or to make any
+        financial decision.
+      </p>
+      <p>
+        There is no guarantee that any prediction is accurate. Races turn on things no model sees,
+        and every published prediction is scored in public, misses included.
+      </p>
+      <div class="callout">
+        <p>
+          <strong>The model has not been shown to beat a simple baseline.</strong> On the 2026
+          season, held back from every modelling decision and scored once, it could not be told
+          apart from simply taking qualifying order. The site does not claim otherwise, and nobody
+          quoting it should. <a href="/methodology/">The methodology</a> sets out the evidence.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="warranty" class="wrap band chapter">
+    <h2 class="h3">No warranty.</h2>
+    <div class="prose">
+      <p>
+        The site, its data and its predictions are provided as they are, without warranty of any
+        kind, express or implied, including of accuracy, completeness, availability or fitness for
+        any purpose. Pages may change, be corrected or be taken down without notice.
+      </p>
+    </div>
+  </section>
+
+  <section id="liability" class="wrap band chapter">
+    <h2 class="h3">Limitation of liability.</h2>
+    <div class="prose">
+      <p>
+        To the fullest extent the law allows, the operator is not liable for any loss or damage
+        arising from using the site or relying on anything on it, including any loss from betting or
+        any other decision made using its predictions. Nothing in these terms limits any liability
+        that the law does not allow to be limited.
+      </p>
+    </div>
+  </section>
+
+  <section id="licences" class="wrap band chapter">
+    <h2 class="h3">What you may do with what you take.</h2>
+    <div class="prose">
+      <p>Different parts of the site come under different licences.</p>
+      <dl class="defs">
+        <div>
+          <dt>The site's code</dt>
+          <!-- prettier-ignore -->
+          <dd>MIT licence. Use it for anything, including commercially, provided you keep the copyright and licence notice. See <a href={`${blob}/LICENSE`} rel="noopener">LICENSE</a>.</dd>
+        </div>
+        <div>
+          <dt>Race data and predictions</dt>
+          <dd>
+            CC BY-NC-SA 4.0. Results from 2025 onward come from the Jolpica F1 API under that
+            licence, so the processed data and the predictions built on it are shared under the same
+            terms: attribution, non-commercial, share-alike.
+          </dd>
+        </div>
+        <div>
+          <dt>Historical results, 1950 to 2024</dt>
+          <dd>
+            From the Kaggle Formula 1 World Championship dataset, which its uploader dedicated to
+            the public domain under CC0. Its original source, the Ergast project, was published for
+            non-commercial use.
+          </dd>
+        </div>
+        <div>
+          <dt>Circuit outlines</dt>
+          <dd>
+            From f1-circuits by Tomislav Bacinger, under the MIT licence. Keep its copyright notice
+            if you reuse them.
+          </dd>
+        </div>
+        <div>
+          <dt>Typeface</dt>
+          <dd>Inter, under the SIL Open Font License 1.1.</dd>
+        </div>
+        <div>
+          <dt>Driver images</dt>
+          <dd>
+            None are shown. Any added later will carry their own licence, listed on{" "}
+            <a href="/credits/">the credits page</a>.
+          </dd>
+        </div>
+        <div>
+          <dt>Formula 1 timing data</dt>
+          <dd>
+            None is published. It is used to fit the model and is never shown on the site or stored
+            in the repository.
+          </dd>
+        </div>
+      </dl>
+      <p>
+        In practice, you may link to any page, quote it, share screenshots, and reuse the data and
+        predictions for non-commercial purposes, as long as you credit Sector 4 and the Jolpica F1
+        API, link to the CC BY-NC-SA 4.0 licence, and share anything you build from them under that
+        same licence.
+      </p>
+      <p>
+        You may not use the data or predictions in anything primarily intended for commercial
+        advantage or payment, which is how the licence defines commercial use: a paid product or a
+        paid betting or tipping service, for example. You may not relicense them on looser terms, or
+        present them as official or endorsed by anyone.
+      </p>
+      <!-- prettier-ignore -->
+      <p>The full terms for every source, quoted from each source's own licence, are in <a href={`${blob}/DATA_LICENSE.md`} rel="noopener">DATA_LICENSE.md</a>.</p>
+    </div>
+  </section>
+
+  <section id="trademarks" class="wrap band chapter">
+    <h2 class="h3">Trademarks.</h2>
+    <div class="prose">
+      <p>
+        F1, FORMULA ONE, FORMULA 1, and related marks are trademarks of Formula One Licensing B.V.
+        They, and the names of teams and events, are used here only to say which championship, team
+        or race a figure refers to. No logos, livery or official imagery are used, and nothing here
+        suggests endorsement. Team colours appear only as small markers beside the team's name.
+      </p>
+    </div>
+  </section>
+
+  <section id="use" class="wrap band chapter">
+    <h2 class="h3">Acceptable use.</h2>
+    <div class="prose">
+      <ul>
+        <!-- prettier-ignore -->
+        <li>Don't scrape the site in a way that puts load on it. Everything it publishes is also in <a href={REPO} rel="noopener">the public repository</a>, which is the better place to take data from.</li>
+        <li>Don't try to disrupt, overload or break into the site.</li>
+        <li>
+          Don't republish the data or predictions commercially, or present them as official or as
+          your own.
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="law" class="wrap band chapter">
+    <h2 class="h3">Governing law.</h2>
+    <div class="prose">
+      <p>
+        These terms are governed by the laws of India. The courts of{" "}
+        {LEGAL.jurisdiction_city ?? <span class="badge badge-ink">City not yet set</span>}, India
+        have jurisdiction over any dispute arising from them. This does not take away any protection
+        you have under the mandatory law of the country where you live.
+      </p>
+    </div>
+  </section>
+
+  <section id="changes" class="wrap band chapter">
+    <h2 class="h3">Changes to these terms.</h2>
+    <div class="prose">
+      <!-- prettier-ignore -->
+      <p>When these terms change in a way that matters, the date at the top changes. Every earlier version is in <a href={history} rel="noopener">the page's public history</a>.</p>
+      <Updated />
+    </div>
+  </section>
+
+  <section id="contact" class="wrap band chapter">
+    <h2 class="h3">Contact.</h2>
+    <div class="prose">
+      <p>
+        Questions about these terms: <Contact />
+      </p>
+    </div>
+  </section>
+</BaseLayout>

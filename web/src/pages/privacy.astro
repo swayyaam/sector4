@@ -1,0 +1,252 @@
+---
+/*
+ * DRAFTED WITHOUT LEGAL REVIEW. This policy was written for this specific
+ * site, from its actual behaviour, and has not been reviewed by a lawyer.
+ *
+ * Every technical claim here is enforced by integrations/publish-guards.mjs,
+ * which fails the build if a page loads anything from another origin, uses
+ * browser storage or sends data from the reader's browser. If you add any of
+ * those, rewrite this page first and change the guard deliberately.
+ *
+ * Facts it depends on (operator, contact, hosting plan, dates) live in
+ * src/data/legal.json and are shared with /terms/.
+ */
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import Contact from "../components/legal/Contact.astro";
+import Updated from "../components/legal/Updated.astro";
+import { LEGAL } from "../lib/legal";
+import { REPO } from "../lib/site";
+
+const host = LEGAL.hosting;
+const history = `${REPO}/commits/main/web/src/pages/privacy.astro`;
+---
+
+<BaseLayout
+  title="Privacy"
+  description="What Sector 4 collects (nothing), what its host handles to serve a page, and your rights under the GDPR, UK GDPR and India's DPDP Act."
+  image="/og/privacy.png"
+  breadcrumbs={[{ name: "Privacy", path: "/privacy/" }]}
+>
+  <section class="wrap page-hero">
+    <p class="eyebrow">Privacy</p>
+    <h1>This site collects nothing about you.</h1>
+    <p class="lead">
+      No analytics, no cookies, nothing stored in your browser and nothing loaded from anyone else.
+      The only personal data involved is what any web host has to handle to send you a page, and
+      that is set out below.
+    </p>
+    <Updated />
+  </section>
+
+  <section id="who" class="wrap band chapter">
+    <h2 class="h3">Who runs this site.</h2>
+    <div class="prose">
+      <p>
+        Sector 4 is a non-commercial fan project run by {LEGAL.operator}, an individual based in
+        {LEGAL.operator_country}. For data protection law, {LEGAL.operator} is the person
+        responsible for this site: the controller under the GDPR and UK GDPR, and the Data Fiduciary
+        under India's Digital Personal Data Protection Act, 2023.
+      </p>
+      <p>
+        Contact for anything on this page: <Contact />
+      </p>
+    </div>
+  </section>
+
+  <section id="collected" class="wrap band chapter">
+    <h2 class="h3">What the site collects.</h2>
+    <div class="prose">
+      <p>
+        Nothing. There are no accounts, forms, comments, newsletters, analytics or tracking of any
+        kind. The site never asks you for information, and the operator has no way to see who visits
+        or what they read.
+      </p>
+      <dl class="defs">
+        <div>
+          <dt>Cookies</dt>
+          <dd>
+            None, first-party or third-party. That is why there is no cookie banner and no cookie
+            policy: there is nothing to consent to.
+          </dd>
+        </div>
+        <div>
+          <dt>Browser storage</dt>
+          <dd>
+            None. No local storage, session storage, IndexedDB or any other way of keeping
+            information on your device.
+          </dd>
+        </div>
+        <div>
+          <dt>Analytics</dt>
+          <dd>None. No analytics service, no visitor counts, no heatmaps, no fingerprinting.</dd>
+        </div>
+        <div>
+          <dt>Requests to other sites</dt>
+          <dd>
+            None. Every page, script, stylesheet, image and font comes from this site's own domain.
+            The typeface is self-hosted, so no font service sees your visit.
+          </dd>
+        </div>
+        <div>
+          <dt>Advertising and data sales</dt>
+          <dd>
+            None. There are no ads or ad networks, and no data is sold, rented or shared, because
+            none is collected.
+          </dd>
+        </div>
+        <div>
+          <dt>Embedded content</dt>
+          <dd>
+            None. No videos, maps, social media posts or widgets from other sites. If that ever
+            changes, this policy changes first.
+          </dd>
+        </div>
+      </dl>
+      <p>
+        Two small scripts run in your browser. One counts down to the next session; the other shows
+        session times in your own time zone. Both read your device's clock and time-zone setting,
+        work entirely on your device, and send nothing anywhere.
+      </p>
+      <div class="callout">
+        <!-- prettier-ignore -->
+        <p><strong>These statements are checked, not just written.</strong> The site's build fails if any page loads something from another domain, uses browser storage or sends data from your browser. The check and this page are both in the <a href={REPO} rel="noopener">public source code</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="host" class="wrap band chapter">
+    <h2 class="h3">What the host handles.</h2>
+    <div class="prose">
+      <p>
+        The site is hosted by {host.provider}, a company based in the {host.provider_country}. Like
+        any web host, Vercel has to receive your request in order to send you a page, and so it
+        processes:
+      </p>
+      <ul>
+        <li>your IP address, and the approximate location worked out from it;</li>
+        <li>your browser's user agent, which names your browser and operating system;</li>
+        <li>the page you asked for, and when.</li>
+      </ul>
+      <!-- prettier-ignore -->
+      <p>Vercel uses this to deliver the page and to protect the site against attacks and abuse. It processes it on the operator's behalf under its <a href={host.dpa} rel="noopener">Data Processing Addendum</a>, and also for its own security purposes under its <a href={host.privacy_notice} rel="noopener">privacy notice</a>.</p>
+      <p>
+        The request logs the operator can see are kept for {host.runtime_log_retention} on Vercel's{" "}
+        {host.plan} plan, which this site uses, and then expire. They are looked at only to diagnose
+        faults, never to identify or follow visitors. Vercel does not state a fixed period for its
+        own security records; its privacy notice says it keeps information for the minimum period
+        necessary.
+      </p>
+      <p>
+        Vercel may process this data outside your country, including in the United States. For
+        visitors from the EU, the UK and Switzerland it relies on the EU-U.S. Data Privacy
+        Framework, its UK Extension and the Swiss-U.S. Data Privacy Framework, and on standard
+        contractual clauses.
+      </p>
+    </div>
+  </section>
+
+  <section id="links" class="wrap band chapter">
+    <h2 class="h3">Links to other sites.</h2>
+    <div class="prose">
+      <p>
+        Pages link to other sites: this site's source code and commit history on GitHub, and the
+        data sources and licences listed on <a href="/credits/">the credits page</a>. Following a
+        link takes you to that site, under its own privacy policy. Nothing is loaded from those
+        sites until you click. When you do, your browser tells them only which site you came from,
+        not which page.
+      </p>
+    </div>
+  </section>
+
+  <section id="drivers" class="wrap band chapter">
+    <h2 class="h3">People in the data.</h2>
+    <div class="prose">
+      <p>
+        The site publishes race results and predictions that name Formula 1 drivers, with their
+        nationality and results. This comes from public race records, the Jolpica F1 API and the
+        Kaggle Formula 1 World Championship dataset, and is published as sports statistics. No
+        driver photos are shown.
+      </p>
+      <p>
+        If you appear in the data and something is wrong, write to <Contact />. It will be
+        corrected, and the correction recorded with its evidence, as every correction to this data
+        is.
+      </p>
+    </div>
+  </section>
+
+  <section id="rights" class="wrap band chapter">
+    <h2 class="h3">Your rights in the EU and UK.</h2>
+    <div class="prose">
+      <p>
+        The personal data involved is the hosting data above, which the operator never sees in a
+        form that identifies you, and the public data about drivers. The legal basis for both is
+        legitimate interests, under Article 6(1)(f) of the GDPR and the UK GDPR: delivering the site
+        you asked for and keeping it secure, and publishing sports statistics.
+      </p>
+      <p>
+        You have the right to ask for access to your personal data, to have it corrected or erased,
+        to restrict or object to its processing, and to data portability where that applies. Write
+        to <Contact />, and you will get an answer within one month. The operator holds nothing that
+        could identify a visitor, and the logs it can see are gone within{" "}
+        {host.runtime_log_retention}, so a request about a visit will usually find nothing to
+        return. You will be told so plainly.
+      </p>
+      <p>
+        You can also complain to a data protection authority: in the EU, the one for the country
+        where you live or work; in the UK, the Information Commissioner's Office.
+      </p>
+      <p>
+        The UK changed its rules on cookies and similar technologies in 2026, allowing some
+        analytics without consent. That does not come into it here: this site uses no cookies or
+        similar technologies at all.
+      </p>
+    </div>
+  </section>
+
+  <section id="india" class="wrap band chapter">
+    <h2 class="h3">India.</h2>
+    <div class="prose">
+      <p>
+        The operator is in India, where the Digital Personal Data Protection Act, 2023 applies. Most
+        of its duties, including notices, consent and the rights to access, correct and erase
+        personal data, take effect in May 2027 under the Digital Personal Data Protection Rules,
+        2025.
+      </p>
+      <p>
+        Sector 4 collects no personal data from visitors, so there is nothing to ask consent for,
+        and the driver data it publishes comes from public race records. You can raise any question
+        or grievance about personal data with <Contact />. It will be answered promptly, and in any
+        case within the 90 days the Rules allow.
+      </p>
+    </div>
+  </section>
+
+  <section id="children" class="wrap band chapter">
+    <h2 class="h3">Children.</h2>
+    <div class="prose">
+      <p>
+        Sector 4 is not directed at children, and it collects nothing from anyone, children
+        included.
+      </p>
+    </div>
+  </section>
+
+  <section id="changes" class="wrap band chapter">
+    <h2 class="h3">Changes to this policy.</h2>
+    <div class="prose">
+      <!-- prettier-ignore -->
+      <p>When this policy changes in a way that matters, such as adding analytics or anything loaded from another site, it changes before the site does, the date at the top changes, and the change is described here. Every earlier version is in <a href={history} rel="noopener">the page's public history</a>.</p>
+      <Updated />
+    </div>
+  </section>
+
+  <section id="contact" class="wrap band chapter">
+    <h2 class="h3">Contact.</h2>
+    <div class="prose">
+      <p>
+        Questions about privacy or about this policy: <Contact />
+      </p>
+    </div>
+  </section>
+</BaseLayout>
