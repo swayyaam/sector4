@@ -7,9 +7,9 @@ to run around each race weekend.
 **Status:** not deployed. Deployment is held until R15 (Azerbaijan, 2026) has
 been scored. Before the first production deploy:
 
-1. Fill `contact_email` and `jurisdiction_city` in `web/src/data/legal.json`.
-   A production build refuses to run while either is missing.
-2. Decide the domain (see [Custom domain](#custom-domain)).
+1. `contact_email` and `jurisdiction_city` are set in `web/src/data/legal.json`.
+   A production build refuses to run if either is ever removed.
+2. The domain is **`sector4.swayam.codes`** (see [Custom domain](#custom-domain)).
 
 ---
 
@@ -95,18 +95,16 @@ path.
 
 ## Custom domain
 
-What exists today:
-
-- `sector4.dev` does not resolve (NXDOMAIN). It is not registered, or not
-  delegated, so it cannot be used as it stands.
-- `swayam.codes` is registered at name.com and already served by Vercel.
+**Decided: `sector4.swayam.codes`,** a subdomain of `swayam.codes`, which is
+registered at name.com and already served by Vercel. (`sector4.dev`, the
+earlier placeholder, does not resolve and is not used anywhere.)
 
 **Nothing in the repo names a domain.** The site's URL comes from Vercel's
 `VERCEL_PROJECT_PRODUCTION_URL`: the shortest custom domain attached to the
 project, or its `vercel.app` domain until one is. Attaching a domain needs no
 code change.
 
-### A subdomain, for example `sector4.swayam.codes`
+### Setting up `sector4.swayam.codes`
 
 1. Vercel → project → Settings → Domains → Add `sector4.swayam.codes`.
 2. At name.com, DNS for `swayam.codes`, add:
@@ -119,7 +117,7 @@ code change.
    than from anywhere else. Leave the existing records for `swayam.codes` alone.
 3. Wait for Vercel to show the domain as valid. It issues the certificate itself.
 
-### An apex domain, if one is registered for the project
+### If an apex domain is ever used instead
 
 1. Add both `example.com` and `www.example.com` in Settings → Domains, and set
    one to redirect to the other.
@@ -142,7 +140,7 @@ code change.
 
 ## First deploy
 
-1. Fill the two legal facts, merge the legal pages PR, merge this one.
+1. Merge the legal pages PR, then this one.
 2. Vercel → Add New → Project → import `swayyaam/sector4` → set Root Directory
    to `web` → Deploy. Everything else comes from `web/vercel.json`.
 3. Confirm the settings above, then attach the domain.
@@ -150,7 +148,8 @@ code change.
 
 ## Post-deploy checklist
 
-Replace `$SITE` with the production URL.
+Replace `$SITE` with the production URL, `https://sector4.swayam.codes` once
+the domain is attached.
 
 **Pages.** Open each one and read it:
 
