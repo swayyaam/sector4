@@ -1,5 +1,6 @@
 // @ts-check
 import { defineConfig } from "astro/config";
+import publishGuards from "./integrations/publish-guards.mjs";
 
 export default defineConfig({
   site: "https://sector4.dev",
@@ -11,4 +12,5 @@ export default defineConfig({
   build: { inlineStylesheets: "always" },
   compressHTML: true,
   devToolbar: { enabled: false },
+  integrations: [publishGuards()],
 });
