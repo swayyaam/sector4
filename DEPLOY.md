@@ -292,6 +292,12 @@ differed from a snapshot's. `build_site_data.py` declares both directions
 (`unpredicted_starters`, `predicted_non_starters`) and the race page states them,
 so this should not happen; if it does, stop and look.
 
+If the scorer prints `model log loss undefined (winner_not_in_field)` or
+`(winner_at_zero)`, the snapshot gave the winner no probability. That is the
+rule working, not a failure: the ledger records a null log loss with the reason,
+and the site says so on the race page and the track record. Do not edit the
+ledger to put a number there.
+
 Build the site before pushing (`npm run typecheck`, `npx vitest run`,
 `npm run build` in `web/`), then commit the pipeline changes and the scoring
 separately from any prediction:
