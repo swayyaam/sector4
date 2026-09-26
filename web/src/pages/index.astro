@@ -15,7 +15,7 @@ import {
   scoredPredictions,
   teamById,
 } from "../lib/data";
-import { driverName, percent, score } from "../lib/format";
+import { driverName, percent, score, sentenceStart } from "../lib/format";
 import { SNAPSHOT_LABEL, SERIES, SCORED_SUMMARY_MINIMUM } from "../lib/snapshots";
 
 const { reference, predictions, meta } = loadDataset();
@@ -56,6 +56,8 @@ const series = SERIES.map((snapshot) => {
   };
 }).filter((s) => s.n > 0);
 const summarised = series.filter((s) => s.n >= SCORED_SUMMARY_MINIMUM);
+// One string, so no line break in the markup can put a space before a comma.
+const soFar = series.map((s) => `${SNAPSHOT_LABEL[s.snapshot].toLowerCase()} ${s.n}`).join(", ");
 
 const jsonLd = [
   {
@@ -247,7 +249,7 @@ const jsonLd = [
             </div>
             {last.result!.baseline && (
               <div>
-                <dt>{last.result!.baseline.name}</dt>
+                <dt>{sentenceStart(last.result!.baseline.name)}</dt>
                 <dd class="num">{score(last.result!.baseline.log_loss)}</dd>
               </div>
             )}
@@ -266,14 +268,7 @@ const jsonLd = [
           <p class="notice season-wait">
             <span class="badge badge-ink">Season</span>
             <span>
-              Season figures appear once four races are scored in a snapshot. So far:{" "}
-              {series.map((s, i) => (
-                <>
-                  {i > 0 && ", "}
-                  {SNAPSHOT_LABEL[s.snapshot].toLowerCase()} <span class="num">{s.n}</span>
-                </>
-              ))}
-              .
+              Season figures appear once four races are scored in a snapshot. So far: {soFar}.
             </span>
           </p>
         ) : (

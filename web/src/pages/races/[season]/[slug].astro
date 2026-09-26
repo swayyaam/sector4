@@ -18,7 +18,7 @@ import {
   raceById,
   teamById,
 } from "../../../lib/data";
-import { driverName, percent, position, score } from "../../../lib/format";
+import { driverName, percent, position, score, sentenceStart } from "../../../lib/format";
 import { BASELINE_FOR, SNAPSHOT_BLURB, SNAPSHOT_LABEL } from "../../../lib/snapshots";
 import { formatUtc, isPast } from "../../../lib/time";
 
@@ -176,7 +176,7 @@ const jsonLd = [
         </div>
         {result.baseline && (
           <div class="rise" style="--i:1">
-            <dt>{result.baseline.name}, same race</dt>
+            <dt>{sentenceStart(result.baseline.name)}, same race</dt>
             <dd class="num">{score(result.baseline.log_loss)}</dd>
           </div>
         )}
