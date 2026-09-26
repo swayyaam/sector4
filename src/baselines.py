@@ -71,6 +71,11 @@ class Score:
         pw = float(p.get(winner, 0.0))
         ll = -math.log(max(pw, FLOOR))
         br = float(sum((p.get(d, 0.0) - (1.0 if d == winner else 0.0)) ** 2 for d in p.index))
+        # A winner outside the field was given nothing and misses by the whole
+        # of it. Summing over the field alone would leave that term out and
+        # flatter the prediction by exactly 1.
+        if winner not in p.index:
+            br += 1.0
 
         top = p.max()
         tied_top = set(p.index[p == top])
