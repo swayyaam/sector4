@@ -277,8 +277,13 @@ def test_upcoming_path_reproduces_the_trained_features_for_r14(tmp_path):
 @needs_data
 def test_r15_is_never_predicted_from_a_carried_over_field():
     """Whatever the cache holds today: either R15 is refused for want of its
-    weekend, or its field is exactly R15's qualifying participants."""
+    weekend, or its field is exactly R15's qualifying participants. Once R15
+    has run it is no longer upcoming, and this path no longer applies."""
     import predict as P
+
+    races = F._rd(DATA / "races.csv")
+    if ((races["year"] == SEASON) & (races["round"] == ROUND)).any():
+        pytest.skip("R15 has run; the upcoming path no longer applies to it")
 
     try:
         pred = P.build(SEASON, ROUND, F.POST)
