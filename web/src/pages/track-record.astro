@@ -1,7 +1,7 @@
 ---
 import BaseLayout from "../components/layout/BaseLayout.astro";
-import { loadDataset, raceById, predictionsForRace } from "../lib/data";
-import { score } from "../lib/format";
+import { loadDataset, logLossSummary, raceById, predictionsForRace } from "../lib/data";
+import { logLoss, score } from "../lib/format";
 import {
   BASELINE_FOR,
   SCORED_SUMMARY_MINIMUM,
@@ -43,7 +43,7 @@ function series(snapshot: Snapshot) {
     .filter((p) => p.snapshot === snapshot && p.result !== null)
     .sort((a, b) => byRound(b, a));
   const n = scored.length;
-  const withBase = scored.filter((p) => p.result!.baseline !== null);
+  const ll = logLossSummary(scored);
   const meanField = n ? scored.reduce((a, p) => a + p.drivers.length, 0) / n : 0;
   const upcoming = predictions
     .filter((p) => p.snapshot === snapshot && p.result === null)
@@ -55,12 +55,19 @@ function series(snapshot: Snapshot) {
     upcoming: upcoming ? races.get(upcoming.race_id) : undefined,
     wins: scored.filter((p) => p.result!.winner_hit).length,
     podiums: scored.reduce((a, p) => a + p.result!.podium_hits, 0),
-    meanLogLoss: n ? scored.reduce((a, p) => a + p.result!.log_loss, 0) / n : 0,
-    baselineRaces: withBase.length,
-    meanBaseline: withBase.length
-      ? withBase.reduce((a, p) => a + p.result!.baseline!.log_loss, 0) / withBase.length
-      : 0,
-    modelBetter: withBase.filter((p) => p.result!.log_loss < p.result!.baseline!.log_loss).length,
+    meanLogLoss: ll.mean,
+    baselineRaces: ll.withBaseline,
+    meanBaseline: ll.baselineMean,
+    modelBetter: ll.modelBetter,
+    // Races with no defined log loss, left out of both means and said so.
+    undefinedLogLoss: ll.undefined,
+    undefinedNote:
+      ll.undefined === 0
+        ? ""
+        : `${ll.undefined === 1 ? "One race has" : `${ll.undefined} races have`} no defined log ` +
+          `loss, because the snapshot gave the winner no probability, so both means leave ` +
+          `${ll.undefined === 1 ? "it" : "them"} out. ${ll.undefined === 1 ? "It still counts" : "They still count"} ` +
+          `as a missed winner and as a race the model did not beat the baseline.`,
     // What a uniform pick over the same field would score: the floor, printed
     // because a log loss on its own says nothing about whether this is any good.
     uniformLogLoss: meanField > 1 ? Math.log(meanField) : 0,
@@ -158,11 +165,11 @@ const BLURB: Record<Snapshot, string> = {
             </div>
             <div class="rise" style="--i:2">
               <dt>Model, mean log loss</dt>
-              <dd class="num">{score(s.meanLogLoss)}</dd>
+              <dd class="num">{s.meanLogLoss === null ? "—" : score(s.meanLogLoss)}</dd>
             </div>
             <div class="rise" style="--i:3">
               <dt>Baseline, mean log loss</dt>
-              <dd class="num">{s.baselineRaces ? score(s.meanBaseline) : "—"}</dd>
+              <dd class="num">{s.meanBaseline === null ? "—" : score(s.meanBaseline)}</dd>
             </div>
             <div class="rise" style="--i:4">
               <dt>Races the model beat it</dt>
@@ -174,7 +181,8 @@ const BLURB: Record<Snapshot, string> = {
           <p class="note">
             The baseline is {BASELINE_FOR[s.snapshot]}. A uniform pick over the same field would
             score {score(s.uniformLogLoss)}. Lower is better, and beating that is the floor rather
-            than the goal. <a href="/methodology/#scoring">How the scores are computed</a>.
+            than the goal. {s.undefinedNote}{" "}
+            <a href="/methodology/#scoring">How the scores are computed</a>.
           </p>
         </>
       ) : (
@@ -236,9 +244,15 @@ const BLURB: Record<Snapshot, string> = {
                     </th>
                     <td>{r.winner_hit ? "Called" : "Missed"}</td>
                     <td class="n num">{r.podium_hits} of 3</td>
-                    <td class="n num">{score(r.log_loss)}</td>
+                    <td class="n num">{logLoss(r.log_loss)}</td>
                     <td class="n num dim">{r.baseline ? score(r.baseline.log_loss) : "—"}</td>
-                    <td>{r.baseline ? (r.log_loss < r.baseline.log_loss ? "Yes" : "No") : "—"}</td>
+                    <td>
+                      {r.baseline
+                        ? r.log_loss !== null && r.log_loss < r.baseline.log_loss
+                          ? "Yes"
+                          : "No"
+                        : "—"}
+                    </td>
                     <td class="n num">{score(r.brier)}</td>
                   </tr>
                 );
@@ -247,6 +261,12 @@ const BLURB: Record<Snapshot, string> = {
           </tbody>
         </table>
       </div>
+      {s.undefinedLogLoss > 0 && (
+        <p class="note footnote">
+          Not defined: the snapshot gave that race's winner no probability, so it has no log loss.
+          The race page says why.
+        </p>
+      )}
     </section>
   ))}
 
@@ -360,6 +380,9 @@ const BLURB: Record<Snapshot, string> = {
     color: var(--colour-text-muted);
     max-width: 68ch;
     margin-bottom: var(--space-lg);
+  }
+  .footnote {
+    margin: var(--space-sm) 0 0;
   }
   .record {
     min-width: 720px;
