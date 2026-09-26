@@ -1,0 +1,143 @@
+{
+  "races": [
+    {
+      "season": 2026,
+      "round": 15,
+      "race_id": 1183,
+      "race_name": "Azerbaijan Grand Prix",
+      "snapshot": "post_qualifying",
+      "predicted_at": "2026-09-26T00:21:32Z",
+      "scored_at": "2026-09-26T18:10:44Z",
+      "model_version": "minimal4-share-v1",
+      "commit_sha": "74e1ffb992ee",
+      "data_version": "v0.1.1-data+20260921",
+      "prediction_sha256": "5323b03f1cd0f905",
+      "revision": 1,
+      "revision_file": "15-post_qualifying.json",
+      "revisions_published": 1,
+      "ignored_late_revisions": [],
+      "model": {
+        "log_loss": 0.366455,
+        "brier": 0.123796,
+        "winner_hit": 1.0,
+        "podium_hits": 1.0
+      },
+      "baseline": {
+        "name": "qualifying order",
+        "log_loss": 0.708875,
+        "brier": 0.326405,
+        "winner_hit": 1.0,
+        "podium_hits": 1.0
+      },
+      "all_baselines": {
+        "uniform": {
+          "log_loss": 3.091042,
+          "brier": 0.954545,
+          "winner_hit": 0.0455,
+          "podium_hits": 0.4091
+        },
+        "grid order": {
+          "log_loss": 0.853776,
+          "brier": 0.405256,
+          "winner_hit": 1.0,
+          "podium_hits": 1.0
+        },
+        "qualifying order": {
+          "log_loss": 0.708875,
+          "brier": 0.326405,
+          "winner_hit": 1.0,
+          "podium_hits": 1.0
+        },
+        "championship order": {
+          "log_loss": 1.589324,
+          "brier": 0.7651,
+          "winner_hit": 0.0,
+          "podium_hits": 1.0
+        },
+        "elo": {
+          "log_loss": 2.369216,
+          "brier": 0.915243,
+          "winner_hit": 0.0,
+          "podium_hits": 1.0
+        }
+      },
+      "winner_driverId": 847,
+      "podium_driverIds": [
+        830,
+        847,
+        866
+      ],
+      "starters": 22
+    },
+    {
+      "season": 2026,
+      "round": 15,
+      "race_id": 1183,
+      "race_name": "Azerbaijan Grand Prix",
+      "snapshot": "pre_weekend",
+      "predicted_at": "2026-09-22T22:58:41Z",
+      "scored_at": "2026-09-26T18:10:44Z",
+      "model_version": "minimal4-share-v1",
+      "commit_sha": "7b5ca5ba49dc",
+      "data_version": "v0.1.1-data+20260921",
+      "prediction_sha256": "49c1d43f73df842d",
+      "revision": 2,
+      "revision_file": "15-pre_weekend-r2.json",
+      "revisions_published": 2,
+      "ignored_late_revisions": [],
+      "model": {
+        "log_loss": 2.256796,
+        "brier": 0.919636,
+        "winner_hit": 0.0,
+        "podium_hits": 1.0
+      },
+      "baseline": {
+        "name": "championship order",
+        "log_loss": 1.589324,
+        "brier": 0.7651,
+        "winner_hit": 0.0,
+        "podium_hits": 1.0
+      },
+      "all_baselines": {
+        "uniform": {
+          "log_loss": 3.091042,
+          "brier": 0.954545,
+          "winner_hit": 0.0455,
+          "podium_hits": 0.4091
+        },
+        "grid order": {
+          "log_loss": 0.853776,
+          "brier": 0.405256,
+          "winner_hit": 1.0,
+          "podium_hits": 1.0
+        },
+        "qualifying order": {
+          "log_loss": 0.708875,
+          "brier": 0.326405,
+          "winner_hit": 1.0,
+          "podium_hits": 1.0
+        },
+        "championship order": {
+          "log_loss": 1.589324,
+          "brier": 0.7651,
+          "winner_hit": 0.0,
+          "podium_hits": 1.0
+        },
+        "elo": {
+          "log_loss": 2.369216,
+          "brier": 0.915243,
+          "winner_hit": 0.0,
+          "podium_hits": 1.0
+        }
+      },
+      "winner_driverId": 847,
+      "podium_driverIds": [
+        830,
+        847,
+        866
+      ],
+      "starters": 22
+    }
+  ],
+  "updated_at": "2026-09-26T18:10:44Z"
+}
