@@ -12,12 +12,14 @@ import {
   predictionSchema,
   referenceSchema,
   siteMetaSchema,
+  type Prediction,
 } from "../src/lib/schema";
 import {
   buildDataset,
   driverById,
   driversByWinProbability,
   loadDataset,
+  logLossSummary,
   preferredSnapshot,
   scoredPredictions,
   teamById,
@@ -282,6 +284,71 @@ describe("bad data fails the build", () => {
     expect(() => parseOrThrow(predictionSchema, p, "test")).toThrow(/share a finishing position/);
   });
 
+  // A winner the snapshot never listed: pre-weekend carries the last race's
+  // starters forward, so a returning driver can win without a prediction.
+  const unpredictedWinner = (p: ReturnType<typeof good>) => ({
+    scored_at: "2026-09-26T14:00:00Z",
+    drivers: [
+      { driverId: 99999, actual_position: 1, status: "Finished" },
+      ...p.drivers.map((d: { driverId: number }, i: number) => ({
+        driverId: d.driverId,
+        actual_position: i + 2,
+        status: "Finished",
+      })),
+    ],
+    unpredicted_starters: [99999],
+    log_loss: null as number | null,
+    log_loss_undefined: "winner_not_in_field" as string | null,
+    brier: 1.2,
+    winner_hit: false,
+    podium_hits: 1,
+  });
+
+  it("accepts an unpredicted winner with no log loss and the reason declared", () => {
+    const p = good();
+    p.result = unpredictedWinner(p);
+    expect(() => parseOrThrow(predictionSchema, p, "test")).not.toThrow();
+  });
+
+  it("rejects a floor standing in for an unpredicted winner's log loss", () => {
+    const p = good();
+    p.result = { ...unpredictedWinner(p), log_loss: 20.7233, log_loss_undefined: null };
+    expect(() => parseOrThrow(predictionSchema, p, "test")).toThrow(
+      /prediction says winner_not_in_field/,
+    );
+  });
+
+  it("rejects a missing log loss without a reason", () => {
+    const p = good();
+    p.result = { ...unpredictedWinner(p), log_loss_undefined: null };
+    expect(() => parseOrThrow(predictionSchema, p, "test")).toThrow(/null exactly when/);
+  });
+
+  it("rejects a withheld log loss when the winner was given a probability", () => {
+    const p = good();
+    const winner = p.drivers[0].driverId;
+    p.result = {
+      scored_at: "2026-09-26T14:00:00Z",
+      drivers: p.drivers.map((d: { driverId: number }, i: number) => ({
+        driverId: d.driverId,
+        actual_position: d.driverId === winner ? 1 : i + 2,
+        status: "Finished",
+      })),
+      log_loss: null,
+      log_loss_undefined: "winner_not_in_field",
+      brier: 0.5,
+      winner_hit: false,
+      podium_hits: 1,
+    };
+    expect(() => parseOrThrow(predictionSchema, p, "test")).toThrow(/prediction says null/);
+  });
+
+  it("rejects a called winner that was given no probability", () => {
+    const p = good();
+    p.result = { ...unpredictedWinner(p), winner_hit: true };
+    expect(() => parseOrThrow(predictionSchema, p, "test")).toThrow(/cannot have called/);
+  });
+
   it("reports every problem at once, not just the first", () => {
     const p = good();
     p.commit_sha = "nope";
@@ -293,6 +360,36 @@ describe("bad data fails the build", () => {
       const msg = (e as Error).message;
       expect(msg.split("\n").length).toBeGreaterThanOrEqual(3);
     }
+  });
+});
+
+describe("log loss summary", () => {
+  const row = (ll: number | null, base: number | null) =>
+    ({
+      result: {
+        log_loss: ll,
+        baseline: base === null ? null : { log_loss: base },
+      },
+    }) as unknown as Prediction;
+
+  it("leaves a race with no log loss out of both means, and counts it", () => {
+    const s = logLossSummary([row(0.4, 0.8), row(null, 0.6), row(1.0, 0.7)]);
+    expect(s.mean).toBeCloseTo(0.7);
+    // The baseline over the same two races, not all three.
+    expect(s.baselineMean).toBeCloseTo(0.75);
+    expect(s.undefined).toBe(1);
+  });
+
+  it("counts a race with no log loss as one the model did not beat", () => {
+    const s = logLossSummary([row(0.4, 0.8), row(null, 0.6)]);
+    expect(s.modelBetter).toBe(1);
+    expect(s.withBaseline).toBe(2);
+  });
+
+  it("has no mean at all when no race has a log loss", () => {
+    const s = logLossSummary([row(null, 0.6)]);
+    expect(s.mean).toBeNull();
+    expect(s.baselineMean).toBeNull();
   });
 });
 

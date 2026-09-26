@@ -41,6 +41,11 @@ export function score(n: number): string {
   return n.toFixed(3);
 }
 
+/** A log loss, or the plain statement that there is none. Never a stand-in number. */
+export function logLoss(n: number | null): string {
+  return n === null ? "Not defined" : score(n);
+}
+
 export function driverName(d: { forename: string; surname: string }): string {
   return `${d.forename} ${d.surname}`;
 }
