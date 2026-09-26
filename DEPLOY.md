@@ -232,7 +232,11 @@ All commands run from the repo root with the project's virtualenv.
 
 ### 1. After race N: bring the result in, score it
 
-Once race N has finished and Jolpica has its classification:
+Once race N has finished and Jolpica has its classification, work on a branch:
+
+```bash
+git switch -c score/2026-rN main
+```
 
 ```bash
 ./.venv/bin/python src/fetch_jolpica.py --seasons 2026
@@ -242,7 +246,12 @@ Once race N has finished and Jolpica has its classification:
 ./.venv/bin/python src/build_processed.py
 ```
 
-`scrape_grids.py` is a fetcher. Run it only after `fetch_jolpica.py` has exited:
+Add race N's official starting-grid page to `RACES` in `src/scrape_grids.py`:
+`(N, <id>, "<slug>")`, taken from the race's official result URL,
+`https://www.formula1.com/en/results/2026/races/<id>/<slug>/race-result`.
+Never infer the id from the sequence; the ids skip numbers. Without the entry,
+the race's `pit_lane_start` stays null. `scrape_grids.py` is a fetcher, so run
+it only after `fetch_jolpica.py` has exited:
 
 ```bash
 ./.venv/bin/python src/scrape_grids.py
@@ -256,11 +265,19 @@ Once race N has finished and Jolpica has its classification:
 ./.venv/bin/python src/team_lineage.py
 ```
 
+Refresh `data/ground_truth/official_standings.json` to the standings after
+race N, from `https://www.formula1.com/en/results/2026/drivers` and `/team`.
+Set `after_round` to N and update `_retrieved_utc` and `_note`. Before using the
+new figures, check them against official sources only: the previous standings
+plus race N's official result points (and any sprint points) must equal the new
+standings for every driver and team. Never copy them from our own data, which
+would make the check circular. Then validate:
+
 ```bash
 ./.venv/bin/python src/validate.py
 ```
 
-Stop if validation fails. Then score and rebuild the site data:
+Stop unless it reports 0 failed. Then score and rebuild the site data:
 
 ```bash
 ./.venv/bin/python src/score_race.py --season 2026 --round N
@@ -270,14 +287,25 @@ Stop if validation fails. Then score and rebuild the site data:
 ./.venv/bin/python src/build_site_data.py
 ```
 
-Commit the scoring on a branch, as a commit separate from any prediction:
+If the web build then reports a driver "who has no prediction", the race's field
+differed from a snapshot's. `build_site_data.py` declares both directions
+(`unpredicted_starters`, `predicted_non_starters`) and the race page states them,
+so this should not happen; if it does, stop and look.
+
+Build the site before pushing (`npm run typecheck`, `npx vitest run`,
+`npm run build` in `web/`), then commit the pipeline changes and the scoring
+separately from any prediction:
 
 ```bash
-git switch -c score/2026-rN main
+git add src/scrape_grids.py data/ground_truth/official_standings.json
 ```
 
 ```bash
-git add predictions/2026/track_record.json predictions/2026/results/ web/src/data/live/
+git commit -m "chore: add round N's grid page and the standings after it"
+```
+
+```bash
+git add predictions/track_record.json predictions/results/ web/src/data/live/
 ```
 
 ```bash
@@ -288,7 +316,8 @@ git commit -m "feat: score the 2026 round N predictions"
 git push -u origin score/2026-rN
 ```
 
-Open a PR, let CI pass, merge. Merging deploys.
+Open a PR, let CI pass, merge. Merging deploys. Until the next race's
+pre-weekend prediction is published, the site shows no next race.
 
 ### 2. Before race N+1: pre-weekend prediction
 

@@ -1,83 +1,61 @@
 {
-  "data_version": "v0.1.1-data+20260921",
-  "generated_at": "2026-09-26T00:23:36Z",
+  "data_version": "v0.1.1-data+20260926",
+  "generated_at": "2026-09-26T18:13:15Z",
   "is_mock": false,
   "last_completed_race": {
-    "race_id": 1182,
-    "season": 2026,
-    "round": 14,
-    "name": "Spanish Grand Prix",
-    "slug": "spanish-grand-prix",
-    "circuit_id": 81,
-    "starts_at": "2026-09-13T13:00:00Z"
-  },
-  "last_scored_race": null,
-  "next_race": {
     "race_id": 1183,
     "season": 2026,
     "round": 15,
     "name": "Azerbaijan Grand Prix",
     "slug": "azerbaijan-grand-prix",
     "circuit_id": 73,
-    "starts_at": "2026-09-26T11:00:00Z",
-    "sessions": [
-      {
-        "name": "Practice 1",
-        "starts_at": "2026-09-24T08:30:00Z"
-      },
-      {
-        "name": "Practice 2",
-        "starts_at": "2026-09-24T12:00:00Z"
-      },
-      {
-        "name": "Practice 3",
-        "starts_at": "2026-09-25T08:30:00Z"
-      },
-      {
-        "name": "Qualifying",
-        "starts_at": "2026-09-25T12:00:00Z"
-      },
-      {
-        "name": "Race",
-        "starts_at": "2026-09-26T11:00:00Z"
-      }
-    ]
+    "starts_at": "2026-09-26T11:00:00Z"
   },
+  "last_scored_race": {
+    "race_id": 1183,
+    "season": 2026,
+    "round": 15,
+    "name": "Azerbaijan Grand Prix",
+    "slug": "azerbaijan-grand-prix",
+    "circuit_id": 73,
+    "starts_at": "2026-09-26T11:00:00Z"
+  },
+  "next_race": null,
   "pipeline": {
     "tables": {
       "races": {
-        "rows": 1163,
+        "rows": 1164,
         "by_source": {
           "kaggle": 1125,
-          "jolpica": 38
+          "jolpica": 39
         }
       },
       "results": {
-        "rows": 27546,
+        "rows": 27568,
         "by_source": {
           "kaggle": 26759,
-          "jolpica": 787
+          "jolpica": 809
         }
       },
       "qualifying": {
-        "rows": 11276,
+        "rows": 11298,
         "by_source": {
           "kaggle": 10494,
-          "jolpica": 782
+          "jolpica": 804
         }
       },
       "lap_times": {
-        "rows": 631961,
+        "rows": 632937,
         "by_source": {
           "kaggle": 589081,
-          "jolpica": 42880
+          "jolpica": 43856
         }
       },
       "pit_stops": {
-        "rows": 12747,
+        "rows": 12783,
         "by_source": {
           "kaggle": 11371,
-          "jolpica": 1376
+          "jolpica": 1412
         }
       }
     },

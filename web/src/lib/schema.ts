@@ -242,6 +242,13 @@ export const raceResultSchema = z.object({
       }),
     )
     .min(1),
+  /**
+   * Where the snapshot's field and the race's differed. Pre-weekend carries
+   * the previous race's starters forward, so a driver can return or be
+   * replaced. Declared rather than dropped, and the page says so.
+   */
+  unpredicted_starters: z.array(z.int().positive()).default([]),
+  predicted_non_starters: z.array(z.int().positive()).default([]),
   log_loss: z.number().min(0),
   brier: z.number().min(0).max(2),
   winner_hit: z.boolean(),
@@ -347,9 +354,28 @@ export const predictionSchema = z
 
     if (p.result) {
       const predicted = new Set(p.drivers.map((d) => d.driverId));
+      const started = new Set(p.result.drivers.map((r) => r.driverId));
+      const declared = new Set(p.result.unpredicted_starters);
+      // A starter without a prediction is allowed only when it is declared,
+      // so a field change is always visible and never a silent gap.
       for (const r of p.result.drivers) {
-        if (!predicted.has(r.driverId)) {
+        if (!predicted.has(r.driverId) && !declared.has(r.driverId)) {
           at(`result includes driver ${r.driverId}, who has no prediction`);
+        }
+      }
+      for (const id of p.result.unpredicted_starters) {
+        if (predicted.has(id) || !started.has(id)) {
+          at(`unpredicted_starters lists driver ${id}, who was predicted or did not start`);
+        }
+      }
+      for (const id of p.result.predicted_non_starters) {
+        if (!predicted.has(id) || started.has(id)) {
+          at(`predicted_non_starters lists driver ${id}, who was not predicted or did start`);
+        }
+      }
+      for (const id of predicted) {
+        if (!started.has(id) && !p.result.predicted_non_starters.includes(id)) {
+          at(`driver ${id} was predicted, did not start, and is not declared as a non-starter`);
         }
       }
       const finishers = p.result.drivers

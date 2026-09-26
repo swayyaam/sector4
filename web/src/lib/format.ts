@@ -49,3 +49,8 @@ export function driverName(d: { forename: string; surname: string }): string {
 export function shortDriverName(d: { surname: string; code: string | null }): string {
   return d.surname;
 }
+
+/** "qualifying order" -> "Qualifying order", for a label that starts a line. */
+export function sentenceStart(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}

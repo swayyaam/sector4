@@ -273,11 +273,14 @@ def main(argv: list[str] | None = None) -> int:
           bool(allent.between(5, 60).all()), str(allent[~allent.between(5, 60)].to_dict()))
     rc = races.groupby("year").size()
     check("Sanity", "season race counts within 6..25", bool(rc.between(6, 25).all()), str(rc[~rc.between(6, 25)].to_dict()))
+    # The expected count comes from the official standings the ground truth
+    # was taken after, so a new race is one reviewed file to update, not two.
+    rounds_2026 = int(gt["2026"]["after_round"])
+    what = f"2026 partial season has {rounds_2026} rounds so far"
     if covers(2026):
-        check("Sanity", "2026 partial season has 14 rounds so far",
-              int(rc.get(2026, 0)) == 14, str(rc.get(2026)))
+        check("Sanity", what, int(rc.get(2026, 0)) == rounds_2026, str(rc.get(2026)))
     else:
-        skip("Sanity", "2026 partial season has 14 rounds so far", "2026 is not in this dataset")
+        skip("Sanity", what, "2026 is not in this dataset")
     check("Sanity", "no negative points", bool((results["points"] >= 0).all()))
     check("Sanity", "grid within 0..40", bool(results["grid"].between(0, 40).all()),
           str(results.loc[~results["grid"].between(0, 40), "grid"].unique()[:8]))

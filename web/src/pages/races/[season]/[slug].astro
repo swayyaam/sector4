@@ -18,7 +18,7 @@ import {
   raceById,
   teamById,
 } from "../../../lib/data";
-import { driverName, percent, position, score } from "../../../lib/format";
+import { driverName, percent, position, score, sentenceStart } from "../../../lib/format";
 import { BASELINE_FOR, SNAPSHOT_BLURB, SNAPSHOT_LABEL } from "../../../lib/snapshots";
 import { formatUtc, isPast } from "../../../lib/time";
 
@@ -58,6 +58,16 @@ const sessions =
       : [];
 
 const actualById = new Map((result?.drivers ?? []).map((d) => [d.driverId, d]));
+
+/** "A", "A and B", "A, B and C", from driver ids. */
+function nameList(ids: number[]): string {
+  const names = ids.map((id) => {
+    const d = drivers.get(id);
+    return d ? driverName(d) : `Driver ${id}`;
+  });
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
 const finalOrder = scoredWith
   ? [...scoredWith.drivers].sort((a, b) => {
       const pa = actualById.get(a.driverId)?.actual_position ?? 99;
@@ -166,7 +176,7 @@ const jsonLd = [
         </div>
         {result.baseline && (
           <div class="rise" style="--i:1">
-            <dt>{result.baseline.name}, same race</dt>
+            <dt>{sentenceStart(result.baseline.name)}, same race</dt>
             <dd class="num">{score(result.baseline.log_loss)}</dd>
           </div>
         )}
@@ -308,6 +318,19 @@ const jsonLd = [
                 </span>
               </p>
             )}
+            {s.result &&
+              (s.result.unpredicted_starters.length > 0 ||
+                s.result.predicted_non_starters.length > 0) && (
+                <p class="notice">
+                  <span class="badge badge-ink">Field change</span>
+                  <span>
+                    {s.result.unpredicted_starters.length > 0 &&
+                      `${nameList(s.result.unpredicted_starters)} started the race without being in this snapshot's field${s.snapshot === "pre_weekend" ? ", which was carried over from the previous race's starters" : ""}. `}
+                    {s.result.predicted_non_starters.length > 0 &&
+                      `${nameList(s.result.predicted_non_starters)} ${s.result.predicted_non_starters.length === 1 ? "was" : "were"} in the field and did not start, so ${s.result.predicted_non_starters.length === 1 ? "was" : "were"} left out when this snapshot was scored, and the other probabilities were renormalised.`}
+                  </span>
+                </p>
+              )}
             {s.revisions.length > 1 && (
               <details class="revisions disclosure">
                 <summary>

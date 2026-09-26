@@ -50,7 +50,10 @@ RACES: dict[int, list[tuple[int, int, str]]] = {
            (5, 1285, "canada"), (6, 1286, "monaco"), (7, 1287, "barcelona-catalunya"),
            (8, 1288, "austria"), (9, 1289, "great-britain"), (10, 1290, "belgium"),
            (11, 1291, "hungary"), (12, 1292, "netherlands"), (13, 1293, "italy"),
-           (14, 1294, "spain")],
+           (14, 1294, "spain"),
+           # From the official result URL, not inferred from the sequence:
+           # /en/results/2026/races/1295/azerbaijan/race-result
+           (15, 1295, "azerbaijan")],
 }
 
 # Pit-lane sentences that name nobody, where a second source establishes who is

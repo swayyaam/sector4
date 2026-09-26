@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import features as F  # noqa: E402
 import revisions as REV  # noqa: E402
-from predict import OUT as PRED_DIR, race_row, upcoming_race  # noqa: E402
+from predict import OUT as PRED_DIR, data_version, race_row, upcoming_race  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "web" / "src" / "data" / "live"
@@ -362,8 +362,15 @@ def main() -> int:
         if entry:
             rp = PRED_DIR / "results" / f"{season}-{rnd:02d}.json"
             drivers = json.loads(rp.read_text())["drivers"] if rp.exists() else []
+            # A field can differ from the race's: pre-weekend carries the last
+            # race's starters forward. Both directions are declared, never
+            # dropped, so the page can say who was scored and who was not.
+            predicted = {int(d["driverId"]) for d in pred["drivers"]}
+            started = {int(d["driverId"]) for d in drivers}
             result = {
                 "scored_at": entry["scored_at"], "drivers": drivers,
+                "unpredicted_starters": sorted(started - predicted),
+                "predicted_non_starters": sorted(predicted - started),
                 "log_loss": entry["model"]["log_loss"], "brier": entry["model"]["brier"],
                 "winner_hit": bool(entry["model"]["winner_hit"] >= 0.5),
                 "podium_hits": int(round(entry["model"]["podium_hits"])),
@@ -406,7 +413,9 @@ def main() -> int:
     latest = max((p for p in done), key=lambda p: (p["season"], p["round"]), default=None)
     ref_keys = ("race_id", "season", "round", "name", "slug", "circuit_id", "starts_at")
     meta = {
-        "data_version": preds[0]["data_version"],
+        # The data this build was made from, which includes every result since
+        # the predictions were written. Each prediction keeps its own version.
+        "data_version": data_version(),
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "is_mock": False,
         "last_completed_race": None,
