@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import features as F  # noqa: E402
 import revisions as REV  # noqa: E402
-from predict import OUT as PRED_DIR, race_row, upcoming_race  # noqa: E402
+from predict import OUT as PRED_DIR, data_version, race_row, upcoming_race  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "web" / "src" / "data" / "live"
@@ -406,7 +406,9 @@ def main() -> int:
     latest = max((p for p in done), key=lambda p: (p["season"], p["round"]), default=None)
     ref_keys = ("race_id", "season", "round", "name", "slug", "circuit_id", "starts_at")
     meta = {
-        "data_version": preds[0]["data_version"],
+        # The data this build was made from, which includes every result since
+        # the predictions were written. Each prediction keeps its own version.
+        "data_version": data_version(),
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "is_mock": False,
         "last_completed_race": None,
