@@ -1,7 +1,7 @@
 {
   "_source": "https://www.formula1.com/en/results/{year}/{drivers|team}",
-  "_retrieved_utc": "2026-09-21",
-  "_note": "2026 is mid-season: standings are after round 14 (Spanish GP, 2026-09-13).",
+  "_retrieved_utc": "2026-09-26",
+  "_note": "2026 is mid-season: standings are after round 15 (Azerbaijan GP, 2026-09-26). Verified before use: the round 14 standings plus the official round 15 race-result points equal these for every driver and team.",
   "2024": {
     "final": true,
     "drivers": [["Max Verstappen",437],["Lando Norris",374],["Charles Leclerc",356],["Oscar Piastri",292],
@@ -26,15 +26,15 @@
   },
   "2026": {
     "final": false,
-    "after_round": 14,
-    "drivers": [["Kimi Antonelli",292],["George Russell",211],["Lewis Hamilton",191],["Lando Norris",186],
-                ["Charles Leclerc",167],["Max Verstappen",145],["Oscar Piastri",120],["Isack Hadjar",71],
-                ["Liam Lawson",59],["Pierre Gasly",41],["Arvid Lindblad",31],["Franco Colapinto",27],
-                ["Oliver Bearman",18],["Gabriel Bortoleto",10],["Nico Hulkenberg",7],["Carlos Sainz",6],
-                ["Alexander Albon",5],["Esteban Ocon",3],["Fernando Alonso",3],["Yuki Tsunoda",1],
+    "after_round": 15,
+    "drivers": [["Kimi Antonelli",302],["George Russell",236],["Lewis Hamilton",199],["Lando Norris",186],
+                ["Charles Leclerc",179],["Max Verstappen",163],["Oscar Piastri",120],["Isack Hadjar",86],
+                ["Liam Lawson",59],["Pierre Gasly",41],["Arvid Lindblad",37],["Franco Colapinto",27],
+                ["Oliver Bearman",20],["Gabriel Bortoleto",10],["Nico Hulkenberg",7],["Esteban Ocon",7],
+                ["Carlos Sainz",7],["Alexander Albon",5],["Fernando Alonso",3],["Yuki Tsunoda",1],
                 ["Lance Stroll",0],["Valtteri Bottas",0],["Sergio Perez",0]],
-    "constructors": [["Mercedes",503],["Ferrari",358],["McLaren",306],["Red Bull",230],["Racing Bulls",77],
-                     ["Alpine",68],["Haas F1 Team",21],["Audi",17],["Williams",11],["Aston Martin",3],
+    "constructors": [["Mercedes",538],["Ferrari",378],["McLaren",306],["Red Bull",263],["Racing Bulls",83],
+                     ["Alpine",68],["Haas F1 Team",27],["Audi",17],["Williams",12],["Aston Martin",3],
                      ["Cadillac",0]]
   }
 }
