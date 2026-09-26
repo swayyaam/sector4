@@ -362,8 +362,15 @@ def main() -> int:
         if entry:
             rp = PRED_DIR / "results" / f"{season}-{rnd:02d}.json"
             drivers = json.loads(rp.read_text())["drivers"] if rp.exists() else []
+            # A field can differ from the race's: pre-weekend carries the last
+            # race's starters forward. Both directions are declared, never
+            # dropped, so the page can say who was scored and who was not.
+            predicted = {int(d["driverId"]) for d in pred["drivers"]}
+            started = {int(d["driverId"]) for d in drivers}
             result = {
                 "scored_at": entry["scored_at"], "drivers": drivers,
+                "unpredicted_starters": sorted(started - predicted),
+                "predicted_non_starters": sorted(predicted - started),
                 "log_loss": entry["model"]["log_loss"], "brier": entry["model"]["brier"],
                 "winner_hit": bool(entry["model"]["winner_hit"] >= 0.5),
                 "podium_hits": int(round(entry["model"]["podium_hits"])),
