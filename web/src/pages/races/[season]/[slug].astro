@@ -98,6 +98,17 @@ const finalOrder = scoredWith
     })
   : [];
 
+// A winner the snapshot never listed still heads the table, with no
+// probabilities beside them: the snapshot gave them none. Otherwise the
+// table would start at P2 with nothing to say who won.
+const winnerId = result?.drivers.find((d) => d.actual_position === 1)?.driverId;
+const unpredictedWinner =
+  winnerId !== undefined && result?.unpredicted_starters.includes(winnerId) ? winnerId : null;
+const tableRows = [
+  ...(unpredictedWinner === null ? [] : [{ driverId: unpredictedWinner, predicted: null }]),
+  ...finalOrder.map((row) => ({ driverId: row.driverId, predicted: row })),
+];
+
 const title = `${race.season} ${race.name} — win and podium probabilities`;
 const description = result
   ? `How Sector 4's ${race.season} ${race.name} prediction turned out: log loss ${logLoss(result.log_loss).toLowerCase()}, ` +
@@ -247,27 +258,33 @@ const jsonLd = [
             </tr>
           </thead>
           <tbody>
-            {finalOrder.map((row, i) => {
-              const d = drivers.get(row.driverId);
-              const t = teams.get(row.team_entity_id);
-              const a = actualById.get(row.driverId);
+            {tableRows.map(({ driverId, predicted: row }, i) => {
+              const d = drivers.get(driverId);
+              const t = row ? teams.get(row.team_entity_id) : undefined;
+              const a = actualById.get(driverId);
               const pos = a?.actual_position ?? null;
-              const delta = pos === null ? null : row.expected_position - pos;
+              const delta = pos === null || !row ? null : row.expected_position - pos;
               return (
                 <tr class="rise" style={`--i:${i}`}>
                   <td class="num dim">{pos === null ? "—" : pos}</td>
                   <th scope="row">
                     <span class="who">
-                      {t && <TeamMarker colour={t.colour_on_light} name={t.name} />}
+                      {t ? (
+                        <TeamMarker colour={t.colour_on_light} name={t.name} />
+                      ) : (
+                        <span class="no-marker" aria-hidden="true" />
+                      )}
                       <span>
-                        {d ? driverName(d) : `Driver ${row.driverId}`}
-                        <span class="team">{t?.short_name ?? "Unknown team"}</span>
+                        {d ? driverName(d) : `Driver ${driverId}`}
+                        <span class="team">
+                          {row ? (t?.short_name ?? "Unknown team") : "Not in this snapshot's field"}
+                        </span>
                       </span>
                     </span>
                   </th>
-                  <td class="n num">{percent(row.p_win)}</td>
-                  <td class="n num">{percent(row.p_podium)}</td>
-                  <td class="n num dim">{position(row.expected_position)}</td>
+                  <td class="n num">{row ? percent(row.p_win) : "—"}</td>
+                  <td class="n num">{row ? percent(row.p_podium) : "—"}</td>
+                  <td class="n num dim">{row ? position(row.expected_position) : "—"}</td>
                   <td class="n num">
                     {delta === null
                       ? "—"
@@ -512,6 +529,12 @@ const jsonLd = [
   .scores {
     margin-bottom: var(--space-xl);
   }
+  /* The no-log-loss notice sits between the figures and the table: close to
+     the figures it explains, and clear of the table. Whether these margins
+     collapse or add, the gap above comes out at --space-md. */
+  .scores + .notice {
+    margin: calc(var(--space-md) - var(--space-xl)) 0 var(--space-xl);
+  }
   .wide {
     min-width: 680px;
   }
@@ -519,6 +542,11 @@ const jsonLd = [
     display: flex;
     align-items: center;
     gap: var(--space-sm);
+  }
+  /* Keeps a driver with no team in this snapshot aligned with the rest. */
+  .no-marker {
+    width: 14px;
+    flex: none;
   }
   .team {
     display: block;
