@@ -18,7 +18,8 @@ import {
   raceById,
   teamById,
 } from "../../../lib/data";
-import { driverName, percent, position, score, sentenceStart } from "../../../lib/format";
+import { driverName, logLoss, percent, position, score, sentenceStart } from "../../../lib/format";
+import type { Prediction } from "../../../lib/schema";
 import { BASELINE_FOR, SNAPSHOT_BLURB, SNAPSHOT_LABEL } from "../../../lib/snapshots";
 import { formatUtc, isPast } from "../../../lib/time";
 
@@ -68,6 +69,27 @@ function nameList(ids: number[]): string {
   if (names.length <= 1) return names[0] ?? "";
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
+
+/**
+ * Why a snapshot has no log loss on this race, as a sentence, or "" when it
+ * has one. Built here as one string so no line break can put a space before
+ * the punctuation.
+ */
+function noLogLoss(r: NonNullable<Prediction["result"]>): string {
+  if (r.log_loss_undefined === null) return "";
+  const winner = r.drivers.find((d) => d.actual_position === 1)?.driverId;
+  const who = winner === undefined ? "The winner" : nameList([winner]);
+  const how =
+    r.log_loss_undefined === "winner_not_in_field"
+      ? `${who} won without being in this snapshot's field`
+      : `${who} won with a win probability published as 0.0 to six decimal places`;
+  return (
+    `${how}, so the snapshot gave the winner no probability and has no log loss. It is left ` +
+    "empty rather than filled with an arbitrary number. The winner counts as missed, the Brier " +
+    "score charges the full miss, and the track record's mean log loss leaves this race out " +
+    "and says so."
+  );
+}
 const finalOrder = scoredWith
   ? [...scoredWith.drivers].sort((a, b) => {
       const pa = actualById.get(a.driverId)?.actual_position ?? 99;
@@ -78,7 +100,7 @@ const finalOrder = scoredWith
 
 const title = `${race.season} ${race.name} — win and podium probabilities`;
 const description = result
-  ? `How Sector 4's ${race.season} ${race.name} prediction turned out: log loss ${score(result.log_loss)}, ` +
+  ? `How Sector 4's ${race.season} ${race.name} prediction turned out: log loss ${logLoss(result.log_loss).toLowerCase()}, ` +
     `${result.podium_hits} of 3 podium places, winner ${result.winner_hit ? "called" : "missed"}.`
   : `Win, podium, top-ten and DNF probabilities for all ${shown.drivers.length} drivers at the ` +
     `${race.season} ${race.name}, with the factors behind each.`;
@@ -172,7 +194,7 @@ const jsonLd = [
       <dl class="figures scores">
         <div class="rise" style="--i:0">
           <dt>Log loss</dt>
-          <dd class="num">{score(result.log_loss)}</dd>
+          <dd class="num">{logLoss(result.log_loss)}</dd>
         </div>
         {result.baseline && (
           <div class="rise" style="--i:1">
@@ -193,6 +215,12 @@ const jsonLd = [
           <dd class="num">{result.podium_hits} of 3</dd>
         </div>
       </dl>
+      {result.log_loss_undefined && (
+        <p class="notice">
+          <span class="badge badge-ink">No log loss</span>
+          <span>{noLogLoss(result)}</span>
+        </p>
+      )}
 
       <div class="scroller">
         <table class="table wide">
@@ -331,6 +359,12 @@ const jsonLd = [
                   </span>
                 </p>
               )}
+            {s.result?.log_loss_undefined && s !== scoredWith && (
+              <p class="notice">
+                <span class="badge badge-ink">No log loss</span>
+                <span>{noLogLoss(s.result)}</span>
+              </p>
+            )}
             {s.revisions.length > 1 && (
               <details class="revisions disclosure">
                 <summary>

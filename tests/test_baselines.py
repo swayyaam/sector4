@@ -105,6 +105,17 @@ def test_log_loss_stays_finite_when_a_baseline_says_zero():
     assert math.isfinite(s.as_dict("x")["log_loss"])
 
 
+def test_brier_charges_the_full_miss_on_a_winner_outside_the_field():
+    """The live scorer can meet a winner the snapshot never listed. Summing
+    over the field alone dropped the winner's term and flattered it by 1."""
+    p = pd.Series({1: 0.5, 2: 0.3, 3: 0.2})
+    inside, outside = B.Score(), B.Score()
+    inside.add(p, 1, {1, 2, 3}, 1)
+    outside.add(p, 9, {9, 1, 2}, 1)
+    assert inside.brier == pytest.approx(0.25 + 0.09 + 0.04)
+    assert outside.brier == pytest.approx(0.25 + 0.09 + 0.04 + 1.0)
+
+
 # ------------------------------------------------------------- the baselines
 def test_position_prior_learns_only_from_what_it_has_seen():
     prior = B.PositionPrior("grid_pos")

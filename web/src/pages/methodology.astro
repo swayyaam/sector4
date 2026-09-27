@@ -318,11 +318,6 @@ const contents = [
         and the result is never recomputed. A revision published after its deadline is listed on the
         race page and never scored. Four numbers per race:
       </p>
-      <p>
-        A driver who was predicted but did not start is left out and the other probabilities are
-        renormalised. The pre-weekend field is the previous race's starters, so a driver can also
-        start without having been predicted. The race page says so whenever either happens.
-      </p>
       <dl class="defs">
         <div>
           <dt>Log loss</dt>
@@ -356,6 +351,19 @@ const contents = [
           </dd>
         </div>
       </dl>
+      <p>
+        A driver who was predicted but did not start is left out and the other probabilities are
+        renormalised. The pre-weekend field is the previous race's starters, so a driver can also
+        start without having been predicted. The race page says so whenever either happens.
+      </p>
+      <p>
+        If the winner is one of those drivers, or was published with a win probability of 0.0 at six
+        decimal places, the snapshot gave the winner no probability and its log loss is not defined.
+        It is left empty rather than filled with a stand-in, which would measure the stand-in and
+        not the prediction. Everything else still counts: the winner is missed, the Brier score
+        charges the full miss, and the race counts as one where the model did not beat its baseline.
+        The track record's mean log loss leaves such a race out and says how many it left out.
+      </p>
       <p>
         A log loss means nothing without a reference, so{" "}
         <a href="/track-record/">the track record</a> prints two: what a uniform random pick over

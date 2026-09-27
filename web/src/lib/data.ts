@@ -147,6 +147,28 @@ export function scoredPredictions(all: Prediction[]): Prediction[] {
     .sort((a, b) => b.season - a.season || b.round - a.round);
 }
 
+/**
+ * Mean log loss over the scored races that have one, and the baseline's mean
+ * over the same races, so the two are always compared like for like.
+ *
+ * A snapshot that gave the winner no probability has no log loss. It is left
+ * out of both means and counted in `undefined`, for the page to state, rather
+ * than averaged in as a floor. It still counts as a race the model did not
+ * beat the baseline.
+ */
+export function logLossSummary(rows: Prediction[]) {
+  const defined = rows.filter((p) => p.result!.log_loss !== null);
+  const paired = defined.filter((p) => p.result!.baseline !== null);
+  const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+  return {
+    mean: mean(defined.map((p) => p.result!.log_loss!)),
+    baselineMean: mean(paired.map((p) => p.result!.baseline!.log_loss)),
+    undefined: rows.length - defined.length,
+    withBaseline: rows.filter((p) => p.result!.baseline !== null).length,
+    modelBetter: paired.filter((p) => p.result!.log_loss! < p.result!.baseline!.log_loss).length,
+  };
+}
+
 export function driversByWinProbability(p: Prediction) {
   return [...p.drivers].sort((a, b) => b.p_win - a.p_win);
 }

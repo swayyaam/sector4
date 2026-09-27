@@ -214,6 +214,10 @@ export const driverPredictionSchema = z.object({
   top_factors: z.array(topFactorSchema).max(6),
 });
 
+/** Why a snapshot can have no log loss on a race, as the scorer records it. */
+export const LOG_LOSS_UNDEFINED = ["winner_not_in_field", "winner_at_zero"] as const;
+export type LogLossUndefined = (typeof LOG_LOSS_UNDEFINED)[number];
+
 /**
  * What the qualifying-order baseline scored on the same race.
  *
@@ -249,7 +253,13 @@ export const raceResultSchema = z.object({
    */
   unpredicted_starters: z.array(z.int().positive()).default([]),
   predicted_non_starters: z.array(z.int().positive()).default([]),
-  log_loss: z.number().min(0),
+  /**
+   * Null when the snapshot gave the winner no probability, with the reason
+   * beside it. A floor would turn that into a number about the floor, so it
+   * is left empty, and the race still counts as a missed winner.
+   */
+  log_loss: z.number().min(0).nullable(),
+  log_loss_undefined: z.enum(LOG_LOSS_UNDEFINED).nullable().default(null),
   brier: z.number().min(0).max(2),
   winner_hit: z.boolean(),
   podium_hits: z.int().min(0).max(3),
@@ -383,6 +393,30 @@ export const predictionSchema = z
         .filter((x): x is number => x !== null);
       if (new Set(finishers).size !== finishers.length) {
         at("two drivers share a finishing position");
+      }
+      // A log loss is withheld only for the reason the published numbers give,
+      // so a floor value cannot pass for a score and a real score cannot be
+      // hidden.
+      const winner = p.result.drivers.find((r) => r.actual_position === 1)?.driverId;
+      const given = p.drivers.find((d) => d.driverId === winner)?.p_win;
+      const expected =
+        winner === undefined
+          ? null
+          : given === undefined
+            ? "winner_not_in_field"
+            : given === 0
+              ? "winner_at_zero"
+              : null;
+      if ((p.result.log_loss === null) !== (p.result.log_loss_undefined !== null)) {
+        at("log_loss must be null exactly when log_loss_undefined gives the reason");
+      }
+      if (p.result.log_loss_undefined !== expected) {
+        at(
+          `log_loss_undefined is ${p.result.log_loss_undefined}, but the prediction says ${expected}`,
+        );
+      }
+      if (p.result.log_loss_undefined !== null && p.result.winner_hit) {
+        at("a snapshot that gave the winner no probability cannot have called the winner");
       }
       if (p.result.scored_at < p.generated_at) {
         at("result was scored before the prediction was generated");

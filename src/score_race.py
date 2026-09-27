@@ -89,13 +89,40 @@ def baseline_probabilities(race_id: int) -> dict[str, dict]:
     return out
 
 
-def score_one(p: pd.Series, winner: int, podium: set[int], race_id: int) -> dict:
+# Why a snapshot's log loss can be undefined. It is -log of the probability
+# the snapshot gave the winner, so a winner given nothing has no log loss. The
+# baselines' floor would turn that into a number (20.72 at 1e-9) that measures
+# the floor rather than the prediction, so it is left null and the reason kept.
+WINNER_NOT_IN_FIELD = "winner_not_in_field"
+WINNER_AT_ZERO = "winner_at_zero"
+
+
+def log_loss_undefined(p: pd.Series, winner: int) -> str | None:
+    """Why the snapshot has no log loss on this race, or None when it has one."""
+    if winner not in p.index:
+        return WINNER_NOT_IN_FIELD
+    if float(p[winner]) <= 0.0:
+        # p_win is published to six places, so a driver below 5e-7 is a 0.0.
+        return WINNER_AT_ZERO
+    return None
+
+
+def score_one(p: pd.Series, winner: int, podium: set[int],
+              race_id: int) -> tuple[dict, str | None]:
+    """The snapshot's scores, and why its log loss is undefined if it is.
+
+    Only the log loss is withheld. The winner was still missed, the podium
+    places still count, and the Brier score is still defined: it charges the
+    full miss on the winner.
+    """
     s = B.Score()
     s.add(p, winner, podium, race_id)
     r = s._rows[0]
-    return {"log_loss": round(r["log_loss"], 6), "brier": round(r["brier"], 6),
+    undefined = log_loss_undefined(p, winner)
+    return {"log_loss": None if undefined else round(r["log_loss"], 6),
+            "brier": round(r["brier"], 6),
             "winner_hit": round(float(r["winner_hit"]), 4),
-            "podium_hits": round(float(r["podium_hits"]), 4)}
+            "podium_hits": round(float(r["podium_hits"]), 4)}, undefined
 
 
 def _display(path: Path) -> str:
@@ -156,7 +183,7 @@ def main() -> int:
         # rest renormalised: scoring a driver who was never on the grid would
         # punish the model for the entry list rather than for the prediction.
         p = p[p.index.isin(rows["driverId"].astype(int))]
-        model_score = score_one(p, winner, podium, race_id)
+        model_score, undefined = score_one(p, winner, podium, race_id)
 
         entry = {
             "season": args.season, "round": args.round, "race_id": race_id,
@@ -170,6 +197,8 @@ def main() -> int:
             "revisions_published": len(published),
             "ignored_late_revisions": [lp.name for _, lp, _ in late],
             "model": model_score,
+            # Set only when model.log_loss is null, and never filled in later.
+            "log_loss_undefined": undefined,
             "baseline": {
                 "name": BASELINE_FOR[snapshot],
                 "log_loss": round(float(bars[BASELINE_FOR[snapshot]]["log_loss"]), 6),
@@ -207,7 +236,9 @@ def main() -> int:
         after = file_digest(path)
         if before != after:
             raise SystemExit(f"FATAL: {path} changed during scoring. Predictions are immutable.")
-        print(f"  {snapshot}: model log loss {model_score['log_loss']:.4f}  "
+        mine = (f"undefined ({undefined})" if undefined
+                else f"{model_score['log_loss']:.4f}")
+        print(f"  {snapshot}: model log loss {mine}  "
               f"vs {entry['baseline']['name']} {entry['baseline']['log_loss']:.4f}")
 
     if written:

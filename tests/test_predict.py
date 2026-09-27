@@ -8,11 +8,13 @@ and to refuse to score the same race twice.
 from __future__ import annotations
 
 import json
+import math
 import subprocess
 import sys
 import warnings
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 warnings.filterwarnings("ignore")
@@ -143,6 +145,7 @@ def test_the_ledger_records_the_baseline_beside_the_model(prediction, monkeypatc
     assert "championship order" in entry["all_baselines"]
     assert entry["prediction_sha256"]
     assert entry["predicted_at"] < entry["scored_at"], "scored before it was predicted"
+    assert entry["log_loss_undefined"] is None, "R14's winner was in the field"
 
 
 @needs_data
@@ -237,3 +240,66 @@ def test_revising_after_the_deadline_is_refused(prediction, monkeypatch):
     with pytest.raises(SystemExit, match="deadline"):
         P.main()
     assert not P.path_for(2026, 14, "post_qualifying", 2).exists()
+
+
+# -------------------------------------------- a winner the snapshot gave nothing
+def test_a_winner_in_the_field_has_a_log_loss():
+    import score_race as S
+
+    scores, undefined = S.score_one(pd.Series({1: 0.5, 2: 0.3, 3: 0.2}), 2, {1, 2, 3}, 1)
+    assert undefined is None
+    assert scores["log_loss"] == pytest.approx(-math.log(0.3), abs=1e-6)
+
+
+def test_a_winner_outside_the_field_has_no_log_loss():
+    """The floor would have published 20.72, a number about the floor."""
+    import score_race as S
+
+    scores, undefined = S.score_one(pd.Series({1: 0.5, 2: 0.3, 3: 0.2}), 9, {9, 1, 2}, 1)
+    assert undefined == S.WINNER_NOT_IN_FIELD
+    assert scores["log_loss"] is None, "a log loss was filled in for a winner given nothing"
+    # Everything else is still defined, and still counts against the snapshot.
+    assert scores["winner_hit"] == 0
+    assert scores["podium_hits"] == 2
+    assert scores["brier"] == pytest.approx(0.25 + 0.09 + 0.04 + 1.0, abs=1e-6)
+
+
+def test_a_winner_published_at_zero_has_no_log_loss():
+    """p_win is published to six places, so a long shot can appear as 0.0."""
+    import score_race as S
+
+    scores, undefined = S.score_one(pd.Series({1: 0.6, 2: 0.4, 3: 0.0}), 3, {1, 2, 3}, 1)
+    assert undefined == S.WINNER_AT_ZERO
+    assert scores["log_loss"] is None
+    assert scores["brier"] == pytest.approx(0.36 + 0.16 + 1.0, abs=1e-6)
+
+
+@needs_data
+def test_the_ledger_records_why_a_log_loss_is_undefined(tmp_path, monkeypatch, capsys):
+    """R14's post-qualifying prediction with its winner removed, as a carried-over
+    field would have it. The entry is written, with a null log loss and the reason."""
+    import predict as P
+    import score_race as S
+
+    _, rows = S.actual(2026, 14)
+    winner = int(rows.loc[rows["positionText"].astype(str) == "1", "driverId"].iloc[0])
+    pred = P.build(2026, 14, "post_qualifying")
+    pred["generated_at"] = ON_TIME
+    pred["drivers"] = [d for d in pred["drivers"] if d["driverId"] != winner]
+    monkeypatch.setattr(P, "OUT", tmp_path)
+    monkeypatch.setattr(S, "OUT", tmp_path)
+    monkeypatch.setattr(S, "LEDGER", tmp_path / "track_record.json")
+    monkeypatch.setattr(S, "RESULTS_DIR", tmp_path / "results")
+    path = P.path_for(2026, 14, "post_qualifying")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(pred, indent=2))
+
+    monkeypatch.setattr(sys, "argv", ["score_race.py", "--season", "2026", "--round", "14"])
+    assert S.main() == 0
+    assert f"undefined ({S.WINNER_NOT_IN_FIELD})" in capsys.readouterr().out
+    entry = json.loads((tmp_path / "track_record.json").read_text())["races"][0]
+    assert entry["model"]["log_loss"] is None
+    assert entry["log_loss_undefined"] == S.WINNER_NOT_IN_FIELD
+    assert entry["model"]["winner_hit"] == 0
+    assert entry["model"]["brier"] > 1.0
+    assert entry["baseline"]["log_loss"] is not None, "the baseline saw the whole field"

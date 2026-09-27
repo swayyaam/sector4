@@ -372,6 +372,9 @@ def main() -> int:
                 "unpredicted_starters": sorted(started - predicted),
                 "predicted_non_starters": sorted(predicted - started),
                 "log_loss": entry["model"]["log_loss"], "brier": entry["model"]["brier"],
+                # Ledger entries written before the rule existed have no key;
+                # every one of them has a defined log loss.
+                "log_loss_undefined": entry.get("log_loss_undefined"),
                 "winner_hit": bool(entry["model"]["winner_hit"] >= 0.5),
                 "podium_hits": int(round(entry["model"]["podium_hits"])),
                 "baseline": {"name": entry["baseline"]["name"],

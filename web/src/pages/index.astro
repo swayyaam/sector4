@@ -10,12 +10,13 @@ import {
   driverById,
   driversByWinProbability,
   loadDataset,
+  logLossSummary,
   preferredSnapshot,
   raceById,
   scoredPredictions,
   teamById,
 } from "../lib/data";
-import { driverName, percent, score, sentenceStart } from "../lib/format";
+import { driverName, logLoss, percent, score, sentenceStart } from "../lib/format";
 import { SNAPSHOT_LABEL, SERIES, SCORED_SUMMARY_MINIMUM } from "../lib/snapshots";
 
 const { reference, predictions, meta } = loadDataset();
@@ -47,12 +48,19 @@ const actualById = new Map((last?.result?.drivers ?? []).map((d) => [d.driverId,
 
 const series = SERIES.map((snapshot) => {
   const rows = scored.filter((p) => p.snapshot === snapshot);
+  const ll = logLossSummary(rows);
   return {
     snapshot,
     n: rows.length,
     wins: rows.filter((p) => p.result!.winner_hit).length,
     podiums: rows.reduce((a, p) => a + p.result!.podium_hits, 0),
-    logLoss: rows.length ? rows.reduce((a, p) => a + p.result!.log_loss, 0) / rows.length : null,
+    logLoss: ll.mean,
+    // Races with no defined log loss: left out of the average, and said so.
+    leftOut:
+      ll.undefined === 0
+        ? ""
+        : `Leaves out ${ll.undefined === 1 ? "one race" : `${ll.undefined} races`} with no ` +
+          "defined log loss, where the snapshot gave the winner no probability.",
   };
 }).filter((s) => s.n > 0);
 const summarised = series.filter((s) => s.n >= SCORED_SUMMARY_MINIMUM);
@@ -245,7 +253,7 @@ const jsonLd = [
           <dl class="figures">
             <div>
               <dt>Log loss</dt>
-              <dd class="num">{score(last.result!.log_loss)}</dd>
+              <dd class="num">{logLoss(last.result!.log_loss)}</dd>
             </div>
             {last.result!.baseline && (
               <div>
@@ -294,9 +302,10 @@ const jsonLd = [
                 </div>
                 <div>
                   <dt>Average log loss</dt>
-                  <dd class="num">{score(s.logLoss!)}</dd>
+                  <dd class="num">{s.logLoss === null ? "—" : score(s.logLoss)}</dd>
                 </div>
               </dl>
+              {s.leftOut && <p class="body-sm muted">{s.leftOut}</p>}
             </div>
           ))
         )}
