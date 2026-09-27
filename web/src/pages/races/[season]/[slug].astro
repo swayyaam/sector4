@@ -90,24 +90,34 @@ function noLogLoss(r: NonNullable<Prediction["result"]>): string {
     "and says so."
   );
 }
-const finalOrder = scoredWith
-  ? [...scoredWith.drivers].sort((a, b) => {
-      const pa = actualById.get(a.driverId)?.actual_position ?? 99;
-      const pb = actualById.get(b.driverId)?.actual_position ?? 99;
-      return pa - pb || b.p_win - a.p_win;
+// Every starter in finishing order, and every predicted driver. A driver the
+// snapshot never listed, such as one returning to a pre-weekend field carried
+// over from the previous race, gets a row with no probabilities beside it:
+// the snapshot gave them none. Leaving them out would leave gaps in the
+// order, or start the table at P2.
+type TableRow = { driverId: number; predicted: Prediction["drivers"][number] | null };
+const tableRows: TableRow[] = scoredWith
+  ? [
+      ...scoredWith.drivers.map((row) => ({ driverId: row.driverId, predicted: row })),
+      ...(result?.unpredicted_starters ?? []).map((driverId) => ({ driverId, predicted: null })),
+    ].sort((a, b) => {
+      // Unclassified starters after the classified ones, and drivers who did
+      // not start after everyone who did.
+      const at = (id: number) =>
+        actualById.get(id)?.actual_position ?? (actualById.has(id) ? 99 : 100);
+      const pa = at(a.driverId);
+      const pb = at(b.driverId);
+      const wa = a.predicted?.p_win ?? -1;
+      const wb = b.predicted?.p_win ?? -1;
+      return pa - pb || wb - wa || a.driverId - b.driverId;
     })
   : [];
-
-// A winner the snapshot never listed still heads the table, with no
-// probabilities beside them: the snapshot gave them none. Otherwise the
-// table would start at P2 with nothing to say who won.
-const winnerId = result?.drivers.find((d) => d.actual_position === 1)?.driverId;
-const unpredictedWinner =
-  winnerId !== undefined && result?.unpredicted_starters.includes(winnerId) ? winnerId : null;
-const tableRows = [
-  ...(unpredictedWinner === null ? [] : [{ driverId: unpredictedWinner, predicted: null }]),
-  ...finalOrder.map((row) => ({ driverId: row.driverId, predicted: row })),
-];
+const tableNote =
+  "Beat expected by is expected position minus actual: positive means the driver finished " +
+  "ahead of the prediction. A driver who did not finish has no position, so no figure." +
+  (result && result.unpredicted_starters.length > 0
+    ? " A driver not in this snapshot's field was given no probabilities, so has none to show."
+    : "");
 
 const title = `${race.season} ${race.name} — win and podium probabilities`;
 const description = result
@@ -290,17 +300,19 @@ const jsonLd = [
                       ? "—"
                       : `${delta > 0 ? "+" : delta < 0 ? "−" : ""}${position(Math.abs(delta))}`}
                   </td>
-                  <td class="dim">{a?.status ?? "Unknown"}</td>
+                  <td class="dim">
+                    {a?.status ??
+                      (result?.predicted_non_starters.includes(driverId)
+                        ? "Did not start"
+                        : "Unknown")}
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-      <p class="note">
-        Beat expected by is expected position minus actual: positive means the driver finished ahead
-        of the prediction. A driver who did not finish has no position, so no figure.
-      </p>
+      <p class="note">{tableNote}</p>
     </section>
   )}
 
