@@ -20,7 +20,16 @@ import {
 } from "../../../lib/data";
 import { chanceInWords, driverName, logLoss, percent, position, score } from "../../../lib/format";
 import type { Prediction } from "../../../lib/schema";
+import { FACTOR_NOTE, describeModel } from "../../../lib/models";
 import { BASELINE_FOR, SNAPSHOT_BLURB, SNAPSHOT_LABEL } from "../../../lib/snapshots";
+
+/** What a before-practice prediction used, from the model that made it. */
+function earlyCall(p: Prediction): string {
+  return (
+    `Qualifying and practice have not happened yet, so this prediction uses ` +
+    `${describeModel(p.model_version, p.snapshot)}. It is weaker than the prediction after qualifying.`
+  );
+}
 
 /** The favourite in one plain sentence: who, and how often they would win. */
 function favouriteLine(rows: { driverId: number; p_win: number }[], name: (id: number) => string) {
@@ -399,10 +408,7 @@ const jsonLd = [
               <p class="notice">
                 <span class="badge badge-ink">Early call</span>
                 <span>
-                  Qualifying and practice have not happened yet, so this prediction only uses the
-                  championship standings: each driver's points, and their share of their team's
-                  points. It is weaker than the prediction after qualifying. The{" "}
-                  <a href="/methodology/">methodology page</a> explains both.
+                  {earlyCall(s)} The <a href="/methodology/">methodology page</a> explains both.
                 </span>
               </p>
             )}
@@ -479,6 +485,9 @@ const jsonLd = [
                 How much each input pushed the driver's win chance up or down. These are relative
                 weights, not lap times.
               </p>
+              {FACTOR_NOTE[s.model_version] && (
+                <p class="muted body-sm">{FACTOR_NOTE[s.model_version]}</p>
+              )}
             </div>
             <ul class="factors">
               {rows.map((r, i) => {

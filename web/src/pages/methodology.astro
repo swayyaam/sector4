@@ -49,9 +49,10 @@ const contents = [
     <div class="prose">
       <ul>
         <li>
-          <strong>Two predictions per race.</strong> One before practice, using only the
-          championship standings. One after qualifying, using where each driver qualified, their
-          practice pace, their championship points and their share of their team's points.
+          <strong>Two predictions per race.</strong> One before practice, using each driver's and
+          team's recent form, the championship standings and recent qualifying. One after
+          qualifying, using where each driver qualified, their practice pace, their championship
+          points and their share of their team's points.
         </li>
         <li>
           <strong>Chances, not picks.</strong> A 30% chance to win means the driver would win about
@@ -64,10 +65,10 @@ const contents = [
           rule that knew the same things.
         </li>
         <li>
-          <strong>Honest about the limits.</strong> Tested on this season's first fourteen races,
-          the model did not do clearly better than the simple rule of going by qualifying position.
-          What it does well is say how likely things are: when it says 20%, that happens about one
-          time in five.
+          <strong>Honest about the limits.</strong> Tested on this season, neither prediction has
+          done clearly better than its simple rule: going by qualifying position after qualifying,
+          and by the championship order before practice. What the after-qualifying model does well
+          is say how likely things are: when it says 20%, that happens about one time in five.
         </li>
         <li>
           <strong>Not betting advice.</strong> Nothing here has been tested against bookmakers'
@@ -90,10 +91,20 @@ const contents = [
         sixteenth.
       </p>
       <p>
-        That is the after-qualifying model. Before practice, neither qualifying nor practice has
-        happened, so the before-practice prediction uses only the two inputs that exist:
-        championship points and share of team points. It is a weaker model, not a different view of
-        the same one.
+        That is the after-qualifying model. The before-practice prediction has its own model, chosen
+        separately: the same kind of logistic regression, with thirteen inputs that all exist before
+        a weekend starts. They are each driver's and each team's recent finishes, points and
+        retirements, their championship standings, and their average qualifying position over their
+        last three races. It is a weaker model than the one after qualifying, because it cannot see
+        the weekend.
+      </p>
+      <p>
+        It replaced an earlier before-practice model that simply reused two of the after-qualifying
+        inputs, championship points and share of team points. Tested properly, that earlier model
+        did worse than the simple rule of championship order, both over 2019–2025 and this season.
+        The new one beats the earlier model clearly and beat the rule over 2019–2025, but this
+        season it has not done better than the rule. Predictions the earlier model made stay on the
+        site as they were published, and each race page says which model made each prediction.
       </p>
       <p>
         Four inputs is not a simplification made for the sake of the explanation. Larger versions
@@ -279,9 +290,9 @@ const contents = [
         <div>
           <dt>Before practice</dt>
           <dd>
-            Published before any car runs. It uses two inputs, championship points and share of team
-            points, and knows nothing about qualifying or practice. Compared with the simple rule of
-            championship order.
+            Published before any car runs, so it knows nothing from this weekend. It uses recent
+            form, the championship standings and recent qualifying, all from earlier races. Compared
+            with the simple rule of championship order.
           </dd>
         </div>
         <div>
