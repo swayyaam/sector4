@@ -1211,3 +1211,94 @@ predictions: U2 before practice, and U4 after practice.
 - **Per-prediction status.** Each prediction now says which of its chances
   passed a test, because the three predictions differ.
 - **Older predictions** keep their simulated podium and say so.
+
+---
+
+## 14. Pit stops
+
+How many times will a driver stop? This is the first prediction about the
+race rather than the result. The data is Ergast and Jolpica's pit stop
+table, which can be published with credit, so it needs no FastF1 data.
+
+### Data check — before any model was run
+
+- **Coverage.** Every race from 2011 to 2026 has pit stops, except one 2021
+  race with no racing laps. Before 2011 there are none.
+- **Official stops only.** Ergast counts a red-flag hold in the pit lane as a
+  stop; the official count does not. `counts_as_official_stop` marks the
+  difference (DATA_REPORT.md #17). 539 holds are excluded.
+- **Finishers only.** A retirement cuts a car's stop count short, so the
+  count is only defined for a classified finisher. A prediction is "if they
+  finish".
+- **Classes:** one stop or none, two, three or more. Zero stops happens only
+  in red-flag races where tyres were changed under the flag: 49 of 5,718
+  finishers since 2011, for example ten at Monaco 2024 and ten at Italy 2026.
+- **The mix moves a lot between seasons, with the tyres and the rules.**
+
+  | Season | ≤1 | 2 | 3+ |
+  |---|---:|---:|---:|
+  | 2016 | 21% | 48% | 31% |
+  | 2018 | 64% | 30% | 6% |
+  | 2023 | 35% | 41% | 24% |
+  | 2025 | 48% | 38% | 14% |
+  | 2026 | 43% | 39% | 18% |
+
+### Protocol — fixed before any result was seen
+
+**Target.** Each classified finisher's official stop count, in three classes.
+
+**Two information levels.**
+- **Before qualifying.** This serves the before-practice and after-practice
+  predictions. Nothing in practice measures pit strategy, so practice adds
+  no input.
+- **After qualifying.**
+
+**Inputs.** All are computed only from races strictly before the one
+predicted, except the position, which is known at the snapshot.
+- **Circuit history:** the class shares among finishers at this circuit's
+  last three earlier runnings since 2011.
+- **This season so far:** the class shares among finishers in this season's
+  earlier races.
+- **Team so far:** the team's mean official stops per finisher in this
+  season's earlier races.
+- **Position:** the championship position entering the race before
+  qualifying; the qualifying position after it.
+
+**Candidates.** All use a multinomial logistic regression (C = 0.5, median
+imputation, standardisation fitted per fold), walk-forward, on rows from
+2014. That leaves 2011–2013 to supply circuit history.
+
+| Id | Inputs |
+|---|---|
+| W1 | circuit history (3) |
+| W2 | circuit history + this season so far (6) |
+| W3 | W2 + position (7) |
+| W4 | W3 + team so far (8) |
+
+**Two rules, add-one smoothed:**
+- **Circuit rule:** the class shares at this circuit's last three runnings.
+  A new circuit falls back to this season so far.
+- **Season rule:** the class shares in this season's earlier races. A
+  season's first race falls back to last season.
+
+The site's bar is whichever rule scores better on 2019–2025.
+
+**Metrics.**
+- Multiclass log loss per finisher, averaged per race.
+- Multiclass Brier score.
+- ECE on the one-stop-or-none class.
+- Paired race bootstrap against the bar, 95%.
+
+**Selection, per information level.** The candidate with the lowest
+2019–2025 log loss is selected. There is no tie-break. If its ECE is more
+than twice the bar's, stop and report instead of freezing.
+
+**Holdout: 2026, scored once.**
+
+**What the result allows.** A level's selected candidate may be published,
+as each driver's chance of one, two or three-plus stops if they finish, only
+if:
+- it is significantly better than the bar on 2019–2025; and
+- it is no worse than the bar on 2026.
+
+Shipping is a separate decision, made after review.
