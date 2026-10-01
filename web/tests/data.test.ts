@@ -363,6 +363,12 @@ describe("bad data fails the build", () => {
     expect(() => parseOrThrow(predictionSchema, p, "test")).not.toThrow();
   });
 
+  it("rejects a modelled podium chance on only some drivers", () => {
+    const p = good();
+    p.drivers[0].p_podium_model = 0.5;
+    expect(() => parseOrThrow(predictionSchema, p, "test")).toThrow(/all or none/);
+  });
+
   it("rejects a points chance on only some drivers", () => {
     const p = good();
     p.drivers[0].p_points = 0.5;

@@ -14,7 +14,7 @@
  */
 import ProbabilityBar from "./ProbabilityBar.astro";
 import TeamMarker from "./TeamMarker.astro";
-import { driverName, percent, position } from "../../lib/format";
+import { driverName, percent, position, shownPodium } from "../../lib/format";
 import type { Driver, DriverPrediction, Team } from "../../lib/schema";
 
 interface Props {
@@ -81,7 +81,7 @@ const hasPoints = rows.every((r) => r.p_points !== undefined);
             <ProbabilityBar value={r.p_win} columnMax={maxWin} index={i} />
           </td>
           <td class="n num" data-label="Podium">
-            {percent(r.p_podium)}
+            {percent(shownPodium(r))}
           </td>
           {hasPoints && (
             <td class="n num" data-label="Points">

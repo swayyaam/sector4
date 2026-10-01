@@ -215,6 +215,13 @@ export const driverPredictionSchema = z.object({
    * not agree with the simulated podium and finishing order.
    */
   p_points: probability.optional(),
+  /**
+   * The podium chance from its own model (MODEL_REPORT §13), where one passed
+   * its test: before and after practice. Shown in place of the simulated
+   * p_podium, which stays in the file. Absent after qualifying and on older
+   * predictions.
+   */
+  p_podium_model: probability.optional(),
   expected_position: z.number().min(1).max(30),
   position_distribution: z.array(probability).min(1).max(30),
   top_factors: z.array(topFactorSchema).max(6),
@@ -354,6 +361,10 @@ export const predictionSchema = z
     const withPoints = p.drivers.filter((d) => d.p_points !== undefined).length;
     if (withPoints !== 0 && withPoints !== n) {
       at(`${withPoints} of ${n} drivers have a points chance; it is all or none`);
+    }
+    const withPodium = p.drivers.filter((d) => d.p_podium_model !== undefined).length;
+    if (withPodium !== 0 && withPodium !== n) {
+      at(`${withPodium} of ${n} drivers have a modelled podium chance; it is all or none`);
     }
 
     // Exactly one driver wins, three finish on the podium, ten in the top ten.
