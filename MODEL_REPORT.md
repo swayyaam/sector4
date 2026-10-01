@@ -1336,3 +1336,42 @@ guess over the three classes would score ln 3 = **1.0986**.
 tripped: ECE 0.0566 against the bar's 0.1020.
 
 This entry was committed before the holdout was run.
+
+### Holdout — 2026, scored once
+
+Run with `python src/pit_stops.py holdout` after the freeze was committed.
+It covered 15 races and 264 finishers.
+
+| | Log loss | ECE (≤1 stop) | vs circuit rule |
+|---|---:|---:|---|
+| *circuit rule, the bar* | *1.0641* | 0.1819 | — |
+| *season rule* | *1.1430* | — | — |
+| W1, both levels | 0.9889 | **0.1967** | −0.0752 [−0.1978, +0.0324] |
+
+**Verdict under the protocol: passes.** W1 was significantly better than the
+bar on 2019–2025, and is no worse on 2026.
+
+**What the verdict hides.** On 2026 its calibration error is 0.20: a stated
+one-stop chance is about twenty points out. A diagnosis was run after the
+verdict was recorded, and it cannot change it.
+
+| 2026 | ≤1 | 2 | 3+ |
+|---|---:|---:|---:|
+| W1, mean predicted | 42.0% | 40.4% | 17.6% |
+| Observed | 42.8% | 39.0% | 18.2% |
+
+On average the mix is right. Race by race it is not: the observed share of
+one-stoppers per race runs from 0% to 100%, and five races had none at all,
+while W1 says 23–68% every time. **A stop count is decided for the whole race
+at once.** A safety car at the right moment, or a tyre that lasts or does not,
+moves nearly every car to the same strategy. A per-driver chance cannot express
+that, and that is what the calibration error measures. 2019–2025 has the same
+structure (mean predicted ≤1 share 47.3%, observed 43.9%). It is less visible
+there only because there are more races to average over.
+
+**Recommendation: do not publish per-driver stop counts,** even though the
+protocol allows it. The useful question is about the race: will most of the
+field stop once, or more? That is a different target with about twenty-two
+cases a season, and it would need its own protocol.
+
+Shipping is a separate decision, made after review.
