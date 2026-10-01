@@ -1064,3 +1064,57 @@ the favourite had a 98.6% podium chance against 95.5% for points, which cannot
 both be right. The simulated podium was found overconfident at the top in
 §11. The page says the two come from different models. A direct podium model,
 tested the same way, would remove the disagreement.
+
+---
+
+## 13. A podium chance that agrees with the points chance
+
+§11 found the simulated podium chance a little better than a positional rule,
+never significantly. It is also overconfident for favourites. Since the
+points chance (§12) shipped, a favourite's simulated podium chance can exceed
+their points chance, which cannot be right (98.6% against 95.5% for the R15
+favourite). This section looks for a podium chance that is tested on its own
+terms and never contradicts the points chance.
+
+### Protocol — fixed before any result was seen
+
+**Target.** Classified in the top three. Each of the three shipped models
+keeps its own inputs, field and frame, as in §§11–12.
+
+**Four candidates per model,** all walk-forward and fitted only on earlier
+races:
+
+| Id | How the chance is made |
+|---|---|
+| U1 | **Direct.** The model's own estimator fitted on the podium target. The shipped estimators already fit it beside the win target, so this is the model's own podium output. |
+| U2 | **Direct, summed to the places.** U1 rescaled so the field adds up to three, or the field size if smaller, then capped below one. |
+| U3 | **Simulation with retirements.** As §12's T3, but counting the top three finishers. |
+| U4 | **Direct, kept consistent.** U1, raised to at least the published win chance and capped at the points chance (§12's T1). A driver can never be likelier to win than to reach the podium, nor likelier to reach the podium than to score. |
+
+The published simulation chance (§11) is the reference.
+
+**Selection, per model.** On 2019–2025, the candidate with the lowest mean
+race-level log loss on the podium target is selected. There is no tie-break.
+
+**Coherence.** For every candidate, the report gives the share of driver-races
+where its podium chance exceeds the points chance, or falls below the win
+chance.
+
+**The bar.** §11's positional rule for the podium.
+
+**Calibration guard.** If the selected candidate's ECE is more than twice the
+rule's on 2019–2025, stop and report instead of freezing.
+
+**Holdout: 2026, scored once.** One thing is stated up front: §11 has already
+scored the rule and the reference on 2026 for this target. So 2026 is clean
+for the four candidates, but not for the comparison as a whole.
+
+**What the result allows.** A model's selected candidate replaces the
+simulated podium on that model's new predictions only if:
+- it is significantly better than the rule on 2019–2025; and
+- it is no worse than the rule on 2026.
+
+The new chance would ship as its own field. The simulated `p_podium` stays in
+the files, for the record and their consistency checks. Otherwise the
+simulated podium stays, labelled as now. Shipping is a separate decision, made
+after review.
