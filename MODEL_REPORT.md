@@ -661,3 +661,48 @@ pace on 2026 is not entirely unseen.
   - a third series on the site.
 
   It is a separate decision, made after review.
+
+### Selection — 2019–2025
+
+Run with `python src/after_practice_selection.py select`, after the protocol,
+the snapshot code and the script were committed. There were 152 races in
+every run.
+
+**The bars:**
+- **Championship order: 1.7920** [1.6711, 1.9234].
+- **Practice order: 2.1216** [1.9669, 2.2817].
+
+Practice order is much the weaker rule. A single lap in practice says less
+about the result than the standings do. So the site's bar for this snapshot
+is **championship order**.
+
+| Run | Inputs | Log loss | Winner | Podium | ECE (win) | vs championship order | vs Q0 |
+|---|---:|---:|---:|---:|---:|---|---|
+| **Q3** | 17 | **1.4811** | 48.7% | 58.6% | 0.0065 | −0.3109 [−0.4145, −0.2081] | −0.0577 [−0.0933, −0.0242] |
+| Q1 | 14 | 1.4814 | 48.7% | 58.1% | 0.0075 | −0.3106 [−0.4138, −0.2055] | −0.0574 [−0.0902, −0.0269] |
+| Q2 | 16 | 1.4838 | 49.3% | 57.7% | 0.0069 | −0.3082 [−0.4141, −0.2027] | −0.0550 [−0.0893, −0.0231] |
+| Q4 | 19 | 1.5128 | 46.1% | 58.6% | 0.0077 | −0.2793 [−0.3889, −0.1668] | −0.0260 [−0.0752, +0.0260], not significant |
+| *Q0, no practice* | 13 | *1.5388* | 49.3% | 57.9% | 0.0085 | −0.2532 [−0.3604, −0.1431] | — |
+| Q5 | 6 | 1.6091 | 48.7% | 61.3% | 0.0132 | −0.1829 [−0.2470, −0.1185] | +0.0703 [−0.0500, +0.1767], not significant |
+
+Unless marked, every interval is significant at 95%.
+
+**What it says.**
+- **Practice adds information.** Adding the best-lap gap alone (Q1) improves
+  on the pre-weekend inputs by 0.057, and that is significant.
+- **The rest adds almost nothing.** Long runs and the lap count (Q2, Q3) are
+  within 0.003 of Q1.
+- **Tyre inputs make it worse,** as §4 found for the post-qualifying model.
+- **The pre-weekend inputs matter.** Standings alone plus practice (Q5) is
+  worse than the pre-weekend inputs with no practice at all (Q0).
+
+**Selected and frozen: Q3.**
+- **Inputs:** the 13 pre-weekend inputs, plus `practice_best_lap_gap_ms`,
+  `practice_long_run_pace_gap_ms`, `practice_long_run_laps` and
+  `practice_laps`.
+- **Estimator:** the same `Slim` logistic regression, C = 0.5, rows from 2018.
+- **The rule picks it over Q1 by 0.0003.** That is far inside the noise, but
+  the protocol has no tie-break, by design.
+- **Calibration guard:** ECE 0.0065 against Q0's 0.0085, so not tripped.
+
+This entry was committed before the holdout was run.
