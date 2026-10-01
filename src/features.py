@@ -46,6 +46,11 @@ ENRICHED = ROOT / "data" / "enriched"
 
 FIRST_SEASON = 2018
 PRE, POST = "pre_weekend", "post_qualifying"
+# After the last practice session before the weekend's first qualifying
+# session (MODEL_REPORT §10). Its field and practice inputs are defined there.
+PRACTICE = "post_practice"
+PRACTICE_GROUPS = ("Practice", "Tyre")
+SPRINT_SESSIONS = ("Sprint", "Sprint Qualifying", "Sprint Shootout")
 
 # Races whose FastF1 lap timing disagrees with our tables badly enough to be
 # unusable. Established in ENRICHMENT_REPORT.md §2. Excluded from lap-derived
@@ -197,6 +202,9 @@ def features_for(snapshot: str, original_only: bool = False) -> tuple[str, ...]:
     feats = [f for f in FEATURES if not original_only or f.added == ORIGINAL]
     if snapshot == PRE:
         return tuple(f.name for f in feats if f.snapshot == PRE)
+    if snapshot == PRACTICE:
+        return tuple(f.name for f in feats
+                     if f.snapshot == PRE or f.group in PRACTICE_GROUPS)
     return tuple(f.name for f in feats)
 
 
@@ -316,6 +324,65 @@ def recent_quali(tables: dict[str, pd.DataFrame], keys: pd.DataFrame) -> pd.Data
                                       "team_quali_pos_mean_3"])
 
 
+def practice_sessions(tables: dict[str, pd.DataFrame], race: pd.Series) -> tuple[str, ...]:
+    """The practice sessions that run before the weekend's first qualifying session.
+
+    FP1 alone on a sprint weekend: in 2021-23 Friday qualifying followed it, and
+    since 2024 sprint qualifying does. All three otherwise. Whether a weekend is
+    a sprint weekend comes from its sprint_date. The fp2 column is not used,
+    because it holds sprint qualifying on the 2024 sprint weekends.
+    """
+    # The format is in the calendar before the weekend starts, so it is read
+    # from the schedule, not from sprint sessions that run after the deadline.
+    if "sprint_date" in race.index:
+        return ("Practice 1",) if pd.notna(race["sprint_date"]) else \
+            ("Practice 1", "Practice 2", "Practice 3")
+    # A race the table does not carry yet: its sessions so far. Before a sprint
+    # weekend's sprint there is only FP1 to read, which gives the same answer.
+    laps = tables["laps"]
+    here = laps[laps["raceId"] == race["raceId"]] if len(laps) else laps
+    if len(here) and here["session"].isin(SPRINT_SESSIONS).any():
+        return ("Practice 1",)
+    return ("Practice 1", "Practice 2", "Practice 3")
+
+
+def practice_field(tables: dict[str, pd.DataFrame], race: pd.Series) -> pd.DataFrame:
+    """Who is in the field after practice, without knowing who will race.
+
+    Drivers with laps in FP2 or FP3; FP1 on a sprint weekend, or when neither
+    later session ran. FP1 alone on a normal weekend would let in the reserves
+    who drive it. Against the starters, 2018-2026, this misses a starter in 2
+    races of 187 (MODEL_REPORT §10). The team is the one the car was entered
+    under at this weekend's practice, read from the results of earlier races
+    only when the laps carry none.
+    """
+    cols = ["driverId", "constructorId", "team_entity_id"]
+    laps = tables["laps"]
+    if not len(laps):
+        return pd.DataFrame(columns=cols)
+    here = laps[(laps["raceId"] == race["raceId"]) & laps["driverId"].notna()]
+    sessions = practice_sessions(tables, race)
+    later = [s for s in sessions if s != "Practice 1"]
+    took_part = here[here["session"].isin(later)] if later else here.iloc[0:0]
+    if took_part.empty:
+        took_part = here[here["session"] == "Practice 1"]
+    ids = sorted(set(took_part["driverId"].astype(int)))
+    if not ids:
+        return pd.DataFrame(columns=cols)
+
+    # Each driver's team: the one they raced for most recently before this
+    # weekend. A debutant has none in the results, and keeps a null team
+    # rather than a guessed one.
+    prior = _prior(tables, int(race["order"]))
+    prior = prior[prior["positionText"].astype(str) != "W"]
+    last = prior.sort_values("order").groupby("driverId").tail(1).set_index("driverId")
+    rows = [{"driverId": d,
+             "constructorId": last["constructorId"].get(d, pd.NA) if d in last.index else pd.NA,
+             "team_entity_id": last["team_entity_id"].get(d, pd.NA) if d in last.index else pd.NA}
+            for d in ids]
+    return pd.DataFrame(rows, columns=cols)
+
+
 def entrants(tables: dict[str, pd.DataFrame], race: pd.Series, snapshot: str) -> pd.DataFrame:
     """Who is in the field, without reading the race that is being predicted.
 
@@ -324,6 +391,9 @@ def entrants(tables: dict[str, pd.DataFrame], race: pd.Series, snapshot: str) ->
     the most recent completed race — which is what anyone predicting on a
     Tuesday would use, and is available for a race that has not run.
     """
+    if snapshot == PRACTICE:
+        return practice_field(tables, race)
+
     if snapshot == POST:
         q = tables["qualifying"]
         got = q[q["raceId"] == race["raceId"]][["driverId", "constructorId", "team_entity_id"]]
@@ -466,12 +536,18 @@ INCLUDE_RESERVES_IN_PRACTICE = False
 _SOFTEST_FIRST = ("SOFT", "MEDIUM", "HARD")
 
 
-def practice_frame(tables: dict[str, pd.DataFrame], race: pd.Series) -> pd.DataFrame:
+def practice_frame(tables: dict[str, pd.DataFrame], race: pd.Series,
+                   sessions: tuple[str, ...] = ("Practice 1", "Practice 2", "Practice 3"),
+                   field: set[int] | None = None) -> pd.DataFrame:
     """Per-driver practice pace for one race weekend.
 
     Reserve and FP1-only runners are dropped by default: their laps are on a
     different programme and would drag a team's practice pace toward whatever
     the young driver was asked to do. Part D tests whether that is right.
+
+    The after-practice snapshot passes its own `sessions` and `field`: only the
+    sessions before qualifying, and pace measured within its field rather than
+    against whoever went on to race, which it cannot know.
     """
     laps = tables["laps"]
     empty = pd.DataFrame(columns=["driverId", "practice_laps", "practice_best_lap_gap_ms",
@@ -481,12 +557,14 @@ def practice_frame(tables: dict[str, pd.DataFrame], race: pd.Series) -> pd.DataF
         return empty
 
     f = laps[(laps["raceId"] == race["raceId"])
-             & laps["session"].isin(["Practice 1", "Practice 2", "Practice 3"])
+             & laps["session"].isin(list(sessions))
              & laps["driverId"].notna()].copy()
     if f.empty:
         return empty
     f["driverId"] = f["driverId"].astype(int)
-    if "is_race_driver" in f.columns and not INCLUDE_RESERVES_IN_PRACTICE:
+    if field is not None:
+        f = f[f["driverId"].isin(list(field))]
+    elif "is_race_driver" in f.columns and not INCLUDE_RESERVES_IN_PRACTICE:
         f = f[f["is_race_driver"].astype(str).str.lower().isin(["true", "1"])]
     if f.empty:
         return empty
@@ -633,6 +711,14 @@ def build_race(tables: dict[str, pd.DataFrame], race: pd.Series, snapshot: str) 
             df[f"{prefix}_circuit_finish_mean"] = None
         df[f"{prefix}_circuit_races"] = pd.to_numeric(
             df[f"{prefix}_circuit_races"], errors="coerce").fillna(0).astype(int)
+
+    # ---- this weekend's practice, before any qualifying (MODEL_REPORT §10)
+    if snapshot == PRACTICE:
+        df = df.merge(practice_frame(tables, race, practice_sessions(tables, race),
+                                     set(df["driverId"].astype(int))),
+                      on="driverId", how="left")
+        df["practice_laps"] = pd.to_numeric(df["practice_laps"], errors="coerce").fillna(0).astype(int)
+        df["practice_long_run_laps"] = pd.to_numeric(df["practice_long_run_laps"], errors="coerce").fillna(0).astype(int)
 
     # ---- this weekend, only once qualifying has happened
     if snapshot == POST:

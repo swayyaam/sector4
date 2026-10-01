@@ -572,3 +572,187 @@ each keeps the model version that made it.
   The track record says when a table covers more than one model. The
   methodology page states that the earlier pre-weekend model did worse than
   championship order.
+
+---
+
+## 10. The after-practice model
+
+A third prediction, published after the last practice session that runs
+before the weekend's first qualifying session. That deadline is qualifying on
+a normal weekend, and sprint qualifying (or the 2021–23 Friday qualifying) on
+a sprint weekend. It is scored separately and never pooled with the other
+two.
+
+### Protocol — fixed before any model was run
+
+**Data definitions.** These were checked against the data, not against any
+model result, before this was written.
+
+- **Sessions.** Practice 1 only on a sprint weekend; Practice 1–3 otherwise.
+  On every sprint weekend from 2021 to 2026, FP1 is the only practice before
+  the first qualifying session: in 2021–23 Friday qualifying came straight
+  after FP1, and since 2024 sprint qualifying does. The session list comes
+  from the FastF1 laps. On the 2024 sprint weekends, the races table's
+  `fp2_date` is sprint qualifying, so it is not used.
+- **The field.** Drivers with laps in FP2 or FP3; drivers with laps in FP1 on
+  a sprint weekend; FP1 also when neither FP2 nor FP3 ran. Against the actual
+  starters, 2018–2026:
+
+  | Field rule | Extra drivers | Missing starters | Races missing a starter |
+  |---|---:|---:|---:|
+  | **FP2/FP3 (FP1 on sprint weekends)** | 28 | 2 | 2 of 187 |
+  | Previous race's starters (the pre-weekend rule) | 75 | 77 | 46 of 187 |
+  | Previous starters, swapped by practice | 48 | 22 | 19 of 187 |
+
+  Extra drivers are dropped at scoring and the rest renormalised, as for any
+  prediction.
+- **Practice inputs at this snapshot.** These use the same definitions as
+  the post-qualifying practice inputs, with two differences. They read only
+  the sessions above. And they are measured against the fastest driver in this
+  field, never against who went on to race.
+- **Pre-weekend inputs** are computed for this field, not the
+  previous race's starters.
+
+**Candidates.** All use the same `Slim` logistic regression, C = 0.5, trained
+on rows from 2018, when the practice data starts. There is no tuning.
+
+| Id | Inputs | Count |
+|---|---|---:|
+| Q0 | the pre-weekend model's 13 (§9), no practice | 13 |
+| Q1 | Q0 + best-lap gap | 14 |
+| Q2 | Q1 + long-run pace gap + long-run laps | 16 |
+| Q3 | Q2 + practice laps | 17 |
+| Q4 | Q3 + compounds run + softest long-run gap | 19 |
+| Q5 | standings only (§9 P1) + best-lap gap + long-run pace gap | 6 |
+
+**Selection window: 2019–2025,** on a frame truncated at the end of 2025.
+
+**Two bars:**
+- **Championship order** (§1).
+- **Practice order:** a positional prior on each starter's best-lap rank
+  within the field, estimated walk-forward and Laplace-smoothed exactly like
+  the qualifying-order baseline.
+
+The site will compare the model with whichever bar scores better on
+2019–2025, so it is never measured against the weaker of two available rules.
+
+**Selection rule.** The candidate with the lowest mean race-level win log loss
+on 2019–2025 is selected. If its win ECE is more than twice Q0's, stop and
+report instead of freezing.
+
+**Holdout: 2026, scored once.** Every 2026 race in the enriched season laps at
+the time of freezing: R1–R14. R15's practice exists only in the upcoming-race
+fetch. The selected model, Q0 and both bars are scored.
+
+**Caveat, stated now.** Practice pace was part of the post-qualifying
+selection, which was made with 2026 in view (§6). So the value of practice
+pace on 2026 is not entirely unseen.
+
+**What the result allows.**
+- Recommend publishing the after-practice prediction only if the selected
+  model's holdout log loss is below Q0's. Q0 is the pre-weekend inputs on the
+  same field: a third prediction that knows more but scores no better adds
+  nothing worth publishing.
+- Any claim against the bar needs the holdout interval to exclude zero.
+- Shipping needs:
+  - a practice-only fetch;
+  - a deadline in `revisions.py`;
+  - a scoring bar;
+  - a third series on the site.
+
+  It is a separate decision, made after review.
+
+### Selection — 2019–2025
+
+Run with `python src/after_practice_selection.py select`, after the protocol,
+the snapshot code and the script were committed. There were 152 races in
+every run.
+
+**The bars:**
+- **Championship order: 1.7920** [1.6711, 1.9234].
+- **Practice order: 2.1216** [1.9669, 2.2817].
+
+Practice order is much the weaker rule. A single lap in practice says less
+about the result than the standings do. So the site's bar for this snapshot
+is **championship order**.
+
+| Run | Inputs | Log loss | Winner | Podium | ECE (win) | vs championship order | vs Q0 |
+|---|---:|---:|---:|---:|---:|---|---|
+| **Q3** | 17 | **1.4811** | 48.7% | 58.6% | 0.0065 | −0.3109 [−0.4145, −0.2081] | −0.0577 [−0.0933, −0.0242] |
+| Q1 | 14 | 1.4814 | 48.7% | 58.1% | 0.0075 | −0.3106 [−0.4138, −0.2055] | −0.0574 [−0.0902, −0.0269] |
+| Q2 | 16 | 1.4838 | 49.3% | 57.7% | 0.0069 | −0.3082 [−0.4141, −0.2027] | −0.0550 [−0.0893, −0.0231] |
+| Q4 | 19 | 1.5128 | 46.1% | 58.6% | 0.0077 | −0.2793 [−0.3889, −0.1668] | −0.0260 [−0.0752, +0.0260], not significant |
+| *Q0, no practice* | 13 | *1.5388* | 49.3% | 57.9% | 0.0085 | −0.2532 [−0.3604, −0.1431] | — |
+| Q5 | 6 | 1.6091 | 48.7% | 61.3% | 0.0132 | −0.1829 [−0.2470, −0.1185] | +0.0703 [−0.0500, +0.1767], not significant |
+
+Unless marked, every interval is significant at 95%.
+
+**What it says.**
+- **Practice adds information.** Adding the best-lap gap alone (Q1) improves
+  on the pre-weekend inputs by 0.057, and that is significant.
+- **The rest adds almost nothing.** Long runs and the lap count (Q2, Q3) are
+  within 0.003 of Q1.
+- **Tyre inputs make it worse,** as §4 found for the post-qualifying model.
+- **The pre-weekend inputs matter.** Standings alone plus practice (Q5)
+  scores worse than the pre-weekend inputs with no practice at all (Q0), by
+  0.07, though not significantly.
+
+**Selected and frozen: Q3.**
+- **Inputs:** the 13 pre-weekend inputs, plus `practice_best_lap_gap_ms`,
+  `practice_long_run_pace_gap_ms`, `practice_long_run_laps` and
+  `practice_laps`.
+- **Estimator:** the same `Slim` logistic regression, C = 0.5, rows from 2018.
+- **The rule picks it over Q1 by 0.0003.** That is far inside the noise, but
+  the protocol has no tie-break, by design.
+- **Calibration guard:** ECE 0.0065 against Q0's 0.0085, so not tripped.
+
+This entry was committed before the holdout was run.
+
+### Holdout — 2026, scored once
+
+Run with `python src/after_practice_selection.py holdout Q3`, after the freeze
+was committed. It covered the 14 races with practice in the season laps, R1 to
+R14. The script refuses a second run.
+
+| Model | Log loss | 95% CI | vs championship order | vs Q0 | Winner | Podium | ECE (win) |
+|---|---:|---|---|---|---:|---:|---:|
+| **Q3 — selected** | **1.6828** | [1.1923, 2.2092] | −0.1329 [−0.4907, +0.2044] | −0.1678 [−0.3532, +0.0056] | 35.7% | 45.2% | 0.0177 |
+| Q0 — no practice | 1.8506 | [1.3701, 2.3443] | +0.0349 [−0.1935, +0.2798] | — | 35.7% | 45.2% | 0.0204 |
+| *Practice order* | *1.8531* | [1.4260, 2.3813] | — | — | — | — | — |
+| *Championship order* | *1.8157 on the same 14 races* (1.8007 on all 15) | | — | — | — | — | — |
+
+None of the holdout comparisons is significant at 95%.
+
+**What this says.**
+- **Practice helps on 2026 as it did before.** Q3 is 0.17 better than the
+  same model without practice. The interval just reaches zero (+0.0056) on
+  fourteen races, so it is suggestive, not established.
+- **It is the first of the three predictions to be ahead of its simple rule on
+  2026,** by 0.13 on average. The interval spans zero, so the site still
+  cannot claim it beats the rule.
+- **Calibration holds better than the pre-weekend model's did.** Win ECE is
+  0.0177 on the holdout, against 0.0065 in sample.
+
+**Under the protocol:**
+- Q3's holdout log loss (1.6828) is below Q0's (1.8506), so the
+  recommendation is to **publish the after-practice prediction, using Q3.**
+- The site **may not** say it beats championship order.
+- Shipping needs:
+  - a practice-only fetch for an upcoming race;
+  - a deadline at the first qualifying session in `revisions.py`;
+  - the after-practice field from that fetch;
+  - championship order as the scoring bar;
+  - a third, never-pooled series on the site.
+
+  That is a separate change, made after review.
+
+**A correction after the holdout, with no effect on it.**
+- **The bug.** The sessions rule decided whether a weekend was a sprint
+  weekend by looking for sprint sessions in the laps. Those run after this
+  snapshot's deadline.
+- **The fix.** The format is in the calendar beforehand, so it now comes from
+  the race's `sprint_date`.
+- **No effect on the result.** The rebuilt after-practice frame (3,770 rows)
+  is byte-identical to the one selected on, so nothing above changes.
+- **Test coverage.** The time-travel test in `tests/test_features.py` now
+  covers this snapshot. Qualifying and any practice after it are removed.

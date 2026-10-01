@@ -53,12 +53,15 @@ def _order_of(tables, race_id: int) -> int:
     return int(tables["races"].set_index("raceId").loc[race_id, "order"])
 
 
-def truncate(tables: dict, before_order: int, keep_weekend: int | None = None) -> dict:
+def truncate(tables: dict, before_order: int, keep_weekend: int | None = None,
+             keep_sessions: tuple[str, ...] = ("Practice 1", "Practice 2", "Practice 3"),
+             keep_qualifying: bool = True) -> dict:
     """A copy of the data as it stood before `before_order`.
 
     `keep_weekend` keeps that race's practice and qualifying — everything a
     post-qualifying prediction is allowed to see — while still removing its
-    race result and every later race.
+    race result and every later race. The after-practice snapshot narrows it:
+    only the practice sessions before qualifying, and no qualifying.
     """
     races = tables["races"]
     keep_races = races[races["order"] < before_order]
@@ -70,7 +73,7 @@ def truncate(tables: dict, before_order: int, keep_weekend: int | None = None) -
         out[name] = df[df["raceId"].isin(keep_ids)].copy()
 
     q = tables["qualifying"]
-    q_ids = keep_ids | ({keep_weekend} if keep_weekend else set())
+    q_ids = keep_ids | ({keep_weekend} if keep_weekend and keep_qualifying else set())
     out["qualifying"] = q[q["raceId"].isin(q_ids)].copy()
 
     laps = tables["laps"]
@@ -78,7 +81,7 @@ def truncate(tables: dict, before_order: int, keep_weekend: int | None = None) -
         mask = laps["raceId"].isin(keep_ids)
         if keep_weekend:
             mask |= ((laps["raceId"] == keep_weekend)
-                     & laps["session"].isin(["Practice 1", "Practice 2", "Practice 3"]))
+                     & laps["session"].isin(list(keep_sessions)))
         out["laps"] = laps[mask].copy()
     else:
         out["laps"] = laps.copy()
@@ -102,13 +105,21 @@ def _frames_equal(a: pd.DataFrame, b: pd.DataFrame) -> tuple[bool, str]:
 
 
 # --------------------------------------------------------------- the big one
-@pytest.mark.parametrize("snapshot", [F.PRE, F.POST])
+@pytest.mark.parametrize("snapshot", [F.PRE, F.POST, F.PRACTICE])
 def test_features_are_identical_when_the_future_is_removed(tables, sample, snapshot):
     """Time travel. If a feature reads the race it predicts, or anything after
     it, deleting that data changes the answer and this fails."""
     for race_id in sample:
         order = _order_of(tables, race_id)
-        cut = truncate(tables, order, keep_weekend=race_id if snapshot == F.POST else None)
+        if snapshot == F.PRACTICE:
+            race = tables["races"].set_index("raceId").loc[race_id]
+            race = race.copy()
+            race["raceId"] = race_id
+            cut = truncate(tables, order, keep_weekend=race_id,
+                           keep_sessions=F.practice_sessions(tables, race),
+                           keep_qualifying=False)
+        else:
+            cut = truncate(tables, order, keep_weekend=race_id if snapshot == F.POST else None)
         full = F.build([race_id], snapshot, tables)
         past = F.build([race_id], snapshot, cut)
         ok, why = _frames_equal(full, past)
@@ -153,7 +164,7 @@ def test_a_race_with_no_result_still_produces_features(tables):
 
 
 def test_every_declared_feature_is_produced(tables, sample):
-    for snapshot in (F.PRE, F.POST):
+    for snapshot in (F.PRE, F.POST, F.PRACTICE):
         got = F.build(sample[:2], snapshot, tables)
         assert list(got.columns) == list(F.KEYS) + list(F.features_for(snapshot))
 
