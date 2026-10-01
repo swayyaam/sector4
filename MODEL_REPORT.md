@@ -366,3 +366,88 @@ Ranked by what the diagnostics suggest, not by what sounds interesting:
 4. **Nothing involving more features of the kind already tried.** Circuit
    history, tyre and relative form were all measured, and all three made the
    model worse.
+
+---
+
+## 9. The pre-weekend model
+
+Everything above selects the **post-qualifying** model. The pre-weekend
+snapshot was never selected on its own. It shipped as whatever the
+post-qualifying specification reduces to once qualifying and practice are
+removed: a logistic regression on `driver_standing_points` and
+`driver_vs_team_points_share_5`. This section selects it properly.
+
+### Protocol — fixed before any result was seen
+
+Committed on its own, before the selection script was run, so the history
+shows the procedure came first.
+
+**Data.** The pre-weekend feature frame (`F.build(..., snapshot="pre_weekend")`),
+targets from `results.csv`, walk-forward exactly as in §1: every race is
+predicted by a model fitted only on races strictly before it.
+
+**Two new inputs, computed from prior races only.** Neither existing group
+reads qualifying, and qualifying is the cleanest read on a car's pace that
+exists before a weekend starts. Both of the new inputs use only races
+strictly before the one being predicted:
+
+- `driver_quali_pos_mean_3`: the driver's mean qualifying position over
+  their last three races.
+- `team_quali_pos_mean_3`: the team entity's best qualifying position at
+  each of its last three races, averaged.
+
+They are computed inside the selection script. They are added to
+`src/features.py` only if a candidate that uses them is chosen to ship, so
+nothing in §§1–8 changes until then.
+
+**Candidates.** All are the same regularised logistic regression (`Slim`,
+C = 0.5, median imputation, standardisation fitted per fold), with no tuning:
+
+| Id | Inputs | Count |
+|---|---|---:|
+| P0 | incumbent: driver points, driver's share of team points | 2 |
+| P1 | standings: driver and team standing position and points | 4 |
+| P2 | P1 + the two recent-qualifying inputs | 6 |
+| P3 | driver form and team form groups (§B of `features.py`) | 11 |
+| P4 | P3 + the two recent-qualifying inputs | 13 |
+| P5 | every pre-weekend feature + the two recent-qualifying inputs | 25 |
+
+**Two training windows.** Rows from 2018 (the current frame) and rows from
+2014, the start of the hybrid era. The second follows §8's second point: none
+of these inputs needs FastF1, so more seasons are available. Both windows use
+the same points system. Twelve runs in all.
+
+**Selection window: 2019–2025 only.** The walk-forward is run on a frame
+truncated at the end of 2025, so no 2026 row is ever predicted during
+selection.
+
+**The bar.** Championship order (§1, `baselines.py`), scored on exactly the
+same races.
+
+**Selection rule.**
+1. Primary metric: mean race-level win log loss over 2019–2025.
+2. The candidate with the lowest mean is selected. Accuracy is the brief for
+   this snapshot, so there is no tie-break towards fewer inputs. The report
+   states whether its margin over P0 and over the bar is significant (paired
+   race bootstrap, 95%).
+3. **Calibration guard:** if the selected candidate's win ECE on 2019–2025 is
+   more than twice P0's, stop and report instead of freezing.
+
+**Holdout: 2026, scored once.** The selected specification is frozen,
+including window, inputs and estimator. Then it, P0 and the bar are scored on
+every completed 2026 race at the time of freezing.
+
+Two caveats are stated now, not discovered later:
+- Part C printed pre-weekend scores for the three full-feature model families
+  pooled over 2019–2026. No pre-weekend decision was made from them, and they
+  are not opened here.
+- P0's live R15 result has been seen. It lost to championship order, 2.2568
+  against 1.5893.
+
+**What the result allows.**
+- Recommend shipping the selected model if its holdout log loss is no worse
+  than P0's.
+- Otherwise, recommend keeping P0.
+- Either way, the site may say the pre-weekend model beats championship order
+  only if the holdout paired interval excludes zero.
+- Shipping is a separate decision, made after review.
