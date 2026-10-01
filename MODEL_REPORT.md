@@ -922,3 +922,125 @@ seen, so its holdout would not be clean for these targets.
 
 What the site does with the published top-ten and podium chances is a
 separate decision, made after review.
+
+---
+
+## 12. A points-finish chance that survives retirements
+
+§11 found the simulated top-ten chance worse than a positional rule for every
+model, and out by about ten points, because the simulation never retires a car.
+The site stopped showing it. This section tries to replace it.
+
+### Protocol — fixed before any result was seen
+
+**Target.** Classified in the top ten, which equals scoring points (§11). Each
+of the three shipped models keeps its own inputs, field and frame, exactly as
+in §11.
+
+**Three candidates per model,** all walk-forward and fitted only on earlier
+races:
+
+| Id | How the chance is made |
+|---|---|
+| T1 | **Direct.** The model's own estimator, fitted on the top-ten target instead of the win target. That is `Slim` for before and after practice, and the qualifying spline for after qualifying, with C = 0.5. |
+| T2 | **Direct, summed to the places.** T1 rescaled so the field's chances add up to the number of points places (ten, or the field size if smaller), then capped below one. |
+| T3 | **Simulation with retirements.** The published simulation (20,000 draws, same seed), but each draw first retires each car with that driver's published DNF chance. The remaining cars are ordered by the win chances, and the top ten of those finishers score points. |
+
+The published simulation chance (§11) is the reference. It is already known
+to fail.
+
+**Selection, per model.** On 2019–2025, the candidate with the lowest mean
+race-level log loss on the top-ten target is selected. There is no tie-break.
+
+**The bar.** The same positional rule as §11, learned from the same rows.
+
+**Calibration guard.** If the selected candidate's ECE is more than twice the
+rule's on 2019–2025, stop and report instead of freezing.
+
+**Holdout: 2026, scored once,** on every 2026 race each frame covers. One
+thing is stated now rather than discovered later: §11 has already scored the
+rule and the reference on 2026 for this target. So 2026 is clean for the
+three candidates, but not for the comparison as a whole.
+
+**What the result allows.** A model's selected candidate may bring the chance
+back to the site, labelled tested, only if:
+- it is significantly better than the rule on 2019–2025; and
+- it is no worse than the rule on 2026.
+
+Otherwise the column stays hidden for that model. Shipping is a separate
+decision, made after review.
+
+### Selection — 2019–2025
+
+Run with `python src/points_finish.py select` after the protocol and the
+script were committed. It covered 152 races per model. The difference is
+the candidate minus the rule in log loss.
+
+| Model | Candidate | Log loss | Brier | ECE | vs rule |
+|---|---|---:|---:|---:|---|
+| before practice | *rule* | *0.5598* | — | *0.0523* | — |
+| | reference (§11) | 0.6848 | 0.1858 | 0.1088 | +0.1251 [+0.0802, +0.1749] |
+| | **T1 direct** | **0.5210** | 0.1725 | 0.0171 | −0.0388 [−0.0502, −0.0267] |
+| | T2 summed | 0.5338 | 0.1729 | 0.0193 | −0.0260 [−0.0438, −0.0057] |
+| | T3 retirements | 0.5283 | 0.1749 | 0.0456 | −0.0314 [−0.0485, −0.0132] |
+| after practice | *rule* | *0.5602* | — | *0.0548* | — |
+| | reference (§11) | 0.6645 | 0.1815 | 0.0993 | +0.1043 [+0.0585, +0.1539] |
+| | **T1 direct** | **0.5212** | 0.1711 | 0.0310 | −0.0390 [−0.0535, −0.0229] |
+| | T2 summed | 0.5293 | 0.1703 | 0.0317 | −0.0309 [−0.0503, −0.0059] |
+| | T3 retirements | 0.5241 | 0.1719 | 0.0380 | −0.0361 [−0.0557, −0.0144] |
+| after qualifying | *rule* | *0.5158* | — | *0.0603* | — |
+| | reference (§11) | 0.5985 | 0.1682 | 0.0833 | +0.0826 [+0.0451, +0.1232] |
+| | **T1 direct** | **0.4903** | 0.1588 | 0.0336 | −0.0256 [−0.0360, −0.0144] |
+| | T2 summed | 0.4918 | 0.1581 | 0.0314 | −0.0240 [−0.0364, −0.0082] |
+| | T3 retirements | 0.5061 | 0.1621 | 0.0401 | −0.0098 [−0.0266, +0.0090], not significant |
+
+Except where marked, every interval is significant at 95%.
+
+**What it says.**
+- **Modelling the target directly fixes it.** T1 beats the rule for all three
+  models, and is better calibrated than the rule itself. The reference was
+  0.08–0.13 worse than the rule; T1 is 0.03–0.04 better.
+- **Adding retirements to the simulation helps (T3), but less.** Before
+  qualifying it beats the rule. After qualifying it does not.
+- **Rescaling to the points places (T2) is close to T1 and never better on
+  log loss.**
+
+**Selected and frozen: T1 for all three models.** Each is the model's own
+estimator fitted on the top-ten target. The calibration guard is not tripped:
+T1's ECE is 0.017–0.034, below the rule's 0.052–0.060.
+
+This entry was committed before the holdout was run.
+
+### Holdout — 2026, scored once
+
+Run with `python src/points_finish.py holdout` after the freeze was
+committed. It covered 15 races for the two models that need no practice, and
+14 for after-practice.
+
+| Model | T1 | Rule | Reference | T1 vs rule | T1 ECE |
+|---|---:|---:|---:|---|---:|
+| before practice | 0.5290 | 0.5595 | 0.7735 | −0.0305 [−0.0654, +0.0061] | 0.0478 |
+| after practice | 0.5036 | 0.5559 | 0.7115 | −0.0523 [−0.0953, −0.0061], **better** | 0.0516 |
+| after qualifying | 0.4822 | 0.5174 | 0.6705 | −0.0352 [−0.0549, −0.0135], **better** | 0.0678 |
+
+**Verdict under the protocol: all three pass.** Each was significantly
+better than the rule on 2019–2025. Each is no worse than the rule on 2026:
+better by 0.03–0.05, and significantly so for after practice and after
+qualifying.
+
+- **Calibration is weaker on fifteen races than over seven seasons:** ECE
+  0.05–0.07 against 0.02–0.03. That is reported, not explained away.
+- **The caveat stated up front still holds.** §11 had already shown the rule
+  on 2026, so the comparison as a whole was not unseen. T1 itself was.
+
+**What shipping would mean.**
+- New predictions would carry the T1 chance as a separate field, alongside
+  the simulated `p_top10`, which stays for the record and for the files'
+  consistency checks.
+- The site would show it as a "Points" column, labelled tested.
+- It is not part of the simulation, so it will not match the finishing-order
+  chart exactly, and the site must say so.
+- Predictions already published do not have it, and their pages keep the
+  column hidden.
+
+Shipping is a separate decision, made after review.
