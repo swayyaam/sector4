@@ -192,3 +192,42 @@ def augment(tables: dict[str, pd.DataFrame], race: pd.Series, *,
     out["laps"] = pd.concat([tables["laps"], laps], ignore_index=True) if len(tables["laps"]) \
         else laps.reset_index(drop=True)
     return out
+
+
+def augment_practice(tables: dict[str, pd.DataFrame], race: pd.Series, *,
+                     upcoming_dir: Path = UPCOMING_DIR) -> dict[str, pd.DataFrame]:
+    """A copy of ``tables`` that also holds this weekend's practice, for the
+    after-practice snapshot (MODEL_REPORT §10). The inputs are not modified.
+
+    Only the practice before the first qualifying session is read, and every
+    one of those sessions must have been fetched: an after-practice prediction
+    missing FP3 would be a different, unvalidated prediction under the same
+    name. Nothing here reads qualifying, and no driver is marked as racing.
+    """
+    season, rnd, race_id = int(race["year"]), int(race["round"]), int(race["raceId"])
+    if len(tables["laps"]) and (tables["laps"]["raceId"] == race_id).any():
+        raise ValueError(f"raceId {race_id} already has laps; the upcoming path is only for "
+                         "a race that has not run")
+    path = weekend_dir(season, rnd, upcoming_dir) / "laps.csv"
+    fetch = (f"Run src/fetch_fastf1.py --upcoming {season} {rnd} once the last practice "
+             "session has finished and settled.")
+    if not path.exists():
+        raise MissingWeekendData(f"no practice laps for {season} round {rnd} at {path}. {fetch}")
+    laps = F._rd(path)
+    laps = laps[(laps["season"] == season) & (laps["round"] == rnd)].copy()
+
+    needed = F.practice_sessions(tables, race)
+    have = set(laps["session"].unique())
+    missing = [s for s in needed if s not in have]
+    if missing:
+        raise MissingWeekendData(
+            f"{', '.join(missing)} of {season} round {rnd} has not been fetched. {fetch}")
+    laps = laps[laps["session"].isin(needed)]
+    laps["raceId"] = race_id
+    laps["driverId"] = pd.to_numeric(laps["driverId"], errors="coerce").astype("Int64")
+    laps = laps.drop(columns=["season", "round"])
+
+    out = dict(tables)
+    out["laps"] = pd.concat([tables["laps"], laps], ignore_index=True) if len(tables["laps"]) \
+        else laps.reset_index(drop=True)
+    return out
