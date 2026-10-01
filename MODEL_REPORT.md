@@ -1211,3 +1211,167 @@ predictions: U2 before practice, and U4 after practice.
 - **Per-prediction status.** Each prediction now says which of its chances
   passed a test, because the three predictions differ.
 - **Older predictions** keep their simulated podium and say so.
+
+---
+
+## 14. Pit stops
+
+How many times will a driver stop? This is the first prediction about the
+race rather than the result. The data is Ergast and Jolpica's pit stop
+table, which can be published with credit, so it needs no FastF1 data.
+
+### Data check — before any model was run
+
+- **Coverage.** Every race from 2011 to 2026 has pit stops, except one 2021
+  race with no racing laps. Before 2011 there are none.
+- **Official stops only.** Ergast counts a red-flag hold in the pit lane as a
+  stop; the official count does not. `counts_as_official_stop` marks the
+  difference (DATA_REPORT.md #17). 539 holds are excluded.
+- **Finishers only.** A retirement cuts a car's stop count short, so the
+  count is only defined for a classified finisher. A prediction is "if they
+  finish".
+- **Classes:** one stop or none, two, three or more. Zero stops happens only
+  in red-flag races where tyres were changed under the flag: 49 of 5,718
+  finishers since 2011, for example ten at Monaco 2024 and ten at Italy 2026.
+- **The mix moves a lot between seasons, with the tyres and the rules.**
+
+  | Season | ≤1 | 2 | 3+ |
+  |---|---:|---:|---:|
+  | 2016 | 21% | 48% | 31% |
+  | 2018 | 64% | 30% | 6% |
+  | 2023 | 35% | 41% | 24% |
+  | 2025 | 48% | 38% | 14% |
+  | 2026 | 43% | 39% | 18% |
+
+### Protocol — fixed before any result was seen
+
+**Target.** Each classified finisher's official stop count, in three classes.
+
+**Two information levels.**
+- **Before qualifying.** This serves the before-practice and after-practice
+  predictions. Nothing in practice measures pit strategy, so practice adds
+  no input.
+- **After qualifying.**
+
+**Inputs.** All are computed only from races strictly before the one
+predicted, except the position, which is known at the snapshot.
+- **Circuit history:** the class shares among finishers at this circuit's
+  last three earlier runnings since 2011.
+- **This season so far:** the class shares among finishers in this season's
+  earlier races.
+- **Team so far:** the team's mean official stops per finisher in this
+  season's earlier races.
+- **Position:** the championship position entering the race before
+  qualifying; the qualifying position after it.
+
+**Candidates.** All use a multinomial logistic regression (C = 0.5, median
+imputation, standardisation fitted per fold), walk-forward, on rows from
+2014. That leaves 2011–2013 to supply circuit history.
+
+| Id | Inputs |
+|---|---|
+| W1 | circuit history (3) |
+| W2 | circuit history + this season so far (6) |
+| W3 | W2 + position (7) |
+| W4 | W3 + team so far (8) |
+
+**Two rules, add-one smoothed:**
+- **Circuit rule:** the class shares at this circuit's last three runnings.
+  A new circuit falls back to this season so far.
+- **Season rule:** the class shares in this season's earlier races. A
+  season's first race falls back to last season.
+
+The site's bar is whichever rule scores better on 2019–2025.
+
+**Metrics.**
+- Multiclass log loss per finisher, averaged per race.
+- Multiclass Brier score.
+- ECE on the one-stop-or-none class.
+- Paired race bootstrap against the bar, 95%.
+
+**Selection, per information level.** The candidate with the lowest
+2019–2025 log loss is selected. There is no tie-break. If its ECE is more
+than twice the bar's, stop and report instead of freezing.
+
+**Holdout: 2026, scored once.**
+
+**What the result allows.** A level's selected candidate may be published,
+as each driver's chance of one, two or three-plus stops if they finish, only
+if:
+- it is significantly better than the bar on 2019–2025; and
+- it is no worse than the bar on 2026.
+
+Shipping is a separate decision, made after review.
+
+### Selection — 2019–2025
+
+Run with `python src/pit_stops.py select` after the protocol and the script
+were committed. It covered 151 races and 2,642 classified finishers. An even
+guess over the three classes would score ln 3 = **1.0986**.
+
+| | Log loss | Brier | ECE (≤1 stop) | vs circuit rule |
+|---|---:|---:|---:|---|
+| *season rule* | *1.1635* | 0.6971 | 0.1232 | — |
+| *circuit rule, the bar* | *1.0753* | 0.6387 | 0.1020 | — |
+| **W1, circuit history** | **0.9992** | 0.6033 | 0.0566 | −0.0761 [−0.1323, −0.0255] |
+| W2, + this season | 1.0327 | 0.6291 | 0.0890 | −0.0426 [−0.1064, +0.0170], not significant |
+| W3, + position (before qualifying) | 1.0332 | 0.6293 | 0.0992 | −0.0422 [−0.1063, +0.0171], not significant |
+| W3, + position (after qualifying) | 1.0327 | 0.6289 | 0.0950 | −0.0427 [−0.1070, +0.0171], not significant |
+| W4, + team (before qualifying) | 1.0346 | 0.6298 | 0.1011 | −0.0407 [−0.1055, +0.0188], not significant |
+| W4, + team (after qualifying) | 1.0340 | 0.6295 | 0.0971 | −0.0413 [−0.1060, +0.0182], not significant |
+
+**What it says.**
+- **The circuit decides most of it, and even that is a weak signal.** The
+  best candidate beats the circuit rule significantly. But at 0.9992 it is
+  only 0.10 better than an even three-way guess. Stop counts swing with
+  safety cars, weather and strategy calls that nothing here can see.
+- **Everything added makes it worse.** That includes this season so far,
+  position and team. The season mix moves with the tyres, but a few races
+  into a season it is mostly noise. The season rule is worse than an even
+  guess.
+- **The two information levels give the same answer.** The winner uses no
+  position, so one model serves before and after qualifying.
+
+**Selected and frozen: W1, for both levels.** The calibration guard is not
+tripped: ECE 0.0566 against the bar's 0.1020.
+
+This entry was committed before the holdout was run.
+
+### Holdout — 2026, scored once
+
+Run with `python src/pit_stops.py holdout` after the freeze was committed.
+It covered 15 races and 264 finishers.
+
+| | Log loss | ECE (≤1 stop) | vs circuit rule |
+|---|---:|---:|---|
+| *circuit rule, the bar* | *1.0641* | 0.1819 | — |
+| *season rule* | *1.1430* | — | — |
+| W1, both levels | 0.9889 | **0.1967** | −0.0752 [−0.1978, +0.0324] |
+
+**Verdict under the protocol: passes.** W1 was significantly better than the
+bar on 2019–2025, and is no worse on 2026.
+
+**What the verdict hides.** On 2026 its calibration error is 0.20: a stated
+one-stop chance is about twenty points out. A diagnosis was run after the
+verdict was recorded, and it cannot change it.
+
+| 2026 | ≤1 | 2 | 3+ |
+|---|---:|---:|---:|
+| W1, mean predicted | 42.0% | 40.4% | 17.6% |
+| Observed | 42.8% | 39.0% | 18.2% |
+
+On average the mix is right. Race by race it is not: the observed share of
+one-stoppers per race runs from 0% to 100%, and five races had none at all,
+while W1 says 23–68% every time. **A stop count is decided for the whole race
+at once.** A safety car at the right moment, or a tyre that lasts or does not,
+moves nearly every car to the same strategy. A per-driver chance cannot express
+that, and that is what the calibration error measures. 2019–2025 has the same
+structure (mean predicted ≤1 share 47.3%, observed 43.9%). It is less visible
+there only because there are more races to average over.
+
+**Recommendation: do not publish per-driver stop counts,** even though the
+protocol allows it. The useful question is about the race: will most of the
+field stop once, or more? That is a different target with about twenty-two
+cases a season, and it would need its own protocol.
+
+Shipping is a separate decision, made after review.
