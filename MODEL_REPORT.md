@@ -1118,3 +1118,55 @@ The new chance would ship as its own field. The simulated `p_podium` stays in
 the files, for the record and their consistency checks. Otherwise the
 simulated podium stays, labelled as now. Shipping is a separate decision, made
 after review.
+
+### Selection — 2019–2025
+
+Run with `python src/podium_model.py select` after the protocol and the
+script were committed. It covered 152 races per model. "Above points" and
+"below win" are the shares of driver-races where the podium chance
+contradicts the points or win chance.
+
+| Model | Candidate | Log loss | ECE | vs rule | Above points | Below win |
+|---|---|---:|---:|---|---:|---:|
+| before practice | *rule* | *0.2914* | *0.0297* | — | | |
+| | reference (§11) | 0.2802 | 0.0368 | −0.0113 [−0.0280, +0.0055] | 3.0% | 0.0% |
+| | U1 direct | 0.2659 | 0.0146 | −0.0255 [−0.0381, −0.0132] | 0.0% | 1.2% |
+| | **U2 summed** | **0.2646** | 0.0143 | −0.0268 [−0.0398, −0.0135] | 0.6% | 0.6% |
+| | U3 retirements | 0.2724 | 0.0286 | −0.0190 [−0.0334, −0.0044] | 0.3% | 0.0% |
+| | U4 consistent | 0.2659 | 0.0146 | −0.0255 [−0.0382, −0.0131] | 0.0% | 0.0% |
+| after practice | *rule* | *0.2883* | *0.0305* | — | | |
+| | reference (§11) | 0.2718 | 0.0372 | −0.0164 [−0.0334, +0.0014] | 2.9% | 0.0% |
+| | U1 direct | 0.2622 | 0.0152 | −0.0261 [−0.0405, −0.0107] | 0.0% | 0.9% |
+| | U2 summed | 0.2630 | 0.0109 | −0.0253 [−0.0428, −0.0051] | 0.5% | 0.6% |
+| | U3 retirements | 0.2657 | 0.0295 | −0.0226 [−0.0380, −0.0060] | 0.4% | 0.2% |
+| | **U4 consistent** | **0.2621** | 0.0152 | −0.0262 [−0.0406, −0.0107] | 0.0% | 0.0% |
+| after qualifying | *rule* | *0.2473* | *0.0339* | — | | |
+| | reference (§11) | 0.2365 | 0.0197 | −0.0108 [−0.0216, +0.0009] | 1.5% | 0.0% |
+| | U1 direct | 0.2351 | 0.0209 | −0.0123 [−0.0225, +0.0001] | 0.0% | 1.0% |
+| | **U2 summed** | **0.2340** | 0.0250 | −0.0134 [−0.0263, +0.0023] | 1.2% | 0.8% |
+| | U3 retirements | 0.2347 | 0.0140 | −0.0127 [−0.0228, −0.0001] | 0.1% | 0.3% |
+| | U4 consistent | 0.2351 | 0.0209 | −0.0123 [−0.0225, +0.0001] | 0.0% | 0.0% |
+
+**What it says.**
+- **Before qualifying, a direct podium chance beats the rule** for both
+  models, by 0.025–0.027, which is significant. It is also better calibrated
+  than the rule.
+- **After qualifying, nothing clearly does.** Qualifying order is already a
+  strong guide to the podium, so the rule is hard to beat. The selected
+  candidate, U2, is 0.013 better but not significantly, so this model fails
+  the protocol's first condition whatever 2026 shows. U3 would have been
+  significant, but the rule selects on log loss alone, by design.
+- **Keeping the chance consistent costs almost nothing.** U4 is never more
+  than 0.0013 behind the best candidate. It is the only candidate that never
+  contradicts the points or win chance. U2, selected before practice, still
+  does so in 0.6% of driver-races in each direction.
+
+**Selected and frozen.**
+- U2 before practice.
+- U4 after practice.
+- U2 after qualifying, which cannot pass.
+
+No calibration guard is tripped: the selected ECEs are 0.0143, 0.0152 and
+0.0250, against rules of 0.0297, 0.0305 and 0.0339.
+
+This entry was committed before the holdout was run.
