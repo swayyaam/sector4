@@ -9,9 +9,10 @@ const fmt = new Intl.NumberFormat("en-GB");
 const fieldSizes = [...new Set(predictions.map((p) => p.drivers.length))].sort((a, b) => a - b);
 
 const contents = [
+  { id: "short", label: "The short version" },
   { id: "model", label: "The model" },
   { id: "data", label: "The data" },
-  { id: "snapshots", label: "Two snapshots" },
+  { id: "snapshots", label: "Two predictions" },
   { id: "predicted", label: "What is predicted" },
   { id: "scoring", label: "Scoring" },
   { id: "rejected", label: "Tried and rejected" },
@@ -43,43 +44,79 @@ const contents = [
     </nav>
   </section>
 
+  <section id="short" class="wrap band chapter">
+    <h2 class="h3">The short version.</h2>
+    <div class="prose">
+      <ul>
+        <li>
+          <strong>Two predictions per race.</strong> One before practice, using only the
+          championship standings. One after qualifying, using where each driver qualified, their
+          practice pace, their championship points and their share of their team's points.
+        </li>
+        <li>
+          <strong>Chances, not picks.</strong> A 30% chance to win means the driver would win about
+          3 times if the race could be run 10 times. Favourites lose, and a good prediction still
+          misses winners.
+        </li>
+        <li>
+          <strong>Scored after every race.</strong> Each prediction gets a score based on the chance
+          it gave the driver who won, where lower is better. Next to it is the score of a simple
+          rule that knew the same things.
+        </li>
+        <li>
+          <strong>Honest about the limits.</strong> Tested on this season's first fourteen races,
+          the model did not do clearly better than the simple rule of going by qualifying position.
+          What it does well is say how likely things are: when it says 20%, that happens about one
+          time in five.
+        </li>
+        <li>
+          <strong>Not betting advice.</strong> Nothing here has been tested against bookmakers'
+          odds.
+        </li>
+      </ul>
+      <p>The rest of this page is the detail, for anyone who wants to check the working.</p>
+    </div>
+  </section>
+
   <section id="model" class="wrap band chapter">
     <h2 class="h3">What the model is, and what it is not.</h2>
     <div class="prose">
       <p>
-        The model is a logistic regression with <strong>four inputs</strong>: where the driver
-        qualified, their best practice lap relative to the fastest car, their championship points,
-        and their share of their team's points. Qualifying position enters as a smooth curve rather
-        than a straight line, because the gap between first and second is not the gap between
-        fifteenth and sixteenth.
+        The model is a logistic regression, a standard statistical method that turns inputs into
+        probabilities, with <strong>four inputs</strong>: where the driver qualified, their best
+        practice lap relative to the fastest car, their championship points, and their share of
+        their team's points. Qualifying position enters as a smooth curve rather than a straight
+        line, because the gap between first and second is not the gap between fifteenth and
+        sixteenth.
       </p>
       <p>
-        That is the post-qualifying model. Before the cars run, qualifying and practice do not
-        exist, so the pre-weekend snapshot reduces to the two inputs that do: championship points
-        and share of team points. It is a weaker model, not a different view of the same one.
+        That is the after-qualifying model. Before practice, neither qualifying nor practice has
+        happened, so the before-practice prediction uses only the two inputs that exist:
+        championship points and share of team points. It is a weaker model, not a different view of
+        the same one.
       </p>
       <p>
         Four inputs is not a simplification made for the sake of the explanation. Larger versions
-        were built and measured — nineteen features, twenty-two, thirty-three — and every one of
-        them scored worse. Circuit history, tyre data and driver-against-teammate form were all
-        tried, and all three made the predictions less accurate rather than more.
+        were built and measured — nineteen inputs, twenty-two, thirty-three — and every one of them
+        scored worse. Circuit history, tyre data and driver-against-teammate form were all tried,
+        and all three made the predictions less accurate rather than more.
       </p>
       <div class="callout">
         <p>
-          <strong>The model has not been shown to beat a simple baseline.</strong> The baseline is
-          qualifying order: the historical chance of winning from each grid slot, and nothing else.
-          Across 2019–2025 the model scored better, but that comparison is what chose the model, so
-          it flatters it. The one clean out-of-sample test — the 2026 season, held back from every
-          decision and scored once — was <strong>inconclusive</strong>. The model was ahead on
-          average, and well inside the range that fourteen races of a regulation-reset season cannot
-          separate from chance.
+          <strong>The model has not been shown to beat a simple rule.</strong> The rule is
+          qualifying order: the chance of winning that each qualifying position has had in past
+          races, and nothing else. Across 2019–2025 the model scored better, but those are the races
+          it was chosen on, so that comparison flatters it. The one clean test — the 2026 season,
+          kept aside from every decision and scored once — was <strong>inconclusive</strong>. The
+          model was slightly ahead on average, by less than fourteen races of a season under new
+          rules can tell apart from luck.
         </p>
       </div>
       <p>
         So this site does not claim that the model beats qualifying order. What it does claim is
         that the win probabilities are well calibrated — when it says 20%, that happens about one
-        time in five — and <a href="/track-record/">the track record</a> prints the baseline's score
-        beside the model's on every race, so the question is yours to settle rather than ours.
+        time in five — and <a href="/track-record/">the track record</a> prints the simple rule's
+        score beside the model's on every race, so the question is yours to settle rather than ours.
       </p>
     </div>
   </section>
@@ -120,12 +157,12 @@ const contents = [
         <div class="rise" style="--i:0">
           <dt>Nothing is invented.</dt>
           <dd>
-            A missing value stays missing and is flagged. No interpolation, no back-filling, no
-            plausible substitutes.
+            A missing value stays missing and is flagged. No estimating it from its neighbours, no
+            filling it in later, no plausible stand-ins.
           </dd>
         </div>
         <div class="rise" style="--i:1">
-          <dt>Provenance travels with the row.</dt>
+          <dt>Every row says where it came from.</dt>
           <dd>
             Every record carries the source it came from, so any figure can be traced back to the
             file it was read from.
@@ -139,17 +176,17 @@ const contents = [
           </dd>
         </div>
         <div class="rise" style="--i:3">
-          <dt>Time is UTC.</dt>
+          <dt>One clock.</dt>
           <dd>
-            Stored in UTC, rendered in your zone by the page. Original local date fields are kept as
-            they were.
+            Times are stored in UTC and shown in your own time zone by the page. The original local
+            dates are kept as they were.
           </dd>
         </div>
         <div class="rise" style="--i:4">
-          <dt>Builds are deterministic.</dt>
+          <dt>Builds are repeatable.</dt>
           <dd>
-            The same inputs produce byte-identical outputs, which is what makes a change reviewable
-            at all.
+            The same inputs always produce exactly the same outputs, which is what makes a change
+            checkable at all.
           </dd>
         </div>
       </dl>
@@ -230,30 +267,31 @@ const contents = [
   </section>
 
   <section id="snapshots" class="wrap band chapter">
-    <h2 class="h3">Two snapshots per race.</h2>
+    <h2 class="h3">Two predictions per race.</h2>
     <div class="prose">
       <p>
-        A prediction is only meaningful with a timestamp on it, so each race gets up to two. Neither
-        is changed after its deadline: the first session of the weekend for pre-weekend, the start
-        of the race for post-qualifying. A correction before then is published as a new revision
-        beside the original, and the race page shows both.
+        A prediction only means something if you know when it was made, so each race gets up to two,
+        each with a deadline. Before practice is locked when the first session of the weekend
+        starts; after qualifying is locked when the race starts. A correction before the deadline is
+        published as a new revision beside the original, and the race page shows both.
       </p>
       <dl class="defs">
         <div>
-          <dt>Pre-weekend</dt>
+          <dt>Before practice</dt>
           <dd>
             Published before any car runs. It uses two inputs, championship points and share of team
-            points, and knows nothing about qualifying or practice. Scored beside championship
-            order.
+            points, and knows nothing about qualifying or practice. Compared with the simple rule of
+            championship order.
           </dd>
         </div>
         <div>
-          <dt>Post-qualifying</dt>
+          <dt>After qualifying</dt>
           <dd>
-            Published after qualifying, with the qualifying order and this weekend's practice pace
-            known. It uses qualifying position rather than the grid, so penalties applied afterwards
-            are not in it; <a href="#limits">why is below</a>. This is the sharper of the two and
-            the one a race page shows by default. Scored beside qualifying order.
+            Published after qualifying, once the qualifying order and this weekend's practice pace
+            are known. It uses qualifying position rather than the starting grid, so penalties
+            applied afterwards are not in it; <a href="#limits">why is below</a>. This is the
+            sharper of the two and the one a race page shows first. Compared with the simple rule of
+            qualifying order.
           </dd>
         </div>
       </dl>
@@ -267,45 +305,47 @@ const contents = [
   <section id="predicted" class="wrap band chapter">
     <h2 class="h3">What is predicted.</h2>
     <div class="prose">
-      <p>For every driver in the field, each snapshot gives:</p>
+      <p>For every driver in the field, each prediction gives:</p>
       <dl class="defs">
         <div>
           <dt>Win, podium, top ten</dt>
           <dd>
-            The probability of finishing there or better. Only the win probability has been
-            validated; podium and top ten follow from it through one simulation of the whole race.
+            The chance of finishing there or better. Only the win chance has been tested against
+            past races; podium and top ten are worked out from it by simulating the race many
+            thousands of times.
           </dd>
         </div>
         <div>
           <dt>DNF</dt>
           <dd>
-            The probability of not being classified as a finisher. It is fitted separately from the
-            rest and has not been validated.
+            The chance of not being classified as a finisher. It comes from a separate model that
+            has not been tested.
           </dd>
         </div>
         <div>
-          <dt>Expected position</dt>
+          <dt>Average finish</dt>
           <dd>
-            The mean of the driver's full finishing-position distribution, not a rounded guess at a
-            place. The distribution itself is drawn on each race page.
+            Where the driver finishes on average across all the simulated races, not a rounded guess
+            at one place. The full spread is drawn on each race page.
           </dd>
         </div>
         <div>
           <dt>Top factors</dt>
           <dd>
-            The handful of inputs moving that driver's number most, with direction and relative
-            weight. Weights only, never a lap time or any timing value.
+            The handful of inputs moving that driver's chance most, whether each helps or hurts, and
+            by how much relative to the others. Weights only, never a lap time or any timing value.
           </dd>
         </div>
       </dl>
       <p>
         Those numbers have to hold together, so the build checks them rather than trusting them.
-        Across a field of {fieldSizes.join(" or ")} drivers, win probabilities must sum to one,
-        podium probabilities to three and top-ten probabilities to ten; each driver's position
-        distribution must sum to one; and no driver may be likelier to win than to podium, or
-        likelier to podium than to finish in the top ten. The tolerance is{" "}
-        <span class="num">{SUM_TOLERANCE.toExponential(0)}</span>, which is float noise and nothing
-        more. A file that fails any of these stops the build instead of reaching a page.
+        Across a field of {fieldSizes.join(" or ")} drivers, the win chances must add up to 100%,
+        the podium chances to 300% because there are three places, and the top-ten chances to
+        1,000%; each driver's chances of finishing in each position must add up to 100%; and no
+        driver may be likelier to win than to finish on the podium, or likelier to finish on the
+        podium than in the top ten. The only slack allowed is{" "}
+        <span class="num">{SUM_TOLERANCE.toExponential(0)}</span>, for rounding in the arithmetic. A
+        file that fails any of these stops the build instead of reaching a page.
       </p>
     </div>
   </section>
@@ -314,63 +354,63 @@ const contents = [
     <h2 class="h3">How a prediction is scored.</h2>
     <div class="prose">
       <p>
-        Scoring happens once, against the latest revision published before that snapshot's deadline,
-        and the result is never recomputed. A revision published after its deadline is listed on the
-        race page and never scored. Four numbers per race:
+        Scoring happens once, against the latest revision published before that prediction's
+        deadline, and the result is never recomputed. A revision published after its deadline is
+        listed on the race page and never scored. Four numbers per race:
       </p>
       <dl class="defs">
         <div>
-          <dt>Log loss</dt>
+          <dt>Score (log loss)</dt>
           <dd>
-            <span class="num">−ln p</span>, where <span class="num">p</span> is the probability
-            given to the driver who actually won. It punishes confident misses hard, which is the
-            point: a model that says 60% and is wrong should hurt more than one that says 20% and is
-            wrong. Lower is better.
+            Based only on the chance given to the driver who actually won:{" "}
+            <span class="num">−ln p</span>, where <span class="num">p</span> is that chance. Giving
+            the winner 100% scores 0; giving them 50% scores 0.69; giving them 5% scores 3.0. It
+            punishes confident misses hard, which is the point. Lower is better.
           </dd>
         </div>
         <div>
           <dt>Brier score</dt>
           <dd>
-            The squared error of the whole win distribution, summed over every driver, with one for
-            the winner and zero for everybody else. Unlike log loss it is bounded, so a single
-            catastrophic race cannot dominate a season. Lower is better.
+            Looks at every driver's chance, not just the winner's: how far each was from what
+            happened, squared and added up, counting the winner as 100% and everyone else as 0%. It
+            runs from 0 to 2, so one disastrous race cannot swamp a season the way it can with the
+            score above. Lower is better.
           </dd>
         </div>
         <div>
-          <dt>Winner called</dt>
+          <dt>Picked the winner</dt>
           <dd>
-            Whether the driver given the highest win probability won. Crude, and included because it
+            Whether the driver given the best chance of winning won. Crude, and included because it
             is the number everyone actually checks.
           </dd>
         </div>
         <div>
-          <dt>Podium places</dt>
-          <dd>
-            How many of the three drivers given the highest podium probability finished on the
-            podium, out of three.
-          </dd>
+          <dt>Podium picks right</dt>
+          <dd>How many of the three likeliest podium finishers made the podium, out of three.</dd>
         </div>
       </dl>
       <p>
-        A driver who was predicted but did not start is left out and the other probabilities are
-        renormalised. The pre-weekend field is the previous race's starters, so a driver can also
-        start without having been predicted. The race page says so whenever either happens.
+        A driver who was predicted but did not start is left out, and everyone else's chances are
+        scaled up to add back to 100%. The before-practice prediction copies its list of drivers
+        from the previous race's starters, so a driver can also start without having been predicted.
+        The race page says so whenever either happens.
       </p>
       <p>
-        If the winner is one of those drivers, or was published with a win probability of 0.0 at six
-        decimal places, the snapshot gave the winner no probability and its log loss is not defined.
-        It is left empty rather than filled with a stand-in, which would measure the stand-in and
-        not the prediction. Everything else still counts: the winner is missed, the Brier score
-        charges the full miss, and the race counts as one where the model did not beat its baseline.
-        The track record's mean log loss leaves such a race out and says how many it left out.
+        If the winner is one of those drivers, or was published with a win chance of 0.0% at six
+        decimal places, the prediction gave the winner no chance at all, and there is no score to
+        give: the formula above has no answer for zero. It is left empty rather than filled with a
+        stand-in, which would measure the stand-in and not the prediction. Everything else still
+        counts: the winner is missed, the Brier score charges the full miss, and the race counts as
+        one where the model did not beat the simple rule. The track record's average leaves such a
+        race out and says how many it left out.
       </p>
       <p>
-        A log loss means nothing without a reference, so{" "}
-        <a href="/track-record/">the track record</a> prints two: what a uniform random pick over
-        the same field would have scored, which is the floor, and what a baseline that saw the same
-        information scored, which is the bar. That is qualifying order for the post-qualifying
-        snapshot and championship order for the pre-weekend one. Both are computed the same way as
-        the model's own number, on the same race, from data available before it started.
+        A score means nothing on its own, so <a href="/track-record/">the track record</a> prints
+        two more: what picking a driver at random would have scored, which is the floor, and what a
+        simple rule that knew the same things scored, which is the bar. That rule is qualifying
+        order for the after-qualifying prediction and championship order for the before-practice
+        one. Both are worked out the same way as the model's own score, on the same race, from data
+        available before it started.
       </p>
     </div>
   </section>
@@ -379,40 +419,41 @@ const contents = [
     <h2 class="h3">What was tried and rejected.</h2>
     <div class="prose">
       <p>
-        The four features are not a first guess that happened to work. Larger and cleverer models
-        were built, measured against the same baseline on the same races, and found worse.
+        The four inputs are not a first guess that happened to work. Larger and cleverer models were
+        built, measured against the same simple rule on the same races, and found worse.
       </p>
       <dl class="defs">
         <div>
-          <dt>Nine features that measured as noise</dt>
+          <dt>Nine extra inputs that turned out to be noise</dt>
           <dd>
-            Circuit history, tyre data and driver-against-teammate form — nine columns across three
-            groups. Not one of them differed from zero at 95% confidence, and adding them moved the
-            log loss the wrong way: 1.3286 with form alone, 1.3480 once circuit history was added,
-            1.3765 once tyre data was.
+            Circuit history, tyre data and driver-against-teammate form, nine inputs in three
+            groups. None of them made a difference that could be told apart from chance, and adding
+            them made the score worse: 1.3286 with form alone, 1.3480 once circuit history was
+            added, 1.3765 once tyre data was.
           </dd>
         </div>
         <div>
           <dt>A gradient-boosted tree model</dt>
           <dd>
-            It memorised its training set — 0.0069 log loss on data it had seen against 0.2155 on
-            data it had not. Regularising it heavily closed that gap to 0.0256 and it still scored
-            worse than the simple model at race level.
+            A more flexible kind of model. It memorised the races it learned from, scoring 0.0069 on
+            those against 0.2155 on races it had not seen. Holding it back heavily closed that gap
+            to 0.0256, and it still scored worse than the simple model race by race.
           </dd>
         </div>
         <div>
           <dt>An Elo rating</dt>
           <dd>
-            2.0256 against the baseline's 1.4340. A rating that sees only the driver cannot see the
-            car, and in this sport the car is most of the answer.
+            A rating system like the one used in chess. It scored 2.0256 against the
+            qualifying-order rule's 1.4340. A rating that sees only the driver cannot see the car,
+            and in this sport the car is most of the answer.
           </dd>
         </div>
         <div>
           <dt>A ranking model with simulated race orders</dt>
           <dd>
-            It produced a coherent joint distribution, which the four marginals do not, but it lost
-            to the baseline by a margin that did not depend on chance. Its simulation still supplies
-            the position distributions shown on race pages.
+            It produced whole finishing orders that hang together, which separate win, podium and
+            top-ten figures do not, but it lost to the simple rule by a margin too large to be
+            chance. Its simulation still supplies the finishing-order charts on race pages.
           </dd>
         </div>
       </dl>
@@ -423,39 +464,40 @@ const contents = [
     <h2 class="h3">How the model is evaluated.</h2>
     <div class="prose">
       <p>
-        Each race is predicted by a model fitted on races strictly before it and on nothing else.
-        That is slow — the model is refitted for every race — and it is the only way the comparison
-        against a baseline that works the same way means anything.
+        Each race is predicted by a model trained only on the races before it, never on the race
+        itself or anything after. That is slow, because the model is retrained for every race, and
+        it is the only way a comparison with a simple rule that works the same way means anything.
       </p>
       <dl class="defs">
         <div>
-          <dt>Bootstrap intervals, resampled over races</dt>
+          <dt>Uncertainty measured race by race</dt>
           <dd>
-            Not over driver rows. Twenty drivers in one race are not twenty pieces of evidence: if
-            the model misreads the car, it misreads all twenty at once.
+            The ranges of uncertainty are worked out by resampling whole races (a bootstrap), not
+            individual drivers. Twenty drivers in one race are not twenty pieces of evidence: if the
+            model misreads the car, it misreads all twenty at once.
           </dd>
         </div>
         <div>
-          <dt>Paired against the baseline</dt>
+          <dt>Compared with the simple rule on the same races</dt>
           <dd>Race by race, so a run of unusually hard races cannot decide the comparison.</dd>
         </div>
         <div>
-          <dt>Calibration beside discrimination</dt>
+          <dt>Honest chances, not just the right order</dt>
           <dd>
-            Discrimination asks whether the ordering is right. Calibration asks whether a stated 20%
-            happens about one time in five. This site publishes the number itself, so the second
-            question is the one that matters, and a model with a better log loss and worse
-            calibration would be the wrong choice here.
+            Getting the order right is one test. Calibration is another: does a stated 20% happen
+            about one time in five? This site publishes the chances themselves, so the second test
+            is the one that matters, and a model with a better score but less honest chances would
+            be the wrong choice here.
           </dd>
         </div>
       </dl>
       <div class="callout">
         <p>
-          The evidence that the model beats the baseline is <strong>in-sample</strong>. The
-          comparison across 2019–2025 is what chose this model, so it flatters it. The one clean
-          test — 2026, held back from every decision and scored once — was inconclusive.{" "}
-          <a href="/track-record/">The track record</a> is the real ongoing test, and it starts
-          empty.
+          The evidence that the model beats the simple rule comes from{" "}
+          <strong>the races it was chosen on</strong>. The comparison across 2019–2025 is what chose
+          this model, so it flatters it. The one clean test — 2026, kept aside from every decision
+          and scored once — was inconclusive. <a href="/track-record/">The track record</a> is the
+          real ongoing test.
         </p>
       </div>
     </div>
@@ -470,13 +512,14 @@ const contents = [
       </p>
       <dl class="defs">
         <div>
-          <dt>A uniform guess scored a 99.4% hit rate</dt>
+          <dt>An even guess picked 99.4% of winners</dt>
           <dd>
-            The field arrives sorted by finishing position, so picking the highest probability fell
-            back on row order and handed a tied predictor the winner every time. Breaking ties by
-            driver id instead gave 19.9% — still wrong, because the lowest id in this era belongs to
-            a driver who won a fifth of those races. Ties are now settled by expectation, and a
-            uniform guess scores exactly one in twenty, which is arithmetic rather than judgement.
+            The field arrives sorted by finishing position, so picking the highest chance fell back
+            on row order and handed a tied predictor the winner every time. Breaking ties by driver
+            id instead gave 19.9% — still wrong, because the lowest id in this era belongs to a
+            driver who won a fifth of those races. Ties are now shared out evenly, and an even guess
+            across twenty drivers picks exactly one winner in twenty, which is arithmetic rather
+            than judgement.
           </dd>
         </div>
         <div>
@@ -484,8 +527,8 @@ const contents = [
           <dd>
             It scored five times worse than a random guess, assigning a near-certainty to one driver
             in most races, because its confidence was tuned on the same races it had learned from.
-            Every accuracy metric looked healthy while this happened — the winner hit rate sat at
-            52%. Only the probabilities showed it.
+            Every other measure looked healthy while this happened — it still picked 52% of winners.
+            Only the chances it gave showed the problem.
           </dd>
         </div>
       </dl>
@@ -499,22 +542,22 @@ const contents = [
         <div>
           <dt>Safety cars and first-lap incidents</dt>
           <dd>
-            A large part of what separates the prediction from the result, and irreducible rather
-            than a gap to be closed.
+            A large part of what separates the prediction from the result, and no model can see them
+            coming.
           </dd>
         </div>
         <div>
           <dt>Weather on the day</dt>
           <dd>
-            A dry forecast that turns wet rearranges a race, and a probability published on a
-            Tuesday cannot know that.
+            A dry forecast that turns wet rearranges a race, and a chance published on a Tuesday
+            cannot know that.
           </dd>
         </div>
         <div>
           <dt>Reliability</dt>
           <dd>
-            Modelled as a rate, which is the right shape for a season and useless for a particular
-            car on a particular afternoon.
+            Treated as an average rate, which works over a season and says little about one car on
+            one afternoon.
           </dd>
         </div>
         <div>
@@ -523,11 +566,11 @@ const contents = [
         </div>
       </dl>
       <p>
-        There is also one feature deliberately missing. <strong>Grid position</strong> is strictly
-        better information than qualifying position because it includes penalties, and it is
-        knowable before the race starts — but there is no feed that would let the model use it live
-        as well as in training. Training on it and serving something else would make every score on
-        this site an overstatement, so it stays out until that feed exists.
+        There is also one input deliberately missing. The <strong>starting grid</strong> is better
+        information than qualifying position because it includes penalties, and it is known before
+        the race starts — but there is no data feed that would let the model use it for live
+        predictions as well as in training. Learning from it but predicting without it would make
+        every score on this site look better than it is, so it stays out until that feed exists.
       </p>
     </div>
   </section>
