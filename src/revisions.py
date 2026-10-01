@@ -18,6 +18,8 @@ reported, never scored. The deadline is per snapshot:
 
 * pre_weekend      -> the first session of the weekend. Its whole claim is
                       "before any car runs".
+* post_practice    -> the weekend's first qualifying session: qualifying, or
+                      sprint qualifying on a sprint weekend (MODEL_REPORT §10).
 * post_qualifying  -> race start.
 
 Writing, scoring and site-building all go through `effective()`, so the three
@@ -37,8 +39,8 @@ OUT = ROOT / "predictions"
 
 # The only fields that may be added to a file after it is committed.
 HASH_EXCLUDED = ("superseded_by", "superseded_reason")
-SNAPSHOTS = ("pre_weekend", "post_qualifying")
-_NAME = re.compile(r"^(?P<round>\d{2})-(?P<snapshot>pre_weekend|post_qualifying)"
+SNAPSHOTS = ("pre_weekend", "post_practice", "post_qualifying")
+_NAME = re.compile(r"^(?P<round>\d{2})-(?P<snapshot>pre_weekend|post_practice|post_qualifying)"
                    r"(?:-r(?P<rev>\d+))?\.json$")
 
 
@@ -111,7 +113,14 @@ def sessions(season: int, rnd: int) -> dict[str, datetime]:
                "Sprint": _at(r.get("sprint_date"), r.get("sprint_time")),
                "Qualifying": _at(r.get("quali_date"), r.get("quali_time")),
                "Race": _at(r.get("date"), r.get("time"))}
-        return {k: v for k, v in got.items() if v is not None}
+        got = {k: v for k, v in got.items() if v is not None}
+        # The table has no sprint qualifying column. The schedule does, and the
+        # after-practice deadline needs it, so it is read from the cached
+        # schedule -- offline, never fetched -- when the cache holds it.
+        sq = _cached_sprint_qualifying(season, rnd)
+        if sq is not None:
+            got.setdefault("Sprint Qualifying", sq)
+        return got
 
     from jolpica_client import JolpicaClient
 
@@ -128,11 +137,40 @@ def sessions(season: int, rnd: int) -> dict[str, datetime]:
     raise LookupError(f"{season} round {rnd} is not in the schedule")
 
 
+def _cached_sprint_qualifying(season: int, rnd: int) -> datetime | None:
+    import sys
+    sys.path.insert(0, str(ROOT / "src"))
+    import jolpica_client as J
+
+    try:
+        races = J.read_cached_all(f"{season}/races", J.CACHE_DIR)
+    except J.CacheMiss:
+        return None
+    for r in races:
+        if int(r["round"]) == rnd and r.get("SprintQualifying"):
+            return _at(r["SprintQualifying"]["date"], r["SprintQualifying"].get("time"))
+    return None
+
+
 def deadline(season: int, rnd: int, snapshot: str,
              schedule: dict[str, datetime] | None = None) -> datetime:
     s = schedule if schedule is not None else sessions(season, rnd)
     if snapshot == "pre_weekend":
         return min(s.values())
+    if snapshot == "post_practice":
+        # Since 2024 a sprint weekend's sprint qualifying comes before both the
+        # sprint and qualifying, so without its time the deadline would fall a
+        # day late. That is refused, never guessed.
+        if ("Sprint" in s and "Sprint Qualifying" not in s
+                and "Qualifying" in s and s["Qualifying"] > s["Sprint"]):
+            raise LookupError(
+                f"{season} round {rnd} is a sprint weekend with no sprint qualifying time "
+                "in the schedule; refusing to set the after-practice deadline. Run "
+                "src/fetch_jolpica.py to refresh the schedule.")
+        firsts = [s[k] for k in ("Sprint Qualifying", "Qualifying", "Sprint") if k in s]
+        if not firsts:
+            raise LookupError(f"{season} round {rnd} has no qualifying time in the schedule")
+        return min(firsts)
     return s["Race"]
 
 

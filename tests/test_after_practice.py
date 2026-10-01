@@ -85,3 +85,46 @@ def test_a_sprint_weekend_is_known_from_the_schedule_alone():
     assert F.practice_sessions(t, _race(t)) == ("Practice 1",)
     t["races"]["sprint_date"] = [None, None]
     assert F.practice_sessions(t, _race(t)) == ("Practice 1", "Practice 2", "Practice 3")
+
+
+# ------------------------------------------------------------------ deadlines
+def _when(day: int, hour: int):
+    from datetime import datetime, timezone
+    return datetime(2026, 10, day, hour, 0, tzinfo=timezone.utc)
+
+
+def test_the_after_practice_deadline_is_qualifying_on_a_normal_weekend():
+    import revisions as R
+    s = {"Practice 1": _when(2, 4), "Practice 3": _when(3, 4), "Qualifying": _when(3, 8),
+         "Race": _when(4, 7)}
+    assert R.deadline(2026, 16, "post_practice", s) == _when(3, 8)
+
+
+def test_the_after_practice_deadline_is_sprint_qualifying_on_a_sprint_weekend():
+    import revisions as R
+    s = {"Practice 1": _when(9, 8), "Sprint Qualifying": _when(9, 12), "Sprint": _when(10, 9),
+         "Qualifying": _when(10, 13), "Race": _when(11, 12)}
+    assert R.deadline(2026, 17, "post_practice", s) == _when(9, 12)
+
+
+def test_a_modern_sprint_weekend_without_its_sprint_qualifying_time_is_refused():
+    import pytest
+    import revisions as R
+    s = {"Practice 1": _when(9, 8), "Sprint": _when(10, 9), "Qualifying": _when(10, 13),
+         "Race": _when(11, 12)}
+    with pytest.raises(LookupError, match="sprint qualifying"):
+        R.deadline(2026, 17, "post_practice", s)
+
+
+def test_a_2021_style_sprint_weekend_locks_at_friday_qualifying():
+    import revisions as R
+    s = {"Practice 1": _when(2, 12), "Qualifying": _when(2, 16), "Sprint": _when(3, 15),
+         "Race": _when(4, 14)}
+    assert R.deadline(2021, 10, "post_practice", s) == _when(2, 16)
+
+
+def test_after_practice_files_are_recognised():
+    from pathlib import Path
+    import revisions as R
+    assert R.parse_name(Path("16-post_practice.json")) == (16, "post_practice", 1)
+    assert R.parse_name(Path("16-post_practice-r2.json")) == (16, "post_practice", 2)
