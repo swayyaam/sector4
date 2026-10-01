@@ -922,3 +922,50 @@ seen, so its holdout would not be clean for these targets.
 
 What the site does with the published top-ten and podium chances is a
 separate decision, made after review.
+
+---
+
+## 12. A points-finish chance that survives retirements
+
+§11 found the simulated top-ten chance worse than a positional rule for every
+model, and out by about ten points, because the simulation never retires a car.
+The site stopped showing it. This section tries to replace it.
+
+### Protocol — fixed before any result was seen
+
+**Target.** Classified in the top ten, which equals scoring points (§11). Each
+of the three shipped models keeps its own inputs, field and frame, exactly as
+in §11.
+
+**Three candidates per model,** all walk-forward and fitted only on earlier
+races:
+
+| Id | How the chance is made |
+|---|---|
+| T1 | **Direct.** The model's own estimator, fitted on the top-ten target instead of the win target. That is `Slim` for before and after practice, and the qualifying spline for after qualifying, with C = 0.5. |
+| T2 | **Direct, summed to the places.** T1 rescaled so the field's chances add up to the number of points places (ten, or the field size if smaller), then capped below one. |
+| T3 | **Simulation with retirements.** The published simulation (20,000 draws, same seed), but each draw first retires each car with that driver's published DNF chance. The remaining cars are ordered by the win chances, and the top ten of those finishers score points. |
+
+The published simulation chance (§11) is the reference. It is already known
+to fail.
+
+**Selection, per model.** On 2019–2025, the candidate with the lowest mean
+race-level log loss on the top-ten target is selected. There is no tie-break.
+
+**The bar.** The same positional rule as §11, learned from the same rows.
+
+**Calibration guard.** If the selected candidate's ECE is more than twice the
+rule's on 2019–2025, stop and report instead of freezing.
+
+**Holdout: 2026, scored once,** on every 2026 race each frame covers. One
+thing is stated now rather than discovered later: §11 has already scored the
+rule and the reference on 2026 for this target. So 2026 is clean for the
+three candidates, but not for the comparison as a whole.
+
+**What the result allows.** A model's selected candidate may bring the chance
+back to the site, labelled tested, only if:
+- it is significantly better than the rule on 2019–2025; and
+- it is no worse than the rule on 2026.
+
+Otherwise the column stays hidden for that model. Shipping is a separate
+decision, made after review.
