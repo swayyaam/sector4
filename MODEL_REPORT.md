@@ -491,8 +491,9 @@ it was this.
   −0.10, and P3 to P4 is −0.02.
 - Everything (P5) is worse than form plus qualifying (P4), the same pattern
   §4 found for the post-qualifying model.
-- The extra 2014–2017 seasons make no material difference. Within each input
-  set the two windows sit inside 0.01 of each other, in both directions.
+- The extra 2014–2017 seasons make little difference. Within each input set
+  the two windows are at most 0.015 apart, in both directions. Only P0's
+  gap, 0.0145 in favour of 2014, is significant, and P0 is the weakest set.
 
 **Selected and frozen: P4-2018.**
 - Inputs: the six driver-form inputs, the five team-form inputs,
