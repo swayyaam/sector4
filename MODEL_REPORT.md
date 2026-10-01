@@ -1302,3 +1302,37 @@ if:
 - it is no worse than the bar on 2026.
 
 Shipping is a separate decision, made after review.
+
+### Selection — 2019–2025
+
+Run with `python src/pit_stops.py select` after the protocol and the script
+were committed. It covered 151 races and 2,642 classified finishers. An even
+guess over the three classes would score ln 3 = **1.0986**.
+
+| | Log loss | Brier | ECE (≤1 stop) | vs circuit rule |
+|---|---:|---:|---:|---|
+| *season rule* | *1.1635* | 0.6971 | 0.1232 | — |
+| *circuit rule, the bar* | *1.0753* | 0.6387 | 0.1020 | — |
+| **W1, circuit history** | **0.9992** | 0.6033 | 0.0566 | −0.0761 [−0.1323, −0.0255] |
+| W2, + this season | 1.0327 | 0.6291 | 0.0890 | −0.0426 [−0.1064, +0.0170], not significant |
+| W3, + position (before qualifying) | 1.0332 | 0.6293 | 0.0992 | −0.0422 [−0.1063, +0.0171], not significant |
+| W3, + position (after qualifying) | 1.0327 | 0.6289 | 0.0950 | −0.0427 [−0.1070, +0.0171], not significant |
+| W4, + team (before qualifying) | 1.0346 | 0.6298 | 0.1011 | −0.0407 [−0.1055, +0.0188], not significant |
+| W4, + team (after qualifying) | 1.0340 | 0.6295 | 0.0971 | −0.0413 [−0.1060, +0.0182], not significant |
+
+**What it says.**
+- **The circuit decides most of it, and even that is a weak signal.** The
+  best candidate beats the circuit rule significantly. But at 0.9992 it is
+  only 0.10 better than an even three-way guess. Stop counts swing with
+  safety cars, weather and strategy calls that nothing here can see.
+- **Everything added makes it worse.** That includes this season so far,
+  position and team. The season mix moves with the tyres, but a few races
+  into a season it is mostly noise. The season rule is worse than an even
+  guess.
+- **The two information levels give the same answer.** The winner uses no
+  position, so one model serves before and after qualifying.
+
+**Selected and frozen: W1, for both levels.** The calibration guard is not
+tripped: ECE 0.0566 against the bar's 0.1020.
+
+This entry was committed before the holdout was run.
