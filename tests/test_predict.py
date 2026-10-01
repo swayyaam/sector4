@@ -303,3 +303,47 @@ def test_the_ledger_records_why_a_log_loss_is_undefined(tmp_path, monkeypatch, c
     assert entry["model"]["winner_hit"] == 0
     assert entry["model"]["brier"] > 1.0
     assert entry["baseline"]["log_loss"] is not None, "the baseline saw the whole field"
+
+
+# ----------------------------------------------- the selected pre-weekend model
+def test_the_shipped_pre_weekend_inputs_are_the_frozen_selection():
+    """MODEL_REPORT §9 froze P4-2018. What ships must be exactly that set."""
+    import predict as P
+    import pre_weekend_selection as S
+
+    assert P.PRE_WEEKEND_COLS == S.CANDIDATES["P4"]
+    assert all(c in P.FACTOR_LABELS for c in P.PRE_WEEKEND_COLS + P.SHIPPED)
+
+
+def test_selection_inputs_still_read_the_original_set():
+    """Adding the two inputs to features.py must not grow P5 or the §§1-8 sets."""
+    import features as F
+    import pre_weekend_selection as S
+
+    assert len(S.CANDIDATES["P5"]) == 25
+    assert len(set(S.CANDIDATES["P5"])) == 25, "an input appears twice"
+    assert len(F.features_for(F.POST, original_only=True)) == 33
+
+
+@needs_data
+def test_a_pre_weekend_prediction_uses_the_selected_model():
+    import predict as P
+
+    pred = P.build(2026, 15, "pre_weekend")
+    assert pred["model_version"] == P.PRE_MODEL_VERSION
+    assert pred["model_features"] == P.PRE_WEEKEND_COLS
+    assert abs(sum(d["p_win"] for d in pred["drivers"]) - 1) < 1e-6
+    labels = set(P.FACTOR_LABELS.values())
+    for d in pred["drivers"]:
+        assert 0 < len(d["top_factors"]) <= 4
+        assert all(f["label"] in labels for f in d["top_factors"]), "a raw column name leaked"
+
+
+@needs_data
+def test_the_pre_weekend_frame_carries_the_new_inputs():
+    import model as M
+
+    df = M.feature_frame("pre_weekend")
+    for c in ("driver_quali_pos_mean_3", "team_quali_pos_mean_3"):
+        assert c in df.columns
+        assert df[c].notna().mean() > 0.95, f"{c} is mostly empty"
