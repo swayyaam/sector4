@@ -357,6 +357,18 @@ describe("bad data fails the build", () => {
     expect(() => parseOrThrow(predictionSchema, p, "test")).toThrow(/cannot have called/);
   });
 
+  it("accepts a points chance on every driver", () => {
+    const p = good();
+    for (const d of p.drivers) d.p_points = 0.5;
+    expect(() => parseOrThrow(predictionSchema, p, "test")).not.toThrow();
+  });
+
+  it("rejects a points chance on only some drivers", () => {
+    const p = good();
+    p.drivers[0].p_points = 0.5;
+    expect(() => parseOrThrow(predictionSchema, p, "test")).toThrow(/all or none/);
+  });
+
   it("reports every problem at once, not just the first", () => {
     const p = good();
     p.commit_sha = "nope";

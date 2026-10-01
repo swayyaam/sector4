@@ -209,6 +209,12 @@ export const driverPredictionSchema = z.object({
   p_podium: probability,
   p_top10: probability,
   p_dnf: probability,
+  /**
+   * The chance of scoring points, from its own model (MODEL_REPORT §12), not
+   * the simulation. Absent from predictions made before it was added. It need
+   * not agree with the simulated podium and finishing order.
+   */
+  p_points: probability.optional(),
   expected_position: z.number().min(1).max(30),
   position_distribution: z.array(probability).min(1).max(30),
   top_factors: z.array(topFactorSchema).max(6),
@@ -341,6 +347,13 @@ export const predictionSchema = z
       if (!row.ok) {
         at(`driver ${d.driverId} position_distribution sums to ${row.actual}, expected 1`);
       }
+    }
+
+    // A points chance is a property of the whole prediction: every driver has
+    // one, or none does.
+    const withPoints = p.drivers.filter((d) => d.p_points !== undefined).length;
+    if (withPoints !== 0 && withPoints !== n) {
+      at(`${withPoints} of ${n} drivers have a points chance; it is all or none`);
     }
 
     // Exactly one driver wins, three finish on the podium, ten in the top ten.

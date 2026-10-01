@@ -345,11 +345,21 @@ const contents = [
           </dd>
         </div>
         <div>
-          <dt>Top ten, no longer shown</dt>
+          <dt>Points</dt>
           <dd>
-            Worked out by the same simulation, and still in every prediction file. Tested against
+            The chance of finishing in the points, which means the top ten. It comes from its own
+            model, trained directly on scoring points with the same inputs as the win chance. It
+            beat a simple rule over 2019–2025 and again this season, for all three predictions.
+            Because it is a separate model, it can disagree a little with the simulated podium
+            chance. Predictions made before it was added do not have one.
+          </dd>
+        </div>
+        <div>
+          <dt>Simulated top ten, no longer shown</dt>
+          <dd>
+            Worked out by the race simulation, and still in every prediction file. Tested against
             past races it did worse than a simple rule and was out by about ten points, because the
-            simulation never retires a car. It is hidden until a model that does better replaces it.
+            simulation never retires a car. The points chance above replaced it.
           </dd>
         </div>
         <div>
