@@ -26,23 +26,22 @@ const span =
   <p class="notice">
     <span class="badge badge-ink">New</span>
     <span>
-      No race has been run at {circuit.name} before this one, so there is no history to show and the
-      model has none to use.
+      No race has been run at {circuit.name} before this one, so there is no history to show.
     </span>
   </p>
 ) : (
   <div class="history">
     <dl class="figures">
       <div class="rise" style="--i:0">
-        <dt>Average position change</dt>
+        <dt>Average places moved</dt>
         <dd class="num">{h.mean_position_change!.toFixed(1)} places</dd>
       </div>
       <div class="rise" style="--i:1">
-        <dt>Entries that retired</dt>
+        <dt>Cars that retired</dt>
         <dd class="num">{percent(h.retirement_rate!, 0)}</dd>
       </div>
       <div class="rise" style="--i:2">
-        <dt>Won from grid slot 1</dt>
+        <dt>Won from the front of the grid</dt>
         <dd class="num">
           {h.grid_one_wins} of {h.grid_one_races}
         </dd>
@@ -59,18 +58,17 @@ const span =
       <summary>How these are counted</summary>
       <ul>
         <li>
-          <strong>Average position change</strong> is the mean of the gap between grid slot and
-          finishing position, over every car that started from a grid slot. It is the model's own
-          circuit feature. Low means the grid order mostly holds.
+          <strong>Average places moved</strong> is how many places each car gained or lost between
+          the start and the finish, on average, counting every car that started from a grid slot.
+          Low means the starting order mostly holds.
         </li>
         <li>
-          <strong>Entries that retired</strong> is the share of entries classified as retired, also
-          a model feature.
+          <strong>Cars that retired</strong> is the share of entries that did not finish.
         </li>
         <li>
-          <strong>Won from grid slot 1</strong> counts the car that started first, not the fastest
-          qualifier: a penalty can move the pole-sitter back, and the results record where each car
-          started.
+          <strong>Won from the front of the grid</strong> counts the car that started first, not the
+          fastest qualifier: a penalty can move the pole-sitter back, and the results record where
+          each car started.
         </li>
       </ul>
     </details>
