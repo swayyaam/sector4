@@ -783,3 +783,69 @@ qualifying.
     record, never pooled, and a three-way toggle on race pages.
   - Factors come from the model's own coefficients, as for the pre-weekend
     model.
+
+---
+
+## 11. Top ten, podium and teammate chances
+
+Every prediction publishes a top-ten and a podium chance. Both come from the
+race simulation driven by the win chances (§7), and so far only the win
+chances have been tested. This section tests them. It also tests a new
+quantity, the chance of finishing ahead of your teammate. Under the
+simulation's model that is exact: a driver's win chance divided by the
+pair's.
+
+This section selects nothing. All three shipped models stay as they are. The
+question is whether what they imply can be called tested.
+
+### Protocol — fixed before any result was seen
+
+**Targets.**
+- **Top ten:** classified in the top ten. Since 2010 this equals scoring
+  points in every one of the driver-races checked. The data check found no
+  exception.
+- **Podium:** classified in the top three.
+- **Ahead of teammate:** higher in the finishing order. Retirements are
+  ordered by laps completed, as in the results. A pair is two drivers of the
+  same team who both started. A team that started one car has no pair (22
+  team-races since 2018). Each pair is counted once.
+
+**Models.** Each of the three shipped specifications is run walk-forward on
+its own frame and field, exactly as published:
+- `pre-form-quali-v1` (§9);
+- `practice-form-v1` (§10);
+- `minimal4-share-v1` (§7).
+
+Each race's win chances are normalised and simulated exactly as `predict.py`
+does: 20,000 draws, the same seed, unrounded. The teammate chance is
+`p_i / (p_i + p_j)` from the same normalised win chances.
+
+**The rules each is compared with,** all learned walk-forward from the same
+rows each model learns from:
+- **Top ten and podium:** the rate at which each position has finished in
+  the top ten (or on the podium), with Laplace smoothing like §1's priors.
+  The position is the championship position entering the race before
+  qualifying, and the qualifying position after it.
+- **Teammate:** the rate at which the teammate ranked higher by that same
+  position finished ahead. A tie or a missing position gets 0.5.
+
+**Metrics.**
+- Binary log loss, averaged over a race's drivers (or pairs), then over
+  races.
+- Brier score.
+- Expected calibration error.
+- Paired race bootstrap against the rule, 95%.
+
+**Windows.** 2019–2025 first. Then 2026 once, on every 2026 race that each
+model's frame covers.
+
+**What the result allows.** This is decided per model and per quantity.
+- A chance counts as **better than its rule** only if:
+  - its 2019–2025 difference from the rule is significantly below zero; and
+  - its 2026 mean is no worse than the rule's.
+- A teammate chance is published only for a model where it is better than its
+  rule.
+- Top ten and podium chances are already published:
+  - if better than the rule, the site may call them tested;
+  - otherwise it says they were tested and did not beat a simple rule.
+- Shipping is a separate decision, made after review.
