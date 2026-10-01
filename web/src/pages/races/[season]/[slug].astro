@@ -145,7 +145,7 @@ const title = `${race.season} ${race.name} — win and podium chances`;
 const description = result
   ? `How Sector 4's ${race.season} ${race.name} prediction turned out: score ${logLoss(result.log_loss).toLowerCase()}, ` +
     `${result.podium_hits} of 3 podium picks right, winner ${result.winner_hit ? "picked" : "missed"}.`
-  : `Win, podium, top-ten and DNF chances for all ${shown.drivers.length} drivers at the ` +
+  : `Win, podium and DNF chances for all ${shown.drivers.length} drivers at the ` +
     `${race.season} ${race.name}, with the factors behind each.`;
 
 const jsonLd = [
@@ -346,8 +346,13 @@ const jsonLd = [
       <p class="eyebrow">Prediction</p>
       <h2 id="field-h">Full field</h2>
       <p>
-        Every driver's chance of winning, finishing on the podium and finishing in the top ten, plus
-        their chance of not finishing (DNF) and where they are likely to end up.
+        Every driver's chance of winning and of finishing on the podium, plus their chance of not
+        finishing (DNF) and where they are likely to end up.
+      </p>
+      <p class="body-sm muted">
+        Win chances have passed a test against past races. Podium chances were tested and are no
+        better than a simple rule. The DNF chance and the finishing order have not been tested on
+        their own. A top-ten chance was tested, found unreliable, and is no longer shown.
       </p>
     </div>
 
@@ -360,9 +365,12 @@ const jsonLd = [
           Missing some winners is what honest odds look like, not a sign they are wrong.
         </p>
         <p>
-          Only the win chances have been tested against past races. The podium, top-ten and
-          finishing-order figures are worked out from the win chances by simulating the race many
-          thousands of times. The DNF chance comes from a separate model that has not been tested.
+          Only the win chances have passed a test against past races. The podium and finishing-order
+          figures are worked out from the win chances by simulating the race many thousands of
+          times. The simulation never retires a car, so it is surest about the front of the field
+          and least sure further back. Podium chances were tested and are no better than a simple
+          rule. A top-ten chance from the same simulation did worse than a simple rule and is no
+          longer shown. The DNF chance comes from a separate model that has not been tested.
         </p>
       </div>
     </details>
@@ -474,7 +482,8 @@ const jsonLd = [
                 Where each driver finished across thousands of simulated races, one column per
                 position. Taller means more often. The simulation does not include retirements:
                 every car is placed somewhere, and the chance of not finishing is the DNF column
-                above.
+                above. It is the same simulation that produced the top-ten chance, which tested
+                worse than a simple rule, so read the spread further down the order with caution.
               </p>
             </div>
             <PositionDistribution rows={rows} drivers={drivers} teams={teams} />

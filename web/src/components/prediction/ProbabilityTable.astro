@@ -2,6 +2,10 @@
 /**
  * Full-field probability table.
  *
+ * No top-ten column. The files still carry p_top10, but tested against past
+ * races it did worse than a simple rule and was out by about ten points
+ * (MODEL_REPORT §11), so it is not shown until a better model replaces it.
+ *
  * ex-data-table-cell chrome from DESIGN.md. Numbers use tabular figures and
  * are right-aligned; names carry a team marker plus the team's short name so
  * the colour is never doing the work alone. Rows arrive in order and their
@@ -40,9 +44,6 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
         Podium
       </th>
       <th scope="col" class="n">
-        Top 10
-      </th>
-      <th scope="col" class="n">
         DNF
       </th>
       <th scope="col" class="n">
@@ -74,9 +75,6 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
           </td>
           <td class="n num" data-label="Podium">
             {percent(r.p_podium)}
-          </td>
-          <td class="n num" data-label="Top 10">
-            {percent(r.p_top10)}
           </td>
           <td class="n num dim" data-label="DNF">
             {percent(r.p_dnf)}
