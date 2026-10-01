@@ -12,21 +12,38 @@ export type Snapshot = Prediction["snapshot"];
 /** Post-qualifying first: the sharper call, and the one a race-day reader wants. */
 export const SERIES: Snapshot[] = ["post_qualifying", "pre_weekend"];
 
+/**
+ * Named for when each one is published, in words a fan uses. The data keeps
+ * its own identifiers (`pre_weekend`, `post_qualifying`); only the labels
+ * change.
+ */
 export const SNAPSHOT_LABEL: Record<Snapshot, string> = {
-  pre_weekend: "Pre-weekend",
-  post_qualifying: "Post-qualifying",
+  pre_weekend: "Before practice",
+  post_qualifying: "After qualifying",
 };
 
 export const SNAPSHOT_BLURB: Record<Snapshot, string> = {
-  pre_weekend: "Published before any car runs, so it cannot see qualifying or practice pace.",
+  pre_weekend:
+    "Published before the first practice session, so all it knows is the championship standings.",
   post_qualifying:
-    "Published after qualifying. It adds qualifying position and this weekend's practice pace, which is most of what the model knows.",
+    "Published after qualifying, so it knows where everyone qualified and how quick they were in practice.",
 };
 
 /** The baseline each snapshot is scored beside: one that saw the same information. */
 export const BASELINE_FOR: Record<Snapshot, string> = {
   pre_weekend: "championship order",
   post_qualifying: "qualifying order",
+};
+
+/**
+ * The same baselines in a sentence a fan can follow: a simple rule anyone
+ * could apply, which the model has to beat to be worth reading.
+ */
+export const BASELINE_PLAIN: Record<Snapshot, string> = {
+  pre_weekend:
+    "giving each driver the chance of winning that their championship position has had in past races",
+  post_qualifying:
+    "giving each driver the chance of winning that their qualifying position has had in past races",
 };
 
 /**

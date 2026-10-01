@@ -41,9 +41,21 @@ export function score(n: number): string {
   return n.toFixed(3);
 }
 
+/**
+ * A probability as a count, the way most people read odds: "about 7 in 10"
+ * rather than 69.3%. Coarse on purpose; the percentage beside it stays exact.
+ */
+export function chanceInWords(p: number): string {
+  if (p >= 0.95) return "more than 9 in 10";
+  if (p >= 0.095) return `about ${Math.round(p * 10)} in 10`;
+  if (p >= 0.01) return `about 1 in ${Math.round(1 / p)}`;
+  if (p > 0) return "less than 1 in 100";
+  return "next to none";
+}
+
 /** A log loss, or the plain statement that there is none. Never a stand-in number. */
 export function logLoss(n: number | null): string {
-  return n === null ? "Not defined" : score(n);
+  return n === null ? "No score" : score(n);
 }
 
 export function driverName(d: { forename: string; surname: string }): string {
