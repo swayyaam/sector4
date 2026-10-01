@@ -745,3 +745,14 @@ None of the holdout comparisons is significant at 95%.
   - a third, never-pooled series on the site.
 
   That is a separate change, made after review.
+
+**A correction after the holdout, with no effect on it.**
+- **The bug.** The sessions rule decided whether a weekend was a sprint
+  weekend by looking for sprint sessions in the laps. Those run after this
+  snapshot's deadline.
+- **The fix.** The format is in the calendar beforehand, so it now comes from
+  the race's `sprint_date`.
+- **No effect on the result.** The rebuilt after-practice frame (3,770 rows)
+  is byte-identical to the one selected on, so nothing above changes.
+- **Test coverage.** The time-travel test in `tests/test_features.py` now
+  covers this snapshot. Qualifying and any practice after it are removed.
