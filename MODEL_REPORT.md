@@ -884,3 +884,41 @@ The difference is model minus rule in log loss; below zero favours the model.
 None of the nine meets the first condition, so 2026 cannot change any verdict.
 It is still scored once, as committed. Choosing to skip a step after seeing the
 results is exactly what the protocol exists to prevent.
+
+### 2026, scored once
+
+Run with `python src/derived_validation.py holdout` after the 2019–2025
+results were committed. It covered 15 races for the two models that need no
+practice, and 14 for after-practice. The script refuses a second run.
+
+| Model | Chance | Model | Rule | Difference | ECE |
+|---|---|---:|---:|---|---:|
+| before practice | top ten | 0.7735 | 0.5595 | +0.2140 [+0.0629, +0.3715], **worse** | 0.1338 |
+| before practice | podium | 0.3036 | 0.2761 | +0.0276 [−0.0003, +0.0529] | 0.0622 |
+| before practice | teammate | 0.7726 | 0.7064 | +0.0662 [+0.0112, +0.1304], **worse** | 0.1259 |
+| after practice | top ten | 0.7115 | 0.5559 | +0.1556 [−0.0353, +0.3498] | 0.1325 |
+| after practice | podium | 0.2807 | 0.2788 | +0.0020 [−0.0293, +0.0371] | 0.0625 |
+| after practice | teammate | 0.7496 | 0.6972 | +0.0524 [−0.0199, +0.1251] | 0.1511 |
+| after qualifying | top ten | 0.6705 | 0.5174 | +0.1531 [+0.0158, +0.3071], **worse** | 0.1301 |
+| after qualifying | podium | 0.2235 | 0.2313 | −0.0077 [−0.0303, +0.0176] | 0.0397 |
+| after qualifying | teammate | 0.6525 | 0.6370 | +0.0155 [−0.0647, +0.0998] | 0.0980 |
+
+**Verdicts under the protocol.**
+- **Top ten:** tested, and worse than a simple rule for all three models.
+  It is miscalibrated by more than ten points on 2026.
+- **Podium:** tested, and not better than a simple rule. In sample it was a
+  little ahead for all three; on 2026 it is a little ahead after qualifying
+  and a little behind for the two earlier predictions. No difference in
+  either window is significant.
+- **Teammate:** tested, and worse than a simple rule. It is **not published.**
+
+**Why, and what would fix it.** The simulation turns win chances into a whole
+finishing order and never retires a car. That is fine for the winner, which
+is what it was validated on. It is wrong for anything further down the order,
+where retirements and the midfield's randomness dominate. A fix would model
+those targets directly, or carry retirements into the simulation. Either would
+be a new model with its own protocol. The 2026 numbers above have now been
+seen, so its holdout would not be clean for these targets.
+
+What the site does with the published top-ten and podium chances is a
+separate decision, made after review.
