@@ -1044,3 +1044,23 @@ qualifying.
   column hidden.
 
 Shipping is a separate decision, made after review.
+
+### Shipped — the points chance
+
+After review, T1 ships as `p_points` on every new prediction, for all three
+models.
+- **Code.** `predict.points_chance` calls the frozen `points_finish` code
+  rather than a copy.
+- **Site.** The race page shows it as a "Points" column, and says it passed
+  its test.
+- **Where it is absent.** A prediction made before it was added has no points
+  chance, so its table has no column, and the page says why.
+- **The simulation stays.** Its `p_top10` remains in every file, for the
+  record and for the files' consistency checks, and is not shown.
+
+**Known disagreement.** Because the points chance is its own model, it can sit
+below the simulated podium chance for a favourite. At R15, after qualifying,
+the favourite had a 98.6% podium chance against 95.5% for points, which cannot
+both be right. The simulated podium was found overconfident at the top in
+§11. The page says the two come from different models. A direct podium model,
+tested the same way, would remove the disagreement.

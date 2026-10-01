@@ -76,6 +76,24 @@ const sessions =
 
 const actualById = new Map((result?.drivers ?? []).map((d) => [d.driverId, d]));
 
+// Which chances on this page have passed a test, said once and plainly. A
+// points chance exists only on predictions made after it was added (§12).
+const hasPoints = snapshots.some((s) => s.drivers.every((d) => d.p_points !== undefined));
+const fieldIntro = hasPoints
+  ? "Every driver's chance of winning, finishing on the podium and scoring points, plus their " +
+    "chance of not finishing (DNF) and where they are likely to end up."
+  : "Every driver's chance of winning and of finishing on the podium, plus their chance of not " +
+    "finishing (DNF) and where they are likely to end up.";
+const testStatus = hasPoints
+  ? "Win chances and points chances have passed tests against past races. Points come from " +
+    "their own model, not the race simulation, so they can disagree a little with the podium " +
+    "chance. Podium chances were tested and are no better than a simple rule. The DNF chance " +
+    "and the finishing order have not been tested on their own."
+  : "Win chances have passed a test against past races. Podium chances were tested and are no " +
+    "better than a simple rule. The DNF chance and the finishing order have not been tested on " +
+    "their own. A top-ten chance was tested, found unreliable, and is no longer shown; " +
+    "predictions made later carry a tested points chance instead.";
+
 /** "A", "A and B", "A, B and C", from driver ids. */
 function nameList(ids: number[]): string {
   const names = ids.map((id) => {
@@ -345,15 +363,8 @@ const jsonLd = [
     <div class="section-head">
       <p class="eyebrow">Prediction</p>
       <h2 id="field-h">Full field</h2>
-      <p>
-        Every driver's chance of winning and of finishing on the podium, plus their chance of not
-        finishing (DNF) and where they are likely to end up.
-      </p>
-      <p class="body-sm muted">
-        Win chances have passed a test against past races. Podium chances were tested and are no
-        better than a simple rule. The DNF chance and the finishing order have not been tested on
-        their own. A top-ten chance was tested, found unreliable, and is no longer shown.
-      </p>
+      <p>{fieldIntro}</p>
+      <p class="body-sm muted">{testStatus}</p>
     </div>
 
     <details class="read disclosure">
@@ -365,12 +376,14 @@ const jsonLd = [
           Missing some winners is what honest odds look like, not a sign they are wrong.
         </p>
         <p>
-          Only the win chances have passed a test against past races. The podium and finishing-order
-          figures are worked out from the win chances by simulating the race many thousands of
-          times. The simulation never retires a car, so it is surest about the front of the field
-          and least sure further back. Podium chances were tested and are no better than a simple
-          rule. A top-ten chance from the same simulation did worse than a simple rule and is no
-          longer shown. The DNF chance comes from a separate model that has not been tested.
+          The win chances have passed a test against past races. So have the points chances, on
+          predictions that carry them: they come from their own model, trained directly on scoring
+          points. The podium and finishing-order figures are worked out from the win chances by
+          simulating the race many thousands of times. The simulation never retires a car, so it is
+          surest about the front of the field and least sure further back. Podium chances were
+          tested and are no better than a simple rule. A top-ten chance from the simulation did
+          worse than a simple rule and is no longer shown. The DNF chance comes from a separate
+          model that has not been tested.
         </p>
       </div>
     </details>
