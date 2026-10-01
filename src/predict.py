@@ -239,6 +239,25 @@ def model_factors(train: pd.DataFrame, feats: pd.DataFrame, cols: list[str]) -> 
     return out
 
 
+def points_chance(train: pd.DataFrame, test: pd.DataFrame, cols: list[str]) -> np.ndarray:
+    """Each driver's chance of scoring points: T1 from MODEL_REPORT §12.
+
+    The snapshot's own estimator fitted on the top-ten target directly, which
+    beat a positional rule for every model, where the simulation's top-ten
+    chance did not. It is a separate model, so it need not agree with the
+    simulated podium or finishing order. Imported here rather than at the top,
+    because points_finish.py imports this module.
+    """
+    import points_finish as PF
+
+    if "quali_position" in cols:
+        xtr, _ = PF._widen(train, cols)
+        xte, _ = PF._widen(test, cols)
+    else:
+        xtr, xte = train[cols].astype(float), test[cols].astype(float)
+    return np.clip(PF._logistic(xtr, train["top10"].to_numpy(), xte), 0.0, 1.0)
+
+
 def _fit_dnf(train: pd.DataFrame, test: pd.DataFrame, cols: list[str]) -> pd.Series:
     """A logistic on the same features, for the retirement marginal."""
     from sklearn.impute import SimpleImputer
@@ -346,6 +365,7 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
     # separately, and MODEL_REPORT.md validated only p_win -- so this marginal
     # is stated as unvalidated rather than implied to carry the same weight.
     probs["dnf"] = _fit_dnf(train, feats, list(cols))
+    p_points = points_chance(train, feats, list(cols))
 
     ids = feats["driverId"].astype(int).to_numpy()
     p_win = np.clip(probs["win"].reindex(ids).to_numpy(dtype=float), 1e-9, None)
@@ -374,6 +394,7 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
             "team_entity_id": str(feats.iloc[i]["team_entity_id"]),
             "p_win": pw, "p_podium": pp, "p_top10": pt,
             "p_dnf": round(float(p_dnf[i]), 6),
+            "p_points": round(float(p_points[i]), 6),
             "expected_position": round(float((dist[i] * np.arange(1, n + 1)).sum()), 6),
             "position_distribution": round_to_total(dist[i], 1.0),
             "top_factors": factors[i] if factors is not None else top_factors(x, list(cols), i),

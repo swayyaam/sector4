@@ -390,3 +390,28 @@ def test_an_after_practice_prediction_is_built_and_scored(tmp_path, monkeypatch)
     assert entry["snapshot"] == "post_practice"
     assert entry["baseline"]["name"] == "championship order"
     assert entry["model_version"] == P.PRACTICE_MODEL_VERSION
+
+
+# ------------------------------------------------------------ the points chance
+@needs_data
+@pytest.mark.parametrize("snapshot", ["pre_weekend", "post_practice", "post_qualifying"])
+def test_every_prediction_carries_a_points_chance(snapshot):
+    """MODEL_REPORT §12's T1 ships on all three. Each driver has one, it is a
+    probability, and the field's chances add up to about the ten places."""
+    import predict as P
+
+    pred = P.build(2026, 14, snapshot)
+    pts = [d["p_points"] for d in pred["drivers"]]
+    assert len(pts) == len(pred["drivers"])
+    assert all(0 <= p <= 1 for p in pts)
+    assert 8.5 <= sum(pts) <= 11.5, f"points chances sum to {sum(pts):.2f}"
+
+
+def test_the_points_chance_is_the_frozen_t1_code():
+    """predict.py must call the same functions §12 selected, not a copy."""
+    import inspect
+
+    import predict as P
+
+    src = inspect.getsource(P.points_chance)
+    assert "PF._widen" in src and "PF._logistic" in src
