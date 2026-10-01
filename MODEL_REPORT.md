@@ -572,3 +572,92 @@ each keeps the model version that made it.
   The track record says when a table covers more than one model. The
   methodology page states that the earlier pre-weekend model did worse than
   championship order.
+
+---
+
+## 10. The after-practice model
+
+A third prediction, published after the last practice session that runs
+before the weekend's first qualifying session. That deadline is qualifying on
+a normal weekend, and sprint qualifying (or the 2021–23 Friday qualifying) on
+a sprint weekend. It is scored separately and never pooled with the other
+two.
+
+### Protocol — fixed before any model was run
+
+**Data definitions.** These were checked against the data, not against any
+model result, before this was written.
+
+- **Sessions.** Practice 1 only on a sprint weekend; Practice 1–3 otherwise.
+  On every sprint weekend from 2021 to 2026, FP1 is the only practice before
+  the first qualifying session: in 2021–23 Friday qualifying came straight
+  after FP1, and since 2024 sprint qualifying does. The session list comes
+  from the FastF1 laps. On the 2024 sprint weekends, the races table's
+  `fp2_date` is sprint qualifying, so it is not used.
+- **The field.** Drivers with laps in FP2 or FP3; drivers with laps in FP1 on
+  a sprint weekend; FP1 also when neither FP2 nor FP3 ran. Against the actual
+  starters, 2018–2026:
+
+  | Field rule | Extra drivers | Missing starters | Races missing a starter |
+  |---|---:|---:|---:|
+  | **FP2/FP3 (FP1 on sprint weekends)** | 28 | 2 | 2 of 187 |
+  | Previous race's starters (the pre-weekend rule) | 75 | 77 | 46 of 187 |
+  | Previous starters, swapped by practice | 48 | 22 | 19 of 187 |
+
+  Extra drivers are dropped at scoring and the rest renormalised, as for any
+  prediction.
+- **Practice inputs at this snapshot.** These use the same definitions as
+  the post-qualifying practice inputs, with two differences. They read only
+  the sessions above. And they are measured against the fastest driver in this
+  field, never against who went on to race.
+- **Pre-weekend inputs** are computed for this field, not the
+  previous race's starters.
+
+**Candidates.** All use the same `Slim` logistic regression, C = 0.5, trained
+on rows from 2018, when the practice data starts. There is no tuning.
+
+| Id | Inputs | Count |
+|---|---|---:|
+| Q0 | the pre-weekend model's 13 (§9), no practice | 13 |
+| Q1 | Q0 + best-lap gap | 14 |
+| Q2 | Q1 + long-run pace gap + long-run laps | 16 |
+| Q3 | Q2 + practice laps | 17 |
+| Q4 | Q3 + compounds run + softest long-run gap | 19 |
+| Q5 | standings only (§9 P1) + best-lap gap + long-run pace gap | 6 |
+
+**Selection window: 2019–2025,** on a frame truncated at the end of 2025.
+
+**Two bars:**
+- **Championship order** (§1).
+- **Practice order:** a positional prior on each starter's best-lap rank
+  within the field, estimated walk-forward and Laplace-smoothed exactly like
+  the qualifying-order baseline.
+
+The site will compare the model with whichever bar scores better on
+2019–2025, so it is never measured against the weaker of two available rules.
+
+**Selection rule.** The candidate with the lowest mean race-level win log loss
+on 2019–2025 is selected. If its win ECE is more than twice Q0's, stop and
+report instead of freezing.
+
+**Holdout: 2026, scored once.** Every 2026 race in the enriched season laps at
+the time of freezing: R1–R14. R15's practice exists only in the upcoming-race
+fetch. The selected model, Q0 and both bars are scored.
+
+**Caveat, stated now.** Practice pace was part of the post-qualifying
+selection, which was made with 2026 in view (§6). So the value of practice
+pace on 2026 is not entirely unseen.
+
+**What the result allows.**
+- Recommend publishing the after-practice prediction only if the selected
+  model's holdout log loss is below Q0's. Q0 is the pre-weekend inputs on the
+  same field: a third prediction that knows more but scores no better adds
+  nothing worth publishing.
+- Any claim against the bar needs the holdout interval to exclude zero.
+- Shipping needs:
+  - a practice-only fetch;
+  - a deadline in `revisions.py`;
+  - a scoring bar;
+  - a third series on the site.
+
+  It is a separate decision, made after review.
