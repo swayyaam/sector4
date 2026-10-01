@@ -783,3 +783,142 @@ qualifying.
     record, never pooled, and a three-way toggle on race pages.
   - Factors come from the model's own coefficients, as for the pre-weekend
     model.
+
+---
+
+## 11. Top ten, podium and teammate chances
+
+Every prediction publishes a top-ten and a podium chance. Both come from the
+race simulation driven by the win chances (§7), and so far only the win
+chances have been tested. This section tests them. It also tests a new
+quantity, the chance of finishing ahead of your teammate. Under the
+simulation's model that is exact: a driver's win chance divided by the
+pair's.
+
+This section selects nothing. All three shipped models stay as they are. The
+question is whether what they imply can be called tested.
+
+### Protocol — fixed before any result was seen
+
+**Targets.**
+- **Top ten:** classified in the top ten. Since 2010 this equals scoring
+  points in every one of the driver-races checked. The data check found no
+  exception.
+- **Podium:** classified in the top three.
+- **Ahead of teammate:** higher in the finishing order. Retirements are
+  ordered by laps completed, as in the results. A pair is two drivers of the
+  same team who both started. A team that started one car has no pair (22
+  team-races since 2018). Each pair is counted once.
+
+**Models.** Each of the three shipped specifications is run walk-forward on
+its own frame and field, exactly as published:
+- `pre-form-quali-v1` (§9);
+- `practice-form-v1` (§10);
+- `minimal4-share-v1` (§7).
+
+Each race's win chances are normalised and simulated exactly as `predict.py`
+does: 20,000 draws, the same seed, unrounded. The teammate chance is
+`p_i / (p_i + p_j)` from the same normalised win chances.
+
+**The rules each is compared with,** all learned walk-forward from the same
+rows each model learns from:
+- **Top ten and podium:** the rate at which each position has finished in
+  the top ten (or on the podium), with Laplace smoothing like §1's priors.
+  The position is the championship position entering the race before
+  qualifying, and the qualifying position after it.
+- **Teammate:** the rate at which the teammate ranked higher by that same
+  position finished ahead. A tie or a missing position gets 0.5.
+
+**Metrics.**
+- Binary log loss, averaged over a race's drivers (or pairs), then over
+  races.
+- Brier score.
+- Expected calibration error.
+- Paired race bootstrap against the rule, 95%.
+
+**Windows.** 2019–2025 first. Then 2026 once, on every 2026 race that each
+model's frame covers.
+
+**What the result allows.** This is decided per model and per quantity.
+- A chance counts as **better than its rule** only if:
+  - its 2019–2025 difference from the rule is significantly below zero; and
+  - its 2026 mean is no worse than the rule's.
+- A teammate chance is published only for a model where it is better than its
+  rule.
+- Top ten and podium chances are already published:
+  - if better than the rule, the site may call them tested;
+  - otherwise it says they were tested and did not beat a simple rule.
+- Shipping is a separate decision, made after review.
+
+### 2019–2025
+
+Run with `python src/derived_validation.py insample`, after the protocol and
+the script were committed. It covered 152 races for every model and quantity.
+The difference is model minus rule in log loss; below zero favours the model.
+
+| Model | Chance | Model | Rule | Difference | Brier, model vs rule | ECE |
+|---|---|---:|---:|---|---|---:|
+| before practice | top ten | 0.6848 | 0.5598 | +0.1251 [+0.0802, +0.1749], **worse** | 0.1858 vs 0.1881 | 0.1088 |
+| before practice | podium | 0.2802 | 0.2914 | −0.0113 [−0.0280, +0.0055] | 0.0876 vs 0.0887 | 0.0368 |
+| before practice | teammate | 0.7008 | 0.6700 | +0.0308 [+0.0045, +0.0601], **worse** | 0.2431 vs 0.2385 | 0.0873 |
+| after practice | top ten | 0.6645 | 0.5602 | +0.1043 [+0.0585, +0.1539], **worse** | 0.1815 vs 0.1883 | 0.0993 |
+| after practice | podium | 0.2718 | 0.2883 | −0.0164 [−0.0334, +0.0014] | 0.0840 vs 0.0874 | 0.0372 |
+| after practice | teammate | 0.7109 | 0.6706 | +0.0403 [+0.0094, +0.0744], **worse** | 0.2422 vs 0.2388 | 0.0975 |
+| after qualifying | top ten | 0.5985 | 0.5158 | +0.0826 [+0.0451, +0.1232], **worse** | 0.1682 vs 0.1688 | 0.0833 |
+| after qualifying | podium | 0.2365 | 0.2473 | −0.0108 [−0.0216, +0.0009] | 0.0702 vs 0.0732 | 0.0197 |
+| after qualifying | teammate | 0.6793 | 0.6249 | +0.0543 [+0.0174, +0.0924], **worse** | 0.2193 vs 0.2166 | 0.1046 |
+
+**What it says.**
+- **The published top-ten chances are worse than the rule for every model,**
+  and badly calibrated: an ECE near 0.1 means a stated chance is about ten
+  points out on average. The simulation places every car somewhere in the
+  order and never retires one, so a favourite's top-ten chance runs to 99%
+  when retirements alone take several percent. The Brier scores are close
+  while the log losses are not, which is the signature of confident misses.
+- **Podium chances are a little better than the rule for all three models,
+  never significantly,** and reasonably calibrated.
+- **The teammate chance is worse than the rule for all three,** and badly
+  calibrated for the same reason. The win-chance ratio is too confident about
+  who finishes ahead once retirements are in play.
+
+None of the nine meets the first condition, so 2026 cannot change any verdict.
+It is still scored once, as committed. Choosing to skip a step after seeing the
+results is exactly what the protocol exists to prevent.
+
+### 2026, scored once
+
+Run with `python src/derived_validation.py holdout` after the 2019–2025
+results were committed. It covered 15 races for the two models that need no
+practice, and 14 for after-practice. The script refuses a second run.
+
+| Model | Chance | Model | Rule | Difference | ECE |
+|---|---|---:|---:|---|---:|
+| before practice | top ten | 0.7735 | 0.5595 | +0.2140 [+0.0629, +0.3715], **worse** | 0.1338 |
+| before practice | podium | 0.3036 | 0.2761 | +0.0276 [−0.0003, +0.0529] | 0.0622 |
+| before practice | teammate | 0.7726 | 0.7064 | +0.0662 [+0.0112, +0.1304], **worse** | 0.1259 |
+| after practice | top ten | 0.7115 | 0.5559 | +0.1556 [−0.0353, +0.3498] | 0.1325 |
+| after practice | podium | 0.2807 | 0.2788 | +0.0020 [−0.0293, +0.0371] | 0.0625 |
+| after practice | teammate | 0.7496 | 0.6972 | +0.0524 [−0.0199, +0.1251] | 0.1511 |
+| after qualifying | top ten | 0.6705 | 0.5174 | +0.1531 [+0.0158, +0.3071], **worse** | 0.1301 |
+| after qualifying | podium | 0.2235 | 0.2313 | −0.0077 [−0.0303, +0.0176] | 0.0397 |
+| after qualifying | teammate | 0.6525 | 0.6370 | +0.0155 [−0.0647, +0.0998] | 0.0980 |
+
+**Verdicts under the protocol.**
+- **Top ten:** tested, and worse than a simple rule for all three models.
+  It is miscalibrated by more than ten points on 2026.
+- **Podium:** tested, and not better than a simple rule. In sample it was a
+  little ahead for all three; on 2026 it is a little ahead after qualifying
+  and a little behind for the two earlier predictions. No difference in
+  either window is significant.
+- **Teammate:** tested, and worse than a simple rule. It is **not published.**
+
+**Why, and what would fix it.** The simulation turns win chances into a whole
+finishing order and never retires a car. That is fine for the winner, which
+is what it was validated on. It is wrong for anything further down the order,
+where retirements and the midfield's randomness dominate. A fix would model
+those targets directly, or carry retirements into the simulation. Either would
+be a new model with its own protocol. The 2026 numbers above have now been
+seen, so its holdout would not be clean for these targets.
+
+What the site does with the published top-ten and podium chances is a
+separate decision, made after review.
