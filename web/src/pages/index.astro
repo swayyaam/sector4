@@ -45,7 +45,7 @@ const favouriteLine =
 const firstPredicted = [...predictions].sort((a, b) => a.season - b.season || a.round - b.round)[0];
 const firstRace = firstPredicted ? races.get(firstPredicted.race_id) : undefined;
 
-// The two snapshots are different models against different baselines, so
+// The snapshots are different models against different baselines, so
 // they are summarised side by side and never averaged together.
 const scored = scoredPredictions(predictions);
 const last = scored[0];
@@ -110,8 +110,8 @@ const jsonLd = [
     <h1 class="display">Race predictions, scored in public.</h1>
     <p class="lead">
       Every driver's chance of winning, finishing on the podium and finishing in the top ten.
-      Published before practice and again after qualifying, then checked against the result. The
-      misses stay on the record.
+      Published before practice, after practice and after qualifying, then checked against the
+      result. The misses stay on the record.
     </p>
     <div class="actions">
       {nextRace && (
@@ -341,10 +341,11 @@ const jsonLd = [
     </div>
     <div class="cards">
       <a class="card rise" style="--i:0" href="/methodology/">
-        <h3 class="h4">Two predictions per race.</h3>
+        <h3 class="h4">Three predictions per race.</h3>
         <p class="muted">
-          One before practice, from the championship standings alone. One after qualifying, once we
-          know where everyone starts. Each is scored on its own, never averaged together.
+          One before practice, from recent form and the standings. One after practice, adding this
+          weekend's pace. One after qualifying, once we know where everyone qualified. Each is
+          scored on its own, never averaged together.
         </p>
       </a>
       <a class="card rise" style="--i:1" href="/methodology/">

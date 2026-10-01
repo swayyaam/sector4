@@ -25,6 +25,7 @@ import {
   teamById,
 } from "../src/lib/data";
 import { describeModel } from "../src/lib/models";
+import { BASELINE_FOR, SERIES, SNAPSHOT_BLURB, SNAPSHOT_LABEL } from "../src/lib/snapshots";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -367,6 +368,31 @@ describe("bad data fails the build", () => {
       const msg = (e as Error).message;
       expect(msg.split("\n").length).toBeGreaterThanOrEqual(3);
     }
+  });
+});
+
+describe("the three predictions", () => {
+  it("accepts an after-practice prediction", () => {
+    const p = good();
+    p.snapshot = "post_practice";
+    expect(() => parseOrThrow(predictionSchema, p, "test")).not.toThrow();
+  });
+
+  it("names, describes and compares every one of them", () => {
+    const all = ["post_qualifying", "post_practice", "pre_weekend"] as const;
+    expect(SERIES).toEqual([...all]);
+    for (const s of all) {
+      expect(SNAPSHOT_LABEL[s]).toBeTruthy();
+      expect(SNAPSHOT_BLURB[s]).toBeTruthy();
+      expect(BASELINE_FOR[s]).toBeTruthy();
+    }
+  });
+
+  it("shows the latest prediction first on a race page", () => {
+    const base = good();
+    const pick = (snapshot: string) => ({ ...base, snapshot }) as unknown as Prediction;
+    const got = preferredSnapshot([pick("pre_weekend"), pick("post_practice")], base.race_id);
+    expect(got?.snapshot).toBe("post_practice");
   });
 });
 

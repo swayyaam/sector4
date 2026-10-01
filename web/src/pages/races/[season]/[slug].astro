@@ -368,7 +368,7 @@ const jsonLd = [
     </details>
 
     {snapshots.length > 1 && (
-      <fieldset class="seg">
+      <fieldset class="seg" style={`--n:${snapshots.length}`}>
         <legend class="sr-only">Prediction</legend>
         {snapshots.map((s, i) => (
           <>
@@ -626,7 +626,7 @@ const jsonLd = [
   .seg {
     position: relative;
     display: inline-grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(var(--n, 2), 1fr);
     margin: 0 0 var(--space-xl);
     padding: var(--space-xxs);
     border: 0;
@@ -639,7 +639,7 @@ const jsonLd = [
     top: var(--space-xxs);
     bottom: var(--space-xxs);
     left: var(--space-xxs);
-    width: calc(50% - var(--space-xxs));
+    width: calc((100% - 2 * var(--space-xxs)) / var(--n, 2));
     border-radius: var(--rounded-full);
     background: var(--colour-canvas);
     /* DESIGN.md's one soft-shadow exception: the active segment lifts off its track. */
@@ -648,6 +648,9 @@ const jsonLd = [
   }
   .seg:has(input:nth-of-type(2):checked)::before {
     transform: translateX(100%);
+  }
+  .seg:has(input:nth-of-type(3):checked)::before {
+    transform: translateX(200%);
   }
   .seg input {
     position: absolute;
@@ -664,6 +667,7 @@ const jsonLd = [
     min-height: 44px;
     padding: 0 var(--space-lg);
     border-radius: var(--rounded-full);
+    text-align: center;
     font-weight: var(--weight-strong);
     color: var(--colour-text-muted);
     cursor: pointer;
@@ -676,9 +680,17 @@ const jsonLd = [
     outline: 2px solid var(--colour-ink);
     outline-offset: 2px;
   }
-  .wrap:has(#snap-post_qualifying:checked) .panel[data-snap="pre_weekend"],
-  .wrap:has(#snap-pre_weekend:checked) .panel[data-snap="post_qualifying"] {
+  /* Each panel shows only while its own option is checked. */
+  .wrap:has(#snap-pre_weekend:checked) .panel:not([data-snap="pre_weekend"]),
+  .wrap:has(#snap-post_practice:checked) .panel:not([data-snap="post_practice"]),
+  .wrap:has(#snap-post_qualifying:checked) .panel:not([data-snap="post_qualifying"]) {
     display: none;
+  }
+  @media (max-width: 639px) {
+    .seg label {
+      padding: 0 var(--space-sm);
+      font-size: 14px;
+    }
   }
   .panel {
     display: grid;

@@ -19,6 +19,10 @@ export const MODEL_PLAIN: Record<string, Partial<Record<Snapshot, string>>> = {
     pre_weekend:
       "each driver's and team's recent finishes, points and retirements, the championship standings, and recent qualifying, all from races before this one",
   },
+  "practice-form-v1": {
+    post_practice:
+      "each driver's and team's recent form, the championship standings, recent qualifying, and this weekend's practice pace before qualifying",
+  },
   "mock-v0": {
     pre_weekend: "sample data generated to test the layout, not a real model",
     post_qualifying: "sample data generated to test the layout, not a real model",
@@ -30,9 +34,11 @@ export const MODEL_PLAIN: Record<string, Partial<Record<Snapshot, string>>> = {
  * overlapping inputs can pull in opposite directions. Said once beside the
  * factors, so a surprising "hurts" is not mistaken for a bug.
  */
+const OVERLAP =
+  "Some inputs overlap, so the model weighs them against each other. For the same championship points, more team points mean a stronger teammate, which can count against a driver.";
 export const FACTOR_NOTE: Record<string, string> = {
-  "pre-form-quali-v1":
-    "Some inputs overlap, so the model weighs them against each other. For the same championship points, more team points mean a stronger teammate, which can count against a driver.",
+  "pre-form-quali-v1": OVERLAP,
+  "practice-form-v1": OVERLAP,
 };
 
 export function describeModel(version: string, snapshot: Snapshot): string {
