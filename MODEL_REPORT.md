@@ -1010,3 +1010,37 @@ estimator fitted on the top-ten target. The calibration guard is not tripped:
 T1's ECE is 0.017–0.034, below the rule's 0.052–0.060.
 
 This entry was committed before the holdout was run.
+
+### Holdout — 2026, scored once
+
+Run with `python src/points_finish.py holdout` after the freeze was
+committed. It covered 15 races for the two models that need no practice, and
+14 for after-practice.
+
+| Model | T1 | Rule | Reference | T1 vs rule | T1 ECE |
+|---|---:|---:|---:|---|---:|
+| before practice | 0.5290 | 0.5595 | 0.7735 | −0.0305 [−0.0654, +0.0061] | 0.0478 |
+| after practice | 0.5036 | 0.5559 | 0.7115 | −0.0523 [−0.0953, −0.0061], **better** | 0.0516 |
+| after qualifying | 0.4822 | 0.5174 | 0.6705 | −0.0352 [−0.0549, −0.0135], **better** | 0.0678 |
+
+**Verdict under the protocol: all three pass.** Each was significantly
+better than the rule on 2019–2025. Each is no worse than the rule on 2026:
+better by 0.03–0.05, and significantly so for after practice and after
+qualifying.
+
+- **Calibration is weaker on fifteen races than over seven seasons:** ECE
+  0.05–0.07 against 0.02–0.03. That is reported, not explained away.
+- **The caveat stated up front still holds.** §11 had already shown the rule
+  on 2026, so the comparison as a whole was not unseen. T1 itself was.
+
+**What shipping would mean.**
+- New predictions would carry the T1 chance as a separate field, alongside
+  the simulated `p_top10`, which stays for the record and for the files'
+  consistency checks.
+- The site would show it as a "Points" column, labelled tested.
+- It is not part of the simulation, so it will not match the finishing-order
+  chart exactly, and the site must say so.
+- Predictions already published do not have it, and their pages keep the
+  column hidden.
+
+Shipping is a separate decision, made after review.
