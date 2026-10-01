@@ -693,8 +693,9 @@ Unless marked, every interval is significant at 95%.
 - **The rest adds almost nothing.** Long runs and the lap count (Q2, Q3) are
   within 0.003 of Q1.
 - **Tyre inputs make it worse,** as §4 found for the post-qualifying model.
-- **The pre-weekend inputs matter.** Standings alone plus practice (Q5) is
-  worse than the pre-weekend inputs with no practice at all (Q0).
+- **The pre-weekend inputs matter.** Standings alone plus practice (Q5)
+  scores worse than the pre-weekend inputs with no practice at all (Q0), by
+  0.07, though not significantly.
 
 **Selected and frozen: Q3.**
 - **Inputs:** the 13 pre-weekend inputs, plus `practice_best_lap_gap_ms`,
@@ -706,3 +707,41 @@ Unless marked, every interval is significant at 95%.
 - **Calibration guard:** ECE 0.0065 against Q0's 0.0085, so not tripped.
 
 This entry was committed before the holdout was run.
+
+### Holdout — 2026, scored once
+
+Run with `python src/after_practice_selection.py holdout Q3`, after the freeze
+was committed. It covered the 14 races with practice in the season laps, R1 to
+R14. The script refuses a second run.
+
+| Model | Log loss | 95% CI | vs championship order | vs Q0 | Winner | Podium | ECE (win) |
+|---|---:|---|---|---|---:|---:|---:|
+| **Q3 — selected** | **1.6828** | [1.1923, 2.2092] | −0.1329 [−0.4907, +0.2044] | −0.1678 [−0.3532, +0.0056] | 35.7% | 45.2% | 0.0177 |
+| Q0 — no practice | 1.8506 | [1.3701, 2.3443] | +0.0349 [−0.1935, +0.2798] | — | 35.7% | 45.2% | 0.0204 |
+| *Practice order* | *1.8531* | [1.4260, 2.3813] | — | — | — | — | — |
+| *Championship order* | *1.8157 on the same 14 races* (1.8007 on all 15) | | — | — | — | — | — |
+
+None of the holdout comparisons is significant at 95%.
+
+**What this says.**
+- **Practice helps on 2026 as it did before.** Q3 is 0.17 better than the
+  same model without practice. The interval just reaches zero (+0.0056) on
+  fourteen races, so it is suggestive, not established.
+- **It is the first of the three predictions to be ahead of its simple rule on
+  2026,** by 0.13 on average. The interval spans zero, so the site still
+  cannot claim it beats the rule.
+- **Calibration holds better than the pre-weekend model's did.** Win ECE is
+  0.0177 on the holdout, against 0.0065 in sample.
+
+**Under the protocol:**
+- Q3's holdout log loss (1.6828) is below Q0's (1.8506), so the
+  recommendation is to **publish the after-practice prediction, using Q3.**
+- The site **may not** say it beats championship order.
+- Shipping needs:
+  - a practice-only fetch for an upcoming race;
+  - a deadline at the first qualifying session in `revisions.py`;
+  - the after-practice field from that fetch;
+  - championship order as the scoring bar;
+  - a third, never-pooled series on the site.
+
+  That is a separate change, made after review.
