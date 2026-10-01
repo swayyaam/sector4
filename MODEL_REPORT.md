@@ -1170,3 +1170,30 @@ No calibration guard is tripped: the selected ECEs are 0.0143, 0.0152 and
 0.0250, against rules of 0.0297, 0.0305 and 0.0339.
 
 This entry was committed before the holdout was run.
+
+### Holdout — 2026, scored once
+
+Run with `python src/podium_model.py holdout` after the freeze was committed.
+It covered 15 races for the two models that need no practice, and 14 for
+after-practice.
+
+| Model | Frozen | Log loss | Rule | Reference | vs rule | ECE | Above points | Below win |
+|---|---|---:|---:|---:|---|---:|---:|---:|
+| before practice | U2 | 0.2700 | 0.2761 | 0.3036 | −0.0061 [−0.0225, +0.0097] | 0.0557 | 0.3% | 0.6% |
+| after practice | U4 | 0.2584 | 0.2788 | 0.2807 | −0.0204 [−0.0410, +0.0003] | 0.0338 | 0.0% | 0.0% |
+| after qualifying | U2 | 0.2467 | 0.2313 | 0.2235 | +0.0154 [−0.0329, +0.0989] | 0.0445 | 1.9% | 0.0% |
+
+**Verdicts under the protocol.**
+- **Before practice: passes.** It was significantly better than the rule on
+  2019–2025, and is no worse on 2026. In rare cases it still contradicts the
+  points or win chance: 0.3% and 0.6% of driver-races on 2026.
+- **After practice: passes.** It was significantly better on 2019–2025, and
+  is 0.02 better on 2026. It never contradicts the points or win chance.
+- **After qualifying: does not pass.** It was not significantly better on
+  2019–2025, which already decided it, and on 2026 it is worse than the rule.
+  The simulated podium stays. Note that on 2026 the simulated podium (0.2235)
+  scored better than both the rule and U2. After qualifying it is the
+  strongest podium chance this season, and it is still the one that can
+  exceed the points chance for a favourite (1.9% of driver-races on 2026).
+
+Shipping is a separate decision, made after review.
