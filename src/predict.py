@@ -52,10 +52,41 @@ MODEL_VERSION = "minimal4-share-v1"
 MC_DRAWS = 20_000
 RNG_SEED = 20260923
 
-# The shipped feature set, and the subset available before the cars run.
+# The shipped post-qualifying feature set (MODEL_REPORT §7).
 SHIPPED = list(FN.MINIMAL_SHARE)
-PRE_WEEKEND_COLS = [c for c in SHIPPED
-                    if next(f.snapshot for f in F.FEATURES if f.name == c) == F.PRE]
+
+# The pre-weekend model, selected on its own in MODEL_REPORT §9 (P4-2018):
+# driver form, team form and recent qualifying, all from races before this
+# one. It replaced the reduction of SHIPPED to its two pre-weekend inputs,
+# which scored worse than championship order in sample and on 2026.
+PRE_MODEL_VERSION = "pre-form-quali-v1"
+PRE_WEEKEND_COLS = [
+    "driver_races_started", "driver_finish_pos_mean_5", "driver_points_rate_5",
+    "driver_dnf_rate_10", "driver_standing_position", "driver_standing_points",
+    "team_finish_pos_mean_5", "team_points_rate_5", "team_dnf_rate_10",
+    "team_standing_position", "team_standing_points",
+    "driver_quali_pos_mean_3", "team_quali_pos_mean_3",
+]
+
+# What a race page calls each input. Plain words, and never a timing value.
+FACTOR_LABELS = {
+    "quali_position": "Qualifying position",
+    "practice_best_lap_gap_ms": "Practice pace",
+    "driver_standing_points": "Championship points",
+    "driver_vs_team_points_share_5": "Share of team points",
+    "driver_races_started": "Experience",
+    "driver_finish_pos_mean_5": "Recent finishes",
+    "driver_points_rate_5": "Recent points",
+    "driver_dnf_rate_10": "Recent retirements",
+    "driver_standing_position": "Championship position",
+    "team_finish_pos_mean_5": "Team's recent finishes",
+    "team_points_rate_5": "Team's recent points",
+    "team_dnf_rate_10": "Team's recent retirements",
+    "team_standing_position": "Team's championship position",
+    "team_standing_points": "Team's championship points",
+    "driver_quali_pos_mean_3": "Recent qualifying",
+    "team_quali_pos_mean_3": "Team's recent qualifying",
+}
 
 
 def commit_sha() -> str:
@@ -145,10 +176,6 @@ def top_factors(x: pd.DataFrame, cols: list[str], i: int) -> list[dict]:
     expressed in milliseconds would be republishing Formula 1 timing data;
     the same gap as a 0-1 magnitude is a model output. See DATA_LICENSE.md.
     """
-    labels = {"quali_position": "Qualifying position",
-              "practice_best_lap_gap_ms": "Practice pace",
-              "driver_standing_points": "Championship position",
-              "driver_vs_team_points_share_5": "Share of team points"}
     z = (x - x.mean()) / x.std(ddof=0).replace(0, np.nan)
     row = z.iloc[i]
     out = []
@@ -158,9 +185,38 @@ def top_factors(x: pd.DataFrame, cols: list[str], i: int) -> list[dict]:
             continue
         better_when_low = c in {"quali_position", "practice_best_lap_gap_ms"}
         helps = (v < 0) if better_when_low else (v > 0)
-        out.append({"label": labels.get(c, c), "direction": "positive" if helps else "negative",
+        out.append({"label": FACTOR_LABELS.get(c, c), "direction": "positive" if helps else "negative",
                     "magnitude": round(float(min(abs(v) / 3.0, 1.0)), 6)})
     return sorted(out, key=lambda d: -d["magnitude"])[:4]
+
+
+def model_factors(train: pd.DataFrame, feats: pd.DataFrame, cols: list[str]) -> list[list[dict]]:
+    """Each input's push on each driver's win chance, read from the model.
+
+    The win logistic is refitted exactly as the model fits it (median
+    imputation, standardisation, C = 0.5), and an input's contribution is its
+    coefficient times the driver's standardised value. The direction comes
+    from the fitted model, so an input where lower is better -- a finishing
+    position, a retirement rate -- reads correctly without a hand-kept list.
+    Weights only, never the underlying values.
+    """
+    from sklearn.impute import SimpleImputer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    pipe = make_pipeline(SimpleImputer(strategy="median"), StandardScaler(),
+                         LogisticRegression(max_iter=1000, C=0.5))
+    pipe.fit(train[cols].astype(float), train["win"].to_numpy())
+    contrib = pipe[:-1].transform(feats[cols].astype(float)) * pipe[-1].coef_[0]
+    out = []
+    for row in contrib:
+        items = [{"label": FACTOR_LABELS.get(c, c),
+                  "direction": "positive" if v > 0 else "negative",
+                  "magnitude": round(float(min(abs(v) / 3.0, 1.0)), 6)}
+                 for c, v in zip(cols, row) if abs(v) > 0]
+        out.append(sorted(items, key=lambda d: -d["magnitude"])[:4])
+    return out
 
 
 def _fit_dnf(train: pd.DataFrame, test: pd.DataFrame, cols: list[str]) -> pd.Series:
@@ -259,6 +315,9 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
     p_dnf = np.clip(probs["dnf"].reindex(ids).to_numpy(dtype=float), 0.0, 1.0)
 
     x = feats[[c for c in cols if c in feats.columns]].astype(float)
+    # The pre-weekend model's factors come from its own coefficients; the
+    # post-qualifying model keeps the method it shipped with.
+    factors = model_factors(train, feats, list(cols)) if snapshot == F.PRE else None
     n = len(ids)
     win = round_to_total(dist[:, 0], 1.0)
     podium = round_to_total(dist[:, :3].sum(axis=1), min(3.0, n))
@@ -278,7 +337,7 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
             "p_dnf": round(float(p_dnf[i]), 6),
             "expected_position": round(float((dist[i] * np.arange(1, n + 1)).sum()), 6),
             "position_distribution": round_to_total(dist[i], 1.0),
-            "top_factors": top_factors(x, list(cols), i),
+            "top_factors": factors[i] if factors is not None else top_factors(x, list(cols), i),
         })
 
     return {
@@ -287,18 +346,19 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
         "race_name": str(race["name"]),
         "snapshot": snapshot,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "model_version": MODEL_VERSION,
+        "model_version": MODEL_VERSION if snapshot == F.POST else PRE_MODEL_VERSION,
         "model_features": list(cols),
         "model_note": (
             "Shipped specification, validated at this snapshot. The DNF "
             "probability is a separate logistic on the same features and was "
             "not part of that validation."
             if snapshot == F.POST else
-            "Reduction of the shipped specification to the features available "
-            "before the cars run. Qualifying position and practice pace do not "
-            "exist yet, so this is a weaker model and was not separately "
-            "validated. The DNF probability is a separate logistic on the same "
-            "features. See MODEL_REPORT.md."
+            "Selected for this snapshot in MODEL_REPORT.md §9: driver and team "
+            "form and recent qualifying, from races before this one only. Better "
+            "than the previous pre-weekend model in sample and on the 2026 "
+            "holdout, and not shown to beat championship order. The DNF "
+            "probability is a separate logistic on the same features and was "
+            "not validated."
         ),
         "data_version": data_version(),
         "commit_sha": commit_sha(),

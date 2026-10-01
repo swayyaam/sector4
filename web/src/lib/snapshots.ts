@@ -24,7 +24,7 @@ export const SNAPSHOT_LABEL: Record<Snapshot, string> = {
 
 export const SNAPSHOT_BLURB: Record<Snapshot, string> = {
   pre_weekend:
-    "Published before the first practice session, so all it knows is the championship standings.",
+    "Published before the first practice session, so it knows nothing from this weekend yet.",
   post_qualifying:
     "Published after qualifying, so it knows where everyone qualified and how quick they were in practice.",
 };

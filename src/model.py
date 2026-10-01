@@ -412,7 +412,7 @@ def run_all(snapshots=(F.POST, F.PRE), eval_from: int = EVAL_FROM) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     for snapshot in snapshots:
         df = dataset(snapshot)
-        cols = list(F.features_for(snapshot))
+        cols = list(F.features_for(snapshot, original_only=True))
         for model in (LogisticModel(cols), LgbmModel(cols), RankerMonteCarlo(cols)):
             path = OUT / f"{snapshot}__{model.name}.csv"
             if path.exists():

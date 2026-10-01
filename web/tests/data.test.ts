@@ -24,6 +24,7 @@ import {
   scoredPredictions,
   teamById,
 } from "../src/lib/data";
+import { describeModel } from "../src/lib/models";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -49,6 +50,12 @@ describe("the shipped dataset", () => {
   it("loads and validates", () => {
     expect(data.reference.drivers.length).toBeGreaterThan(0);
     expect(data.predictions.length).toBeGreaterThan(0);
+  });
+
+  it("describes every prediction by the model that made it", () => {
+    for (const p of [...data.predictions, ...buildDataset(MOCK_FILES).predictions]) {
+      expect(() => describeModel(p.model_version, p.snapshot)).not.toThrow();
+    }
   });
 
   it("the preview banner matches what is actually loaded", () => {

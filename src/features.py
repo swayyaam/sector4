@@ -57,6 +57,10 @@ LAP_UNUSABLE = {
 # 2018 is the only season using absolute compound names. See §5.
 FIRST_RELATIVE_COMPOUND_SEASON = 2019
 
+# The columns MODEL_REPORT §§1–8 were measured on. A column added later carries
+# the section that measured it instead, so those sections still reproduce.
+ORIGINAL = "original"
+
 
 @dataclass(frozen=True)
 class Feature:
@@ -67,6 +71,7 @@ class Feature:
     snapshot: str          # earliest snapshot at which it can be computed
     why: str
     nullable: bool = True
+    added: str = ORIGINAL
 
 
 FEATURES: tuple[Feature, ...] = (
@@ -157,6 +162,14 @@ FEATURES: tuple[Feature, ...] = (
             "How much of the allocation was explored; null before 2019, where names are absolute."),
     Feature("practice_softest_long_run_gap_ms", "Tyre", POST,
             "Long-run pace on the softest compound run, comparable only under the relative scheme."),
+
+    # ------------------------------------------- recent qualifying (MODEL_REPORT §9)
+    Feature("driver_quali_pos_mean_3", "Recent qualifying", PRE,
+            "Qualifying is the cleanest read on pace that exists before a weekend: the driver's last three.",
+            added="§9"),
+    Feature("team_quali_pos_mean_3", "Recent qualifying", PRE,
+            "The car's recent pace: the team's best qualifying position at each of its last three races.",
+            added="§9"),
 )
 
 # Considered and rejected, so the same idea is not re-proposed:
@@ -174,11 +187,17 @@ FEATURE_NAMES: tuple[str, ...] = tuple(f.name for f in FEATURES)
 KEYS: tuple[str, ...] = ("raceId", "driverId", "snapshot")
 
 
-def features_for(snapshot: str) -> tuple[str, ...]:
-    """Columns available at a snapshot. Pre-weekend is a strict subset."""
+def features_for(snapshot: str, original_only: bool = False) -> tuple[str, ...]:
+    """Columns available at a snapshot. Pre-weekend is a strict subset.
+
+    `original_only` restricts to the columns MODEL_REPORT §§1–8 were measured
+    on. The analyses behind those sections ask for it, so adding a column
+    later does not quietly change what they reproduce.
+    """
+    feats = [f for f in FEATURES if not original_only or f.added == ORIGINAL]
     if snapshot == PRE:
-        return tuple(f.name for f in FEATURES if f.snapshot == PRE)
-    return FEATURE_NAMES
+        return tuple(f.name for f in feats if f.snapshot == PRE)
+    return tuple(f.name for f in feats)
 
 
 # ---------------------------------------------------------------------- data
@@ -246,6 +265,55 @@ def _prior(tables: dict[str, pd.DataFrame], order: int) -> pd.DataFrame:
     res = res.sort_values("order")
     res["is_dnf"] = _is_dnf(res["positionText"])
     return res
+
+
+def recent_quali(tables: dict[str, pd.DataFrame], keys: pd.DataFrame) -> pd.DataFrame:
+    """driver_quali_pos_mean_3 and team_quali_pos_mean_3 for each key row.
+
+    Both read only races strictly before the one being predicted. The team is
+    the one the driver raced for at their most recent earlier race: the same
+    rule as the pre-weekend field, so the value could have been computed on the
+    Tuesday. `keys` holds raceId and driverId, and may carry `order` for a race
+    that is not in the races table yet (an upcoming one).
+
+    The selection in MODEL_REPORT §9 ran this exact function.
+    """
+    races = tables["races"][["raceId", "order"]]
+    k = keys if "order" in keys.columns else keys.merge(races, on="raceId")
+    q = tables["qualifying"].merge(races, on="raceId")
+    q["pos"] = pd.to_numeric(q["position"], errors="coerce")
+    q = q.dropna(subset=["pos"])
+
+    by_driver = {d: g.sort_values("order")[["order", "pos"]].to_numpy()
+                 for d, g in q.groupby("driverId")}
+    team_best = q.groupby(["team_entity_id", "order"])["pos"].min().reset_index()
+    by_team = {t: g.sort_values("order")[["order", "pos"]].to_numpy()
+               for t, g in team_best.groupby("team_entity_id")}
+
+    res = tables["results"].merge(races, on="raceId")
+    res = res[res["positionText"].astype(str) != "W"]
+    last_team = {d: g.sort_values("order")[["order", "team_entity_id"]].to_numpy()
+                 for d, g in res.groupby("driverId")}
+
+    def last3(arr, order):
+        if arr is None:
+            return float("nan")
+        before = arr[arr[:, 0] < order]
+        return float(before[-3:, 1].astype(float).mean()) if len(before) else float("nan")
+
+    out = []
+    for rid, did, order in k[["raceId", "driverId", "order"]].itertuples(index=False):
+        hist = last_team.get(int(did))
+        team = None
+        if hist is not None:
+            prior = hist[hist[:, 0] < order]
+            team = prior[-1, 1] if len(prior) else None
+        out.append({"raceId": rid, "driverId": did,
+                    "driver_quali_pos_mean_3": last3(by_driver.get(int(did)), order),
+                    "team_quali_pos_mean_3": last3(by_team.get(team), order)
+                    if team is not None else float("nan")})
+    return pd.DataFrame(out, columns=["raceId", "driverId", "driver_quali_pos_mean_3",
+                                      "team_quali_pos_mean_3"])
 
 
 def entrants(tables: dict[str, pd.DataFrame], race: pd.Series, snapshot: str) -> pd.DataFrame:
@@ -544,6 +612,10 @@ def build_race(tables: dict[str, pd.DataFrame], race: pd.Series, snapshot: str) 
         st = st.rename(columns={"standing_position": f"{prefix}_standing_position",
                                 "standing_points": f"{prefix}_standing_points"})
         df = df.merge(st, on=key, how="left")
+
+    # ---- recent qualifying, from earlier races only (MODEL_REPORT §9)
+    keys = df[["raceId", "driverId"]].assign(order=int(race["order"]))
+    df = df.merge(recent_quali(tables, keys), on=["raceId", "driverId"], how="left")
 
     # ---- circuit history
     for key, prefix in (("driverId", "driver"), ("team_entity_id", "team")):

@@ -26,7 +26,6 @@ import sys
 import warnings
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -54,7 +53,7 @@ CANDIDATES: dict[str, list[str]] = {
     "P2": STANDINGS + RECENT_QUALI,
     "P3": DRIVER_FORM + TEAM_FORM,
     "P4": DRIVER_FORM + TEAM_FORM + RECENT_QUALI,
-    "P5": list(F.features_for(F.PRE)) + RECENT_QUALI,
+    "P5": list(F.features_for(F.PRE, original_only=True)) + RECENT_QUALI,
 }
 INCUMBENT = "P0-2018"
 
@@ -83,54 +82,16 @@ def _pre_frame(window: int, tables: dict) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
-def recent_quali(tables: dict, keys: pd.DataFrame) -> pd.DataFrame:
-    """The two new inputs, for each (raceId, driverId) in `keys`.
-
-    Both read only races strictly before the one being predicted, and the team
-    is the team the driver raced for at the previous race -- the same field
-    rule as `F.entrants` uses before a weekend, so a value here is one that
-    could have been computed on the Tuesday.
-    """
-    races = tables["races"][["raceId", "order"]]
-    q = tables["qualifying"].merge(races, on="raceId")
-    q["pos"] = pd.to_numeric(q["position"], errors="coerce")
-    q = q.dropna(subset=["pos"])
-
-    by_driver = {d: g.sort_values("order")[["order", "pos"]].to_numpy()
-                 for d, g in q.groupby("driverId")}
-    team_best = (q.groupby(["team_entity_id", "order"])["pos"].min().reset_index())
-    by_team = {t: g.sort_values("order")[["order", "pos"]].to_numpy()
-               for t, g in team_best.groupby("team_entity_id")}
-
-    res = tables["results"].merge(races, on="raceId")
-    res = res[res["positionText"].astype(str) != "W"]
-    last_team = {d: g.sort_values("order")[["order", "team_entity_id"]].to_numpy()
-                 for d, g in res.groupby("driverId")}
-
-    def last3(arr, order):
-        if arr is None:
-            return np.nan
-        before = arr[arr[:, 0] < order]
-        return float(before[-3:, 1].astype(float).mean()) if len(before) else np.nan
-
-    k = keys.merge(races, on="raceId")
-    out = []
-    for rid, did, order in k[["raceId", "driverId", "order"]].itertuples(index=False):
-        hist = last_team.get(int(did))
-        team = None
-        if hist is not None:
-            prior = hist[hist[:, 0] < order]
-            team = prior[-1, 1] if len(prior) else None
-        out.append({"raceId": rid, "driverId": did,
-                    "driver_quali_pos_mean_3": last3(by_driver.get(int(did)), order),
-                    "team_quali_pos_mean_3": last3(by_team.get(team), order)
-                    if team is not None else np.nan})
-    return pd.DataFrame(out)
+# The two new inputs. The selection ran this function; it now lives in
+# features.py, where the shipped model computes them, so the two cannot drift.
+recent_quali = F.recent_quali
 
 
 def dataset(window: int, through: int, tables: dict) -> pd.DataFrame:
     """Features, the two new inputs and the targets, for races `window`..`through`."""
-    x = _pre_frame(window, tables)
+    # The frame now carries the two inputs itself; they are dropped and
+    # recomputed here so the selection reads exactly what it read when it ran.
+    x = _pre_frame(window, tables).drop(columns=RECENT_QUALI, errors="ignore")
     y = M.targets_frame()
     df = x.merge(y, on=["raceId", "driverId"], how="inner")
     df = df[(df["year"] >= window) & (df["year"] <= through)]

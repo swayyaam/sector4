@@ -45,6 +45,22 @@ function series(snapshot: Snapshot) {
     .sort((a, b) => byRound(b, a));
   const n = scored.length;
   const ll = logLossSummary(scored);
+  // A model can be replaced mid-season. Every row stays as published, and the
+  // table says which model made which rows rather than letting them blur.
+  const byModel = new Map<string, number[]>();
+  for (const p of [...scored].sort(byRound)) {
+    byModel.set(p.model_version, [...(byModel.get(p.model_version) ?? []), p.round]);
+  }
+  const modelNote =
+    byModel.size < 2
+      ? ""
+      : "This table covers more than one model: " +
+        [...byModel.entries()]
+          .map(
+            ([v, rounds]) => `${v} for round${rounds.length === 1 ? "" : "s"} ${rounds.join(", ")}`,
+          )
+          .join("; ") +
+        ". Every row is scored as it was published.";
   const meanField = n ? scored.reduce((a, p) => a + p.drivers.length, 0) / n : 0;
   const upcoming = predictions
     .filter((p) => p.snapshot === snapshot && p.result === null)
@@ -62,6 +78,7 @@ function series(snapshot: Snapshot) {
     modelBetter: ll.modelBetter,
     // Races with no defined log loss, left out of both means and said so.
     undefinedLogLoss: ll.undefined,
+    modelNote,
     undefinedNote:
       ll.undefined === 0
         ? ""
@@ -83,7 +100,7 @@ const BLURB: Record<Snapshot, string> = {
     "Published after qualifying, so it knows where everyone starts and how quick they were in practice. Compared with a simple rule: " +
     `${BASELINE_PLAIN.post_qualifying}.`,
   pre_weekend:
-    "Published before the first practice session, so it only knows the championship standings. Compared with a simple rule that knows the same: " +
+    "Published before the first practice session, so it knows nothing from this weekend. Compared with a simple rule that also uses only what is known before the weekend: " +
     `${BASELINE_PLAIN.pre_weekend}. Judging it against qualifying would be unfair: qualifying has not happened yet.`,
 };
 ---
@@ -304,6 +321,7 @@ const BLURB: Record<Snapshot, string> = {
           </tbody>
         </table>
       </div>
+      {s.modelNote && <p class="note footnote">{s.modelNote}</p>}
       {s.undefinedLogLoss > 0 && (
         <p class="note footnote">
           No score: the prediction gave that race's winner no chance at all, so there is nothing to
