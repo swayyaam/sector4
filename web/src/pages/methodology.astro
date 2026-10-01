@@ -337,11 +337,19 @@ const contents = [
       <p>For every driver in the field, each prediction gives:</p>
       <dl class="defs">
         <div>
-          <dt>Win, podium, top ten</dt>
+          <dt>Win and podium</dt>
           <dd>
-            The chance of finishing there or better. Only the win chance has been tested against
-            past races; podium and top ten are worked out from it by simulating the race many
-            thousands of times.
+            The chance of winning, and of finishing in the top three. The win chance has passed a
+            test against past races. Podium chances are worked out from it by simulating the race
+            many thousands of times; tested, they are no better than a simple rule.
+          </dd>
+        </div>
+        <div>
+          <dt>Top ten, no longer shown</dt>
+          <dd>
+            Worked out by the same simulation, and still in every prediction file. Tested against
+            past races it did worse than a simple rule and was out by about ten points, because the
+            simulation never retires a car. It is hidden until a model that does better replaces it.
           </dd>
         </div>
         <div>
@@ -355,7 +363,8 @@ const contents = [
           <dt>Average finish</dt>
           <dd>
             Where the driver finishes on average across all the simulated races, not a rounded guess
-            at one place. The full spread is drawn on each race page.
+            at one place. The full spread is drawn on each race page. It comes from the same
+            simulation as the top ten and has not been tested on its own.
           </dd>
         </div>
         <div>

@@ -7,8 +7,7 @@ const CARDS: Record<string, Omit<CardSpec, "isMock">> = {
   default: {
     eyebrow: "Formula 1",
     title: "Predictions, scored in public.",
-    subtitle:
-      "Win, podium and top-ten probabilities — and an honest record of how they turned out.",
+    subtitle: "Win and podium chances — and an honest record of how they turned out.",
   },
   "track-record": {
     eyebrow: "Track record",

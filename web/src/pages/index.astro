@@ -93,8 +93,8 @@ const jsonLd = [
   title="Sector 4 — F1 race predictions, scored in public"
   description={
     next
-      ? `Win, podium and top-ten probabilities for the ${next.season} ${next.name}, plus an auditable record of how every past prediction turned out.`
-      : "Win, podium and top-ten probabilities for Formula 1 races, plus an auditable record of how every prediction turned out."
+      ? `Win and podium chances for the ${next.season} ${next.name}, plus an auditable record of how every past prediction turned out.`
+      : "Win and podium chances for Formula 1 races, plus an auditable record of how every prediction turned out."
   }
   jsonLd={jsonLd}
 >
@@ -109,9 +109,9 @@ const jsonLd = [
     )}
     <h1 class="display">Race predictions, scored in public.</h1>
     <p class="lead">
-      Every driver's chance of winning, finishing on the podium and finishing in the top ten.
-      Published before practice, after practice and after qualifying, then checked against the
-      result. The misses stay on the record.
+      Every driver's chance of winning and of finishing on the podium. Published before practice,
+      after practice and after qualifying, then checked against the result. The misses stay on the
+      record.
     </p>
     <div class="actions">
       {nextRace && (
