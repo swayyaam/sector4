@@ -544,3 +544,31 @@ P4-2018 against the incumbent: **−0.4968 [−0.8309, −0.1570], better.**
   under the same cut tests as every other feature, and the site's description
   of the before-practice prediction rewritten to match. That is a separate
   change, made after review.
+
+### Shipped — `pre-form-quali-v1`
+
+After review, P4-2018 replaces the incumbent for pre-weekend predictions made
+from 2026 round 16 onward. Predictions already published are unchanged, and
+each keeps the model version that made it.
+
+- **Inputs.** The two recent-qualifying inputs are now in `src/features.py`,
+  in a group of their own, and the selection's function moved with them, so
+  the shipped model computes exactly what the selection measured. They are
+  tagged `added="§9"`. Everything that reproduces §§1–8 asks for
+  `features_for(..., original_only=True)`, so those sections still measure the
+  same 33 and 23 columns.
+- **Factors.** The new model's factors come from its own fitted win
+  coefficients: each input's coefficient times the driver's standardised
+  value. The post-qualifying model's method assumes higher is better except
+  for a named list, and about half of these thirteen inputs run the other way.
+  Because the inputs overlap, the model can weigh one against another. With
+  driver points held fixed, more team points means a stronger teammate, and
+  that counts against the driver. The race page says so beside the factors.
+- **Labels.** `driver_standing_points` had been labelled "Championship
+  position" on post-qualifying factors. It is now "Championship points", and
+  the new model's position input takes "Championship position".
+- **Site.** Each prediction is described by the model that made it
+  (`web/src/lib/models.ts`, and the build fails for an undescribed version).
+  The track record says when a table covers more than one model. The
+  methodology page states that the earlier pre-weekend model did worse than
+  championship order.
