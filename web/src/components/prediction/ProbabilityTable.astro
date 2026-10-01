@@ -34,7 +34,7 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
         Win
       </th>
       <th scope="col" class="barcol">
-        <span class="sr-only">Win, relative to the favourite</span>
+        <span class="sr-only">Win chance, compared with the favourite's</span>
       </th>
       <th scope="col" class="n">
         Podium
@@ -46,7 +46,7 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
         DNF
       </th>
       <th scope="col" class="n">
-        Expected
+        Avg finish
       </th>
     </tr>
   </thead>
@@ -81,7 +81,7 @@ const maxWin = Math.max(...rows.map((r) => r.p_win));
           <td class="n num dim" data-label="DNF">
             {percent(r.p_dnf)}
           </td>
-          <td class="n num dim" data-label="Expected">
+          <td class="n num dim" data-label="Avg finish">
             {position(r.expected_position)}
           </td>
         </tr>

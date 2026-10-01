@@ -18,9 +18,16 @@ import {
   raceById,
   teamById,
 } from "../../../lib/data";
-import { driverName, logLoss, percent, position, score, sentenceStart } from "../../../lib/format";
+import { chanceInWords, driverName, logLoss, percent, position, score } from "../../../lib/format";
 import type { Prediction } from "../../../lib/schema";
 import { BASELINE_FOR, SNAPSHOT_BLURB, SNAPSHOT_LABEL } from "../../../lib/snapshots";
+
+/** The favourite in one plain sentence: who, and how often they would win. */
+function favouriteLine(rows: { driverId: number; p_win: number }[], name: (id: number) => string) {
+  const top = rows[0];
+  if (!top) return "";
+  return `${name(top.driverId)} is the favourite, with ${chanceInWords(top.p_win)} to win.`;
+}
 import { formatUtc, isPast } from "../../../lib/time";
 
 export async function getStaticPaths() {
@@ -81,13 +88,13 @@ function noLogLoss(r: NonNullable<Prediction["result"]>): string {
   const who = winner === undefined ? "The winner" : nameList([winner]);
   const how =
     r.log_loss_undefined === "winner_not_in_field"
-      ? `${who} won without being in this snapshot's field`
-      : `${who} won with a win probability published as 0.0 to six decimal places`;
+      ? `${who} won without being in this prediction's list of drivers`
+      : `${who} won with a win chance published as 0.0%, to six decimal places`;
   return (
-    `${how}, so the snapshot gave the winner no probability and has no log loss. It is left ` +
-    "empty rather than filled with an arbitrary number. The winner counts as missed, the Brier " +
-    "score charges the full miss, and the track record's mean log loss leaves this race out " +
-    "and says so."
+    `${how}, so the prediction gave the winner no chance at all and there is nothing to score. ` +
+    "The score is left empty rather than filled with a made-up number. It still counts as a " +
+    "missed winner, the Brier score charges the full miss, and the track record's average " +
+    "leaves this race out and says so."
   );
 }
 // Every starter in finishing order, and every predicted driver. A driver the
@@ -112,18 +119,24 @@ const tableRows: TableRow[] = scoredWith
       return pa - pb || wb - wa || a.driverId - b.driverId;
     })
   : [];
+const scoreKey = scoredWith
+  ? "Lower scores are better. Our score depends on the chance we gave the driver who won: " +
+    `giving them 100% would score 0. The simple rule here is ${BASELINE_FOR[scoredWith.snapshot]}, ` +
+    "and its score is worked out the same way, so the two can be compared."
+  : "";
 const tableNote =
-  "Beat expected by is expected position minus actual: positive means the driver finished " +
-  "ahead of the prediction. A driver who did not finish has no position, so no figure." +
+  "Avg finish is where we expected the driver to finish, on average. Vs avg is how many places " +
+  "better (+) or worse (−) they actually finished. A driver who did not finish has no position, " +
+  "so no figure." +
   (result && result.unpredicted_starters.length > 0
-    ? " A driver not in this snapshot's field was given no probabilities, so has none to show."
+    ? " A driver who was not in this prediction's list of drivers was given no chances, so has none to show."
     : "");
 
-const title = `${race.season} ${race.name} — win and podium probabilities`;
+const title = `${race.season} ${race.name} — win and podium chances`;
 const description = result
-  ? `How Sector 4's ${race.season} ${race.name} prediction turned out: log loss ${logLoss(result.log_loss).toLowerCase()}, ` +
-    `${result.podium_hits} of 3 podium places, winner ${result.winner_hit ? "called" : "missed"}.`
-  : `Win, podium, top-ten and DNF probabilities for all ${shown.drivers.length} drivers at the ` +
+  ? `How Sector 4's ${race.season} ${race.name} prediction turned out: score ${logLoss(result.log_loss).toLowerCase()}, ` +
+    `${result.podium_hits} of 3 podium picks right, winner ${result.winner_hit ? "picked" : "missed"}.`
+  : `Win, podium, top-ten and DNF chances for all ${shown.drivers.length} drivers at the ` +
     `${race.season} ${race.name}, with the factors behind each.`;
 
 const jsonLd = [
@@ -151,7 +164,7 @@ const jsonLd = [
   title={title}
   description={description}
   image={`/og/races/${race.season}/${race.slug}.png`}
-  imageAlt={`${race.season} ${race.name}: the three drivers most likely to win, with probabilities.`}
+  imageAlt={`${race.season} ${race.name}: the three drivers most likely to win, with their chances.`}
   jsonLd={jsonLd}
   breadcrumbs={[
     { name: "Track record", path: "/track-record/" },
@@ -208,37 +221,40 @@ const jsonLd = [
         <p class="eyebrow">Result</p>
         <h2 id="result-h">Predicted against actual.</h2>
         <p>
-          Scored on the {SNAPSHOT_LABEL[scoredWith.snapshot].toLowerCase()} snapshot, the one
-          published before the session it predicts. Nothing here is recalculated after the fact.
+          Scored using the {SNAPSHOT_LABEL[scoredWith.snapshot].toLowerCase()} prediction, published
+          before the race started. Nothing here is recalculated after the fact.
         </p>
       </div>
       <dl class="figures scores">
         <div class="rise" style="--i:0">
-          <dt>Log loss</dt>
+          <dt>Our score</dt>
           <dd class="num">{logLoss(result.log_loss)}</dd>
         </div>
         {result.baseline && (
           <div class="rise" style="--i:1">
-            <dt>{sentenceStart(result.baseline.name)}, same race</dt>
+            <dt>Simple rule</dt>
             <dd class="num">{score(result.baseline.log_loss)}</dd>
           </div>
         )}
         <div class="rise" style="--i:2">
-          <dt>Brier</dt>
+          <dt>Brier score</dt>
           <dd class="num">{score(result.brier)}</dd>
         </div>
         <div class="rise" style="--i:3">
-          <dt>Winner</dt>
-          <dd>{result.winner_hit ? "Called" : "Missed"}</dd>
+          <dt>Picked the winner</dt>
+          <dd>{result.winner_hit ? "Yes" : "No"}</dd>
         </div>
         <div class="rise" style="--i:4">
-          <dt>Podium places</dt>
+          <dt>Podium picks right</dt>
           <dd class="num">{result.podium_hits} of 3</dd>
         </div>
       </dl>
+      <p class="body-sm muted score-key">
+        {scoreKey} <a href="/track-record/">The track record</a> explains every column.
+      </p>
       {result.log_loss_undefined && (
         <p class="notice">
-          <span class="badge badge-ink">No log loss</span>
+          <span class="badge badge-ink">No score</span>
           <span>{noLogLoss(result)}</span>
         </p>
       )}
@@ -246,7 +262,7 @@ const jsonLd = [
       <div class="scroller">
         <table class="table wide">
           <caption class="sr-only">
-            Every driver's finishing position beside the probability given before the race.
+            Every driver's finishing position beside the chances we gave before the race.
           </caption>
           <thead>
             <tr>
@@ -259,10 +275,10 @@ const jsonLd = [
                 Podium
               </th>
               <th scope="col" class="n">
-                Expected
+                Avg finish
               </th>
               <th scope="col" class="n">
-                Beat expected by
+                vs avg
               </th>
               <th scope="col">Status</th>
             </tr>
@@ -287,7 +303,7 @@ const jsonLd = [
                       <span>
                         {d ? driverName(d) : `Driver ${driverId}`}
                         <span class="team">
-                          {row ? (t?.short_name ?? "Unknown team") : "Not in this snapshot's field"}
+                          {row ? (t?.short_name ?? "Unknown team") : "Not in this prediction"}
                         </span>
                       </span>
                     </span>
@@ -321,16 +337,30 @@ const jsonLd = [
       <p class="eyebrow">Prediction</p>
       <h2 id="field-h">Full field</h2>
       <p>
-        Every driver's chance of winning, reaching the podium and finishing in the top ten. Only the
-        win probability has been validated. Podium, top ten and finishing order follow from it
-        through one simulation of the whole race; the DNF figure is a separate fit that has not been
-        validated.
+        Every driver's chance of winning, finishing on the podium and finishing in the top ten, plus
+        their chance of not finishing (DNF) and where they are likely to end up.
       </p>
     </div>
 
+    <details class="read disclosure">
+      <summary>How to read these numbers</summary>
+      <div class="prose body-sm">
+        <p>
+          A 28% chance to win means that if this race could be run 100 times, we would expect the
+          driver to win about 28 of them. So even a 70% favourite should lose about 3 races in 10.
+          Missing some winners is what honest odds look like, not a sign they are wrong.
+        </p>
+        <p>
+          Only the win chances have been tested against past races. The podium, top-ten and
+          finishing-order figures are worked out from the win chances by simulating the race many
+          thousands of times. The DNF chance comes from a separate model that has not been tested.
+        </p>
+      </div>
+    </details>
+
     {snapshots.length > 1 && (
       <fieldset class="seg">
-        <legend class="sr-only">Snapshot</legend>
+        <legend class="sr-only">Prediction</legend>
         {snapshots.map((s, i) => (
           <>
             <input
@@ -354,7 +384,7 @@ const jsonLd = [
             <p class="meta body-sm">
               <span class="badge badge-soft">{SNAPSHOT_LABEL[s.snapshot]}</span>
               <span>
-                {SNAPSHOT_BLURB[s.snapshot]} Scored beside {BASELINE_FOR[s.snapshot]}.
+                {SNAPSHOT_BLURB[s.snapshot]} Compared with the {BASELINE_FOR[s.snapshot]} rule.
               </span>
             </p>
             <Provenance
@@ -364,14 +394,15 @@ const jsonLd = [
               model={s.model_version}
               data={s.data_version}
             />
+            <p class="fav">{favouriteLine(rows, (id) => nameList([id]))}</p>
             {s.snapshot === "pre_weekend" && (
               <p class="notice">
-                <span class="badge badge-ink">Two features</span>
+                <span class="badge badge-ink">Early call</span>
                 <span>
-                  Qualifying position and practice pace do not exist yet, so this snapshot falls
-                  back to championship points and share of team points. It is a weaker model than
-                  the post-qualifying one, not a different view of the same thing. The{" "}
-                  <a href="/methodology/">methodology page</a> says what the full model uses.
+                  Qualifying and practice have not happened yet, so this prediction only uses the
+                  championship standings: each driver's points, and their share of their team's
+                  points. It is weaker than the prediction after qualifying. The{" "}
+                  <a href="/methodology/">methodology page</a> explains both.
                 </span>
               </p>
             )}
@@ -382,15 +413,15 @@ const jsonLd = [
                   <span class="badge badge-ink">Field change</span>
                   <span>
                     {s.result.unpredicted_starters.length > 0 &&
-                      `${nameList(s.result.unpredicted_starters)} started the race without being in this snapshot's field${s.snapshot === "pre_weekend" ? ", which was carried over from the previous race's starters" : ""}. `}
+                      `${nameList(s.result.unpredicted_starters)} started the race without being in this prediction's list of drivers${s.snapshot === "pre_weekend" ? ", which was copied from the previous race's starters" : ""}. `}
                     {s.result.predicted_non_starters.length > 0 &&
-                      `${nameList(s.result.predicted_non_starters)} ${s.result.predicted_non_starters.length === 1 ? "was" : "were"} in the field and did not start, so ${s.result.predicted_non_starters.length === 1 ? "was" : "were"} left out when this snapshot was scored, and the other probabilities were renormalised.`}
+                      `${nameList(s.result.predicted_non_starters)} ${s.result.predicted_non_starters.length === 1 ? "was" : "were"} in the list and did not start, so ${s.result.predicted_non_starters.length === 1 ? "was" : "were"} left out when this prediction was scored, and everyone else's chances were scaled up to add back to 100%.`}
                   </span>
                 </p>
               )}
             {s.result?.log_loss_undefined && s !== scoredWith && (
               <p class="notice">
-                <span class="badge badge-ink">No log loss</span>
+                <span class="badge badge-ink">No score</span>
                 <span>{noLogLoss(s.result)}</span>
               </p>
             )}
@@ -427,24 +458,26 @@ const jsonLd = [
                 rows={rows}
                 drivers={drivers}
                 teams={teams}
-                caption={`${SNAPSHOT_LABEL[s.snapshot]} probabilities for all ${rows.length} drivers, most likely winner first.`}
+                caption={`${SNAPSHOT_LABEL[s.snapshot]} chances for all ${rows.length} drivers, most likely winner first.`}
               />
             </div>
 
             <div class="sub">
               <h3>Finishing order</h3>
               <p class="muted body-sm">
-                Where the simulation places each driver, one column per position, all on one scale.
-                It does not model retirements: every car is placed somewhere in the order, and the
-                chance of retiring is the separate DNF column above.
+                Where each driver finished across thousands of simulated races, one column per
+                position. Taller means more often. The simulation does not include retirements:
+                every car is placed somewhere, and the chance of not finishing is the DNF column
+                above.
               </p>
             </div>
             <PositionDistribution rows={rows} drivers={drivers} teams={teams} />
 
             <div class="sub">
-              <h3>What is driving each number</h3>
+              <h3>What is behind each driver's chance</h3>
               <p class="muted body-sm">
-                Each factor's share of the driver's score, not a lap time or any timing value.
+                How much each input pushed the driver's win chance up or down. These are relative
+                weights, not lap times.
               </p>
             </div>
             <ul class="factors">
@@ -460,7 +493,7 @@ const jsonLd = [
                         <span class="num fpct">{percent(r.p_win)}</span>
                       </summary>
                       {r.top_factors.length === 0 ? (
-                        <p class="empty">No factor above the reporting threshold.</p>
+                        <p class="empty">No single input made much difference.</p>
                       ) : (
                         <ul class="flist">
                           {r.top_factors.map((f, k) => (
@@ -496,10 +529,6 @@ const jsonLd = [
       <CircuitHistory history={history} circuit={circuit} season={race.season} />
       <CircuitCard circuit={circuit} />
     </div>
-    <p class="note">
-      Regulations era <span class="num">{race.regs_era}</span>, which bounds the history the model
-      treats as comparable.
-    </p>
     <!-- prettier-ignore -->
     <p class="note">Data version <span class="num">{meta.data_version}</span>, built <time datetime={meta.generated_at} data-local>{formatUtc(meta.generated_at)}</time>.</p>
   </section>
@@ -539,12 +568,17 @@ const jsonLd = [
   }
 
   .scores {
+    margin-bottom: var(--space-sm);
+  }
+  /* The key reads as part of the figures above it, clear of the table. */
+  .score-key {
+    max-width: 68ch;
     margin-bottom: var(--space-xl);
   }
-  /* The no-log-loss notice sits between the figures and the table: close to
-     the figures it explains, and clear of the table. Whether these margins
+  /* The no-score notice sits between the key and the table: close to the
+     figures it explains, and clear of the table. Whether these margins
      collapse or add, the gap above comes out at --space-md. */
-  .scores + .notice {
+  .score-key + .notice {
     margin: calc(var(--space-md) - var(--space-xl)) 0 var(--space-xl);
   }
   .wide {
@@ -643,6 +677,20 @@ const jsonLd = [
     animation: rise var(--motion-enter) var(--motion-ease-out) backwards;
   }
 
+  .fav {
+    font-size: 18px;
+    line-height: 1.44;
+    font-weight: var(--weight-strong);
+    color: var(--colour-ink);
+    max-width: 68ch;
+  }
+  .read {
+    max-width: 78ch;
+    margin-bottom: var(--space-lg);
+  }
+  .read .prose {
+    margin-top: var(--space-sm);
+  }
   .meta {
     display: flex;
     flex-wrap: wrap;
