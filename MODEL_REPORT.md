@@ -849,3 +849,38 @@ model's frame covers.
   - if better than the rule, the site may call them tested;
   - otherwise it says they were tested and did not beat a simple rule.
 - Shipping is a separate decision, made after review.
+
+### 2019–2025
+
+Run with `python src/derived_validation.py insample`, after the protocol and
+the script were committed. It covered 152 races for every model and quantity.
+The difference is model minus rule in log loss; below zero favours the model.
+
+| Model | Chance | Model | Rule | Difference | Brier, model vs rule | ECE |
+|---|---|---:|---:|---|---|---:|
+| before practice | top ten | 0.6848 | 0.5598 | +0.1251 [+0.0802, +0.1749], **worse** | 0.1858 vs 0.1881 | 0.1088 |
+| before practice | podium | 0.2802 | 0.2914 | −0.0113 [−0.0280, +0.0055] | 0.0876 vs 0.0887 | 0.0368 |
+| before practice | teammate | 0.7008 | 0.6700 | +0.0308 [+0.0045, +0.0601], **worse** | 0.2431 vs 0.2385 | 0.0873 |
+| after practice | top ten | 0.6645 | 0.5602 | +0.1043 [+0.0585, +0.1539], **worse** | 0.1815 vs 0.1883 | 0.0993 |
+| after practice | podium | 0.2718 | 0.2883 | −0.0164 [−0.0334, +0.0014] | 0.0840 vs 0.0874 | 0.0372 |
+| after practice | teammate | 0.7109 | 0.6706 | +0.0403 [+0.0094, +0.0744], **worse** | 0.2422 vs 0.2388 | 0.0975 |
+| after qualifying | top ten | 0.5985 | 0.5158 | +0.0826 [+0.0451, +0.1232], **worse** | 0.1682 vs 0.1688 | 0.0833 |
+| after qualifying | podium | 0.2365 | 0.2473 | −0.0108 [−0.0216, +0.0009] | 0.0702 vs 0.0732 | 0.0197 |
+| after qualifying | teammate | 0.6793 | 0.6249 | +0.0543 [+0.0174, +0.0924], **worse** | 0.2193 vs 0.2166 | 0.1046 |
+
+**What it says.**
+- **The published top-ten chances are worse than the rule for every model,**
+  and badly calibrated: an ECE near 0.1 means a stated chance is about ten
+  points out on average. The simulation places every car somewhere in the
+  order and never retires one, so a favourite's top-ten chance runs to 99%
+  when retirements alone take several percent. The Brier scores are close
+  while the log losses are not, which is the signature of confident misses.
+- **Podium chances are a little better than the rule for all three models,
+  never significantly,** and reasonably calibrated.
+- **The teammate chance is worse than the rule for all three,** and badly
+  calibrated for the same reason. The win-chance ratio is too confident about
+  who finishes ahead once retirements are in play.
+
+None of the nine meets the first condition, so 2026 cannot change any verdict.
+It is still scored once, as committed. Choosing to skip a step after seeing the
+results is exactly what the protocol exists to prevent.
