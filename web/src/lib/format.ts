@@ -36,6 +36,14 @@ export function ordinal(n: number): string {
   }
 }
 
+/**
+ * The podium chance a page shows: the tested one from its own model where the
+ * prediction has it (MODEL_REPORT §13), the simulated one otherwise.
+ */
+export function shownPodium(d: { p_podium: number; p_podium_model?: number | undefined }): number {
+  return d.p_podium_model ?? d.p_podium;
+}
+
 /** Log loss and Brier to three decimals, the precision the differences live at. */
 export function score(n: number): string {
   return n.toFixed(3);

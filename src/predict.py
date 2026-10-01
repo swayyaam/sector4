@@ -258,6 +258,25 @@ def points_chance(train: pd.DataFrame, test: pd.DataFrame, cols: list[str]) -> n
     return np.clip(PF._logistic(xtr, train["top10"].to_numpy(), xte), 0.0, 1.0)
 
 
+def podium_chance(snapshot: str, u1: np.ndarray, p_win: np.ndarray,
+                  p_points: np.ndarray) -> np.ndarray | None:
+    """The tested podium chance from MODEL_REPORT §13, or None where none passed.
+
+    U1 is the model's own podium output. Before practice it is rescaled so the
+    field fills the three places (U2); after practice it is kept between the
+    win chance and the points chance (U4), so it never contradicts either.
+    After qualifying no candidate beat the rule, so the simulated podium stays
+    and this returns None. Both formulas are the ones podium_model.py selected.
+    """
+    import podium_model as PM
+
+    if snapshot == F.PRE:
+        return PM.sum_to_places(u1)
+    if snapshot == F.PRACTICE:
+        return np.minimum(np.maximum(u1, p_win), p_points)
+    return None
+
+
 def _fit_dnf(train: pd.DataFrame, test: pd.DataFrame, cols: list[str]) -> pd.Series:
     """A logistic on the same features, for the retirement marginal."""
     from sklearn.impute import SimpleImputer
@@ -370,6 +389,8 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
     ids = feats["driverId"].astype(int).to_numpy()
     p_win = np.clip(probs["win"].reindex(ids).to_numpy(dtype=float), 1e-9, None)
     p_win = p_win / p_win.sum()
+    p_podium_model = podium_chance(
+        snapshot, probs["podium"].reindex(ids).to_numpy(dtype=float), p_win, p_points)
     dist = plackett_luce(p_win)
     p_dnf = np.clip(probs["dnf"].reindex(ids).to_numpy(dtype=float), 0.0, 1.0)
 
@@ -395,6 +416,8 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
             "p_win": pw, "p_podium": pp, "p_top10": pt,
             "p_dnf": round(float(p_dnf[i]), 6),
             "p_points": round(float(p_points[i]), 6),
+            **({"p_podium_model": round(float(p_podium_model[i]), 6)}
+               if p_podium_model is not None else {}),
             "expected_position": round(float((dist[i] * np.arange(1, n + 1)).sum()), 6),
             "position_distribution": round_to_total(dist[i], 1.0),
             "top_factors": factors[i] if factors is not None else top_factors(x, list(cols), i),

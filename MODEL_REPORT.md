@@ -1197,3 +1197,17 @@ after-practice.
   exceed the points chance for a favourite (1.9% of driver-races on 2026).
 
 Shipping is a separate decision, made after review.
+
+### Shipped — the podium chance
+
+After review, the two passing candidates ship as `p_podium_model` on new
+predictions: U2 before practice, and U4 after practice.
+- **Code.** `predict.podium_chance` calls the frozen `podium_model` code.
+- **Site.** The race page's Podium column shows it where a prediction has
+  it, and the simulated `p_podium` otherwise. The simulated value stays in
+  every file.
+- **After qualifying.** No podium field is added, so its Podium column still
+  shows the simulation.
+- **Per-prediction status.** Each prediction now says which of its chances
+  passed a test, because the three predictions differ.
+- **Older predictions** keep their simulated podium and say so.

@@ -3,7 +3,7 @@
  * wording has to stay true to the number at every band edge.
  */
 import { describe, expect, it } from "vitest";
-import { chanceInWords } from "../src/lib/format";
+import { chanceInWords, shownPodium } from "../src/lib/format";
 
 describe("chanceInWords", () => {
   it("rounds to tenths for anything from about one in ten", () => {
@@ -31,5 +31,12 @@ describe("chanceInWords", () => {
   it("uses 1 in N just below the tenths band", () => {
     // 0.094 rounds to 0.9 tenths: below the tenths band, it must read as 1 in N.
     expect(chanceInWords(0.094)).toBe("about 1 in 11");
+  });
+});
+
+describe("shownPodium", () => {
+  it("shows the tested podium chance where there is one, and the simulated one otherwise", () => {
+    expect(shownPodium({ p_podium: 0.9, p_podium_model: 0.6 })).toBe(0.6);
+    expect(shownPodium({ p_podium: 0.9 })).toBe(0.9);
   });
 });

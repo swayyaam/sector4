@@ -415,3 +415,21 @@ def test_the_points_chance_is_the_frozen_t1_code():
 
     src = inspect.getsource(P.points_chance)
     assert "PF._widen" in src and "PF._logistic" in src
+
+
+# ------------------------------------------------------------ the podium chance
+@needs_data
+def test_the_tested_podium_chance_ships_where_it_passed():
+    """MODEL_REPORT §13: before practice it fills three places, after practice
+    it sits between the win and points chances, after qualifying there is none."""
+    import predict as P
+
+    pre = P.build(2026, 14, "pre_weekend")["drivers"]
+    assert abs(sum(d["p_podium_model"] for d in pre) - 3) < 1e-3
+
+    practice = P.build(2026, 14, "post_practice")["drivers"]
+    for d in practice:
+        assert d["p_win"] - 1e-6 <= d["p_podium_model"] <= d["p_points"] + 1e-6
+
+    post = P.build(2026, 14, "post_qualifying")["drivers"]
+    assert not any("p_podium_model" in d for d in post)

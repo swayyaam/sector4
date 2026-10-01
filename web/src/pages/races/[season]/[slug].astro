@@ -18,7 +18,15 @@ import {
   raceById,
   teamById,
 } from "../../../lib/data";
-import { chanceInWords, driverName, logLoss, percent, position, score } from "../../../lib/format";
+import {
+  chanceInWords,
+  driverName,
+  logLoss,
+  percent,
+  position,
+  score,
+  shownPodium,
+} from "../../../lib/format";
 import type { Prediction } from "../../../lib/schema";
 import { FACTOR_NOTE, describeModel } from "../../../lib/models";
 import { BASELINE_FOR, SNAPSHOT_BLURB, SNAPSHOT_LABEL } from "../../../lib/snapshots";
@@ -84,15 +92,30 @@ const fieldIntro = hasPoints
     "chance of not finishing (DNF) and where they are likely to end up."
   : "Every driver's chance of winning and of finishing on the podium, plus their chance of not " +
     "finishing (DNF) and where they are likely to end up.";
-const testStatus = hasPoints
-  ? "Win chances and points chances have passed tests against past races. Points come from " +
-    "their own model, not the race simulation, so they can disagree a little with the podium " +
-    "chance. Podium chances were tested and are no better than a simple rule. The DNF chance " +
-    "and the finishing order have not been tested on their own."
-  : "Win chances have passed a test against past races. Podium chances were tested and are no " +
-    "better than a simple rule. The DNF chance and the finishing order have not been tested on " +
-    "their own. A top-ten chance was tested, found unreliable, and is no longer shown; " +
-    "predictions made later carry a tested points chance instead.";
+/**
+ * Which chances in one prediction have passed a test, in a sentence or two.
+ * Per prediction, because the three differ: points came later (§12), and a
+ * tested podium chance exists only before and after practice (§13).
+ */
+function testStatus(p: Prediction): string {
+  const points = p.drivers.every((d) => d.p_points !== undefined);
+  const podium = p.drivers.every((d) => d.p_podium_model !== undefined);
+  const passed = ["win", ...(podium ? ["podium"] : []), ...(points ? ["points"] : [])];
+  const said =
+    passed.length === 1
+      ? passed[0]
+      : `${passed.slice(0, -1).join(", ")} and ${passed[passed.length - 1]}`;
+  const parts = [`Tested against past races and passed: the ${said} chances.`];
+  if (!podium) parts.push("The podium chance was tested and is no better than a simple rule.");
+  if (points && !podium) {
+    parts.push(
+      "It comes from the race simulation and points from their own model, so they can disagree a little.",
+    );
+  }
+  if (!points) parts.push("A top-ten chance was tested, found unreliable, and is not shown.");
+  parts.push("Not tested on their own: the DNF chance and the finishing order.");
+  return parts.join(" ");
+}
 
 /** "A", "A and B", "A, B and C", from driver ids. */
 function nameList(ids: number[]): string {
@@ -336,7 +359,7 @@ const jsonLd = [
                     </span>
                   </th>
                   <td class="n num">{row ? percent(row.p_win) : "—"}</td>
-                  <td class="n num">{row ? percent(row.p_podium) : "—"}</td>
+                  <td class="n num">{row ? percent(shownPodium(row)) : "—"}</td>
                   <td class="n num dim">{row ? position(row.expected_position) : "—"}</td>
                   <td class="n num">
                     {delta === null
@@ -364,7 +387,6 @@ const jsonLd = [
       <p class="eyebrow">Prediction</p>
       <h2 id="field-h">Full field</h2>
       <p>{fieldIntro}</p>
-      <p class="body-sm muted">{testStatus}</p>
     </div>
 
     <details class="read disclosure">
@@ -417,6 +439,7 @@ const jsonLd = [
                 {SNAPSHOT_BLURB[s.snapshot]} Compared with the {BASELINE_FOR[s.snapshot]} rule.
               </span>
             </p>
+            <p class="body-sm muted status">{testStatus(s)}</p>
             <Provenance
               generatedAt={s.generated_at}
               revision={s.revision}

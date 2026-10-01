@@ -340,8 +340,12 @@ const contents = [
           <dt>Win and podium</dt>
           <dd>
             The chance of winning, and of finishing in the top three. The win chance has passed a
-            test against past races. Podium chances are worked out from it by simulating the race
-            many thousands of times; tested, they are no better than a simple rule.
+            test against past races. Before and after practice, the podium chance comes from its own
+            model, which passed its test and never sits above the points chance after practice.
+            After qualifying no podium model beat a simple rule, because the qualifying order is
+            already a strong guide, so the podium there still comes from the race simulation and can
+            occasionally sit above a favourite's points chance. Predictions made before the podium
+            model was added show the simulated podium.
           </dd>
         </div>
         <div>
