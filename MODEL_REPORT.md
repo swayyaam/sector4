@@ -503,3 +503,44 @@ it was this.
 - Calibration guard: ECE 0.0086 against P0's 0.0103, so not tripped.
 
 This entry was committed before the holdout was run.
+
+### Holdout — 2026, scored once
+
+Run with `python src/pre_weekend_selection.py holdout P4-2018`, after the
+freeze was committed. It covered all 15 completed 2026 races, R1 to R15. The
+script refuses a second run.
+
+| Model | Log loss | 95% CI | vs bar | Winner | Podium | ECE (win) |
+|---|---:|---|---|---:|---:|---:|
+| *Bar: championship order* | *1.8007* | [1.4569, 2.2030] | — | — | — | — |
+| **P4-2018 — selected** | 1.8983 | [1.4632, 2.3937] | +0.0976 [−0.1335, +0.3445], **indistinguishable** | 33.3% | 44.4% | 0.0286 |
+| P0-2018 — incumbent | 2.3951 | [2.1527, 2.6400] | +0.5945 [+0.3344, +0.8491], **worse** | 40.0% | 40.0% | 0.0179 |
+
+P4-2018 against the incumbent: **−0.4968 [−0.8309, −0.1570], better.**
+
+**What this says.**
+- **The incumbent is worse than championship order out of sample too.** On
+  2026 it was 0.59 worse than the simple rule, and the interval is well clear
+  of zero. The pre-weekend predictions published so far have been worse than
+  ranking drivers by the standings.
+- **The selected model is much better than the incumbent:** half a unit of log
+  loss, significant on fifteen races.
+- **It does not beat championship order on 2026.** The point estimate is 0.10
+  worse, and the interval spans zero on both sides. In sample it was 0.27
+  better. 2026 is a regulation reset, which hurts any model that learns from
+  earlier seasons more than it hurts a rule that only reads this season's
+  table. And fifteen races is very little; the bar's own interval spans 1.46
+  to 2.20.
+- **Calibration is weaker out of sample:** win ECE 0.0286 against 0.0086 in
+  sample. On fifteen races this is noisy, but it is reported, not explained
+  away.
+
+**Under the protocol:**
+- The selected model's holdout log loss (1.8983) is no worse than the
+  incumbent's (2.3951), so the recommendation is to **ship P4-2018 in place of
+  the incumbent.**
+- The site **may not** say the pre-weekend model beats championship order.
+- Shipping needs the two recent-qualifying inputs added to `src/features.py`,
+  under the same cut tests as every other feature, and the site's description
+  of the before-practice prediction rewritten to match. That is a separate
+  change, made after review.
