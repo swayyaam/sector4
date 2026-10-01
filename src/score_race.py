@@ -64,8 +64,10 @@ def _season_of(race_id: int) -> int:
 # Each snapshot is judged against a baseline that sees what it sees. Scoring a
 # pre-weekend prediction against qualifying order would measure it on
 # information it does not have; championship order is the fair comparison for a
-# model that is, in effect, a standings model.
-BASELINE_FOR = {F.PRE: "championship order", F.POST: "qualifying order"}
+# model that is, in effect, a standings model. After practice it is still the
+# bar: practice order was much the weaker rule (MODEL_REPORT §10).
+BASELINE_FOR = {F.PRE: "championship order", F.PRACTICE: "championship order",
+                F.POST: "qualifying order"}
 
 
 def baseline_probabilities(race_id: int) -> dict[str, dict]:
@@ -154,7 +156,7 @@ def main() -> int:
     written = 0
 
     schedule = REV.sessions(args.season, args.round)
-    for snapshot in (F.PRE, F.POST):
+    for snapshot in (F.PRE, F.PRACTICE, F.POST):
         published = REV.revisions(args.season, args.round, snapshot, OUT)
         if not published:
             continue
