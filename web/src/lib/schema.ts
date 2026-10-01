@@ -270,7 +270,7 @@ export const predictionSchema = z
     race_id: z.int().positive(),
     season: z.int().min(1950).max(2100),
     round: z.int().min(1).max(30),
-    snapshot: z.enum(["pre_weekend", "post_qualifying"]),
+    snapshot: z.enum(["pre_weekend", "post_practice", "post_qualifying"]),
     generated_at: isoDateTime,
     model_version: z.string().min(1),
     data_version: z.string().min(1),

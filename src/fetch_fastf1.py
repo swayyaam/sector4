@@ -24,7 +24,9 @@ Usage:
     python src/fetch_fastf1.py --upcoming 2026 15 [--dry-run]
 
 ``--upcoming`` fetches the finished practice and qualifying sessions of a race
-that has not run, for a post-qualifying prediction. See src/upcoming.py.
+that has not run. Run after the last practice before qualifying, it serves the
+after-practice prediction; run after qualifying, the post-qualifying one. See
+src/upcoming.py.
 """
 from __future__ import annotations
 

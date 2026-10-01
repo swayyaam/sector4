@@ -756,3 +756,30 @@ None of the holdout comparisons is significant at 95%.
   is byte-identical to the one selected on, so nothing above changes.
 - **Test coverage.** The time-travel test in `tests/test_features.py` now
   covers this snapshot. Qualifying and any practice after it are removed.
+
+### Shipped — `practice-form-v1`
+
+After review, Q3 ships as a third prediction, `post_practice`. It applies to
+races from 2026 round 16 onward, if it is merged before that round's
+qualifying.
+
+- **Live inputs.** The fetcher already loads only finished sessions. Run after
+  the last practice, it writes that weekend's practice and nothing more.
+  `upcoming.augment_practice` reads only the sessions before qualifying, and
+  refuses if any of them is missing. `predict.py` also refuses if practice
+  reached too few drivers to be the prediction §10 validated.
+- **Format from the schedule.** For an upcoming race, the sprint date comes
+  from the schedule, so a sprint weekend reads FP1 alone.
+- **Equivalence on real races.** Rebuilt through the upcoming path, R12 (a
+  sprint weekend) and R14 reproduce the training inputs exactly.
+- **Deadline.** The weekend's first qualifying session, from the schedule.
+  For races that have run, the sprint qualifying time is read from the cached
+  Jolpica schedule, offline, because the races table has no column for it. A
+  modern sprint weekend with no sprint qualifying time is refused, not given a
+  later deadline.
+- **Scoring and the site.**
+  - The scorer compares it with championship order.
+  - The site shows it as "After practice": a third series on the track
+    record, never pooled, and a three-way toggle on race pages.
+  - Factors come from the model's own coefficients, as for the pre-weekend
+    model.

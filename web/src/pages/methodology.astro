@@ -12,7 +12,7 @@ const contents = [
   { id: "short", label: "The short version" },
   { id: "model", label: "The model" },
   { id: "data", label: "The data" },
-  { id: "snapshots", label: "Two predictions" },
+  { id: "snapshots", label: "Three predictions" },
   { id: "predicted", label: "What is predicted" },
   { id: "scoring", label: "Scoring" },
   { id: "rejected", label: "Tried and rejected" },
@@ -49,10 +49,11 @@ const contents = [
     <div class="prose">
       <ul>
         <li>
-          <strong>Two predictions per race.</strong> One before practice, using each driver's and
-          team's recent form, the championship standings and recent qualifying. One after
-          qualifying, using where each driver qualified, their practice pace, their championship
-          points and their share of their team's points.
+          <strong>Three predictions per race.</strong> One before practice, using each driver's and
+          team's recent form, the championship standings and recent qualifying. One after practice,
+          adding this weekend's practice pace. One after qualifying, using where each driver
+          qualified, their practice pace, their championship points and their share of their team's
+          points.
         </li>
         <li>
           <strong>Chances, not picks.</strong> A 30% chance to win means the driver would win about
@@ -65,10 +66,10 @@ const contents = [
           rule that knew the same things.
         </li>
         <li>
-          <strong>Honest about the limits.</strong> Tested on this season, neither prediction has
+          <strong>Honest about the limits.</strong> Tested on this season, none of the three has
           done clearly better than its simple rule: going by qualifying position after qualifying,
-          and by the championship order before practice. What the after-qualifying model does well
-          is say how likely things are: when it says 20%, that happens about one time in five.
+          and by the championship order before it. What the after-qualifying model does well is say
+          how likely things are: when it says 20%, that happens about one time in five.
         </li>
         <li>
           <strong>Not betting advice.</strong> Nothing here has been tested against bookmakers'
@@ -105,6 +106,13 @@ const contents = [
         The new one beats the earlier model clearly and beat the rule over 2019–2025, but this
         season it has not done better than the rule. Predictions the earlier model made stay on the
         site as they were published, and each race page says which model made each prediction.
+      </p>
+      <p>
+        The after-practice prediction uses the same thirteen inputs plus four from this weekend's
+        practice before qualifying: best-lap pace, long-run pace, and how many laps were run. It was
+        chosen the same way. Practice made it better than the same model without practice over
+        2019–2025, and this season it has been ahead of both that model and the championship-order
+        rule, though fourteen races are too few to rule out luck.
       </p>
       <p>
         Four inputs is not a simplification made for the sake of the explanation. Larger versions
@@ -278,13 +286,14 @@ const contents = [
   </section>
 
   <section id="snapshots" class="wrap band chapter">
-    <h2 class="h3">Two predictions per race.</h2>
+    <h2 class="h3">Three predictions per race.</h2>
     <div class="prose">
       <p>
-        A prediction only means something if you know when it was made, so each race gets up to two,
-        each with a deadline. Before practice is locked when the first session of the weekend
-        starts; after qualifying is locked when the race starts. A correction before the deadline is
-        published as a new revision beside the original, and the race page shows both.
+        A prediction only means something if you know when it was made, so each race gets up to
+        three, each with a deadline. Before practice is locked when the first session of the weekend
+        starts; after practice when the first qualifying session starts, which is sprint qualifying
+        on a sprint weekend; after qualifying when the race starts. A correction before the deadline
+        is published as a new revision beside the original, and the race page shows both.
       </p>
       <dl class="defs">
         <div>
@@ -296,19 +305,28 @@ const contents = [
           </dd>
         </div>
         <div>
+          <dt>After practice</dt>
+          <dd>
+            Published after the last practice before qualifying: after FP3, or after FP1 on a sprint
+            weekend. It adds this weekend's practice pace to the before-practice inputs, measured
+            among the drivers who ran in FP2 or FP3 (FP1 on a sprint weekend). Compared with the
+            simple rule of championship order, which did better than going by practice times.
+          </dd>
+        </div>
+        <div>
           <dt>After qualifying</dt>
           <dd>
             Published after qualifying, once the qualifying order and this weekend's practice pace
             are known. It uses qualifying position rather than the starting grid, so penalties
             applied afterwards are not in it; <a href="#limits">why is below</a>. This is the
-            sharper of the two and the one a race page shows first. Compared with the simple rule of
-            qualifying order.
+            sharpest of the three and the one a race page shows first. Compared with the simple rule
+            of qualifying order.
           </dd>
         </div>
       </dl>
       <p>
-        Both remain on the race page afterwards. Comparing them is the honest way to see how much of
-        the prediction was qualifying and how much was everything else.
+        All of them remain on the race page afterwards. Comparing them shows how much each part of
+        the weekend changed the picture.
       </p>
     </div>
   </section>

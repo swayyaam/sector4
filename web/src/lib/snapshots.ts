@@ -9,8 +9,8 @@ import type { Prediction } from "./schema";
 
 export type Snapshot = Prediction["snapshot"];
 
-/** Post-qualifying first: the sharper call, and the one a race-day reader wants. */
-export const SERIES: Snapshot[] = ["post_qualifying", "pre_weekend"];
+/** Latest first: the sharpest call, and the one a race-day reader wants. */
+export const SERIES: Snapshot[] = ["post_qualifying", "post_practice", "pre_weekend"];
 
 /**
  * Named for when each one is published, in words a fan uses. The data keeps
@@ -19,12 +19,15 @@ export const SERIES: Snapshot[] = ["post_qualifying", "pre_weekend"];
  */
 export const SNAPSHOT_LABEL: Record<Snapshot, string> = {
   pre_weekend: "Before practice",
+  post_practice: "After practice",
   post_qualifying: "After qualifying",
 };
 
 export const SNAPSHOT_BLURB: Record<Snapshot, string> = {
   pre_weekend:
     "Published before the first practice session, so it knows nothing from this weekend yet.",
+  post_practice:
+    "Published after the last practice session before qualifying, so it knows this weekend's practice pace but not the qualifying order.",
   post_qualifying:
     "Published after qualifying, so it knows where everyone qualified and how quick they were in practice.",
 };
@@ -32,6 +35,9 @@ export const SNAPSHOT_BLURB: Record<Snapshot, string> = {
 /** The baseline each snapshot is scored beside: one that saw the same information. */
 export const BASELINE_FOR: Record<Snapshot, string> = {
   pre_weekend: "championship order",
+  // Practice order was tested as this snapshot's rule and was much the
+  // weaker of the two (MODEL_REPORT §10), so the stronger one is the bar.
+  post_practice: "championship order",
   post_qualifying: "qualifying order",
 };
 
@@ -41,6 +47,8 @@ export const BASELINE_FOR: Record<Snapshot, string> = {
  */
 export const BASELINE_PLAIN: Record<Snapshot, string> = {
   pre_weekend:
+    "giving each driver the chance of winning that their championship position has had in past races",
+  post_practice:
     "giving each driver the chance of winning that their championship position has had in past races",
   post_qualifying:
     "giving each driver the chance of winning that their qualifying position has had in past races",

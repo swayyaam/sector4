@@ -97,8 +97,11 @@ const totalScored = allSeries.reduce((a, s) => a + s.races, 0);
 
 const BLURB: Record<Snapshot, string> = {
   post_qualifying:
-    "Published after qualifying, so it knows where everyone starts and how quick they were in practice. Compared with a simple rule: " +
+    "Published after qualifying, so it knows where everyone qualified and how quick they were in practice. Compared with a simple rule: " +
     `${BASELINE_PLAIN.post_qualifying}.`,
+  post_practice:
+    "Published after the last practice before qualifying, so it knows this weekend's practice pace but not the qualifying order. Compared with a simple rule that does not need this weekend at all: " +
+    `${BASELINE_PLAIN.post_practice}. Going by practice times was tested as the rule too, and did worse.`,
   pre_weekend:
     "Published before the first practice session, so it knows nothing from this weekend. Compared with a simple rule that also uses only what is known before the weekend: " +
     `${BASELINE_PLAIN.pre_weekend}. Judging it against qualifying would be unfair: qualifying has not happened yet.`,
@@ -109,7 +112,7 @@ const BLURB: Record<Snapshot, string> = {
   title="Track record"
   description={
     totalScored
-      ? "Every Sector 4 prediction scored against the result, with the baseline's score beside it on every race."
+      ? "Every Sector 4 prediction scored against the result, with a simple rule's score beside it on every race."
       : "Predictions published in advance. Nothing scored yet: the first race is still to come."
   }
   image="/og/track-record.png"
@@ -144,9 +147,9 @@ const BLURB: Record<Snapshot, string> = {
             got right, our score and the simple rule's score on the same race.
           </li>
           <li class="rise" style="--i:1">
-            <strong>Two separate tables.</strong> The before-practice and after-qualifying
-            predictions know different things, so each has its own table. They are never averaged
-            together.
+            <strong>Separate tables.</strong> The predictions before practice, after practice and
+            after qualifying know different things, so each has its own table. They are never
+            averaged together.
           </li>
           <li class="rise" style="--i:2">
             <strong>Season figures after four.</strong> Winner calls, podium places, average log
@@ -376,7 +379,7 @@ const BLURB: Record<Snapshot, string> = {
 
   <section class="wrap band">
     <p class="note">
-      Scores use the exact chances we published, not the rounded figures shown on the site. The two
+      Scores use the exact chances we published, not the rounded figures shown on the site. The
       predictions are never averaged together: they know different things and are compared with
       different rules, so an average would describe neither.
     </p>

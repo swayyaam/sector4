@@ -23,6 +23,8 @@ turns out differently.
 
 Usage:
     python src/predict.py --season 2026 --round 15 --snapshot pre_weekend
+    python src/predict.py --season 2026 --round 15 --snapshot post_practice
+    python src/predict.py --season 2026 --round 15 --snapshot post_qualifying
 """
 from __future__ import annotations
 
@@ -68,6 +70,18 @@ PRE_WEEKEND_COLS = [
     "driver_quali_pos_mean_3", "team_quali_pos_mean_3",
 ]
 
+# The after-practice model, selected in MODEL_REPORT §10 (Q3): the pre-weekend
+# inputs plus this weekend's practice before qualifying, measured within the
+# after-practice field.
+PRACTICE_MODEL_VERSION = "practice-form-v1"
+PRACTICE_COLS = PRE_WEEKEND_COLS + [
+    "practice_best_lap_gap_ms", "practice_long_run_pace_gap_ms",
+    "practice_long_run_laps", "practice_laps",
+]
+
+COLS_FOR = {F.PRE: PRE_WEEKEND_COLS, F.PRACTICE: PRACTICE_COLS, F.POST: SHIPPED}
+VERSION_FOR = {F.PRE: PRE_MODEL_VERSION, F.PRACTICE: PRACTICE_MODEL_VERSION, F.POST: MODEL_VERSION}
+
 # What a race page calls each input. Plain words, and never a timing value.
 FACTOR_LABELS = {
     "quali_position": "Qualifying position",
@@ -86,6 +100,9 @@ FACTOR_LABELS = {
     "team_standing_points": "Team's championship points",
     "driver_quali_pos_mean_3": "Recent qualifying",
     "team_quali_pos_mean_3": "Team's recent qualifying",
+    "practice_long_run_pace_gap_ms": "Long-run pace",
+    "practice_long_run_laps": "Long-run laps",
+    "practice_laps": "Practice laps",
 }
 
 
@@ -133,6 +150,9 @@ def race_row(tables: dict, season: int, rnd: int) -> tuple[pd.Series, bool]:
         "circuitId": int(match.iloc[0]["circuitId"]), "name": sched["raceName"],
         "date": sched["date"], "regs_era": races.loc[races["year"] == season, "regs_era"].iloc[0],
         "order": season * 100 + rnd,
+        # The format is in the schedule before the weekend. The after-practice
+        # snapshot reads it to know which practice comes before qualifying.
+        "sprint_date": (sched.get("Sprint") or {}).get("date"),
     })
     return row, False
 
@@ -236,6 +256,18 @@ def _fit_dnf(train: pd.DataFrame, test: pd.DataFrame, cols: list[str]) -> pd.Ser
     return pd.Series(pipe.predict_proba(test[cols].astype(float))[:, 1], index=ids)
 
 
+def check_after_practice_inputs(feats: pd.DataFrame) -> None:
+    """Refuse an after-practice prediction that practice never reached.
+
+    A field with almost no practice times is a prediction from the pre-weekend
+    inputs under the after-practice name, which is not what §10 validated.
+    """
+    timed = int(feats["practice_best_lap_gap_ms"].notna().sum())
+    if timed < max(10, len(feats) // 2):
+        raise SystemExit(f"only {timed} of {len(feats)} drivers have a practice time; "
+                         "refusing to publish an after-practice prediction without practice")
+
+
 def check_post_qualifying_inputs(tables: dict, race: pd.Series, feats: pd.DataFrame) -> None:
     """Refuse a post-qualifying prediction that cannot see qualifying.
 
@@ -264,7 +296,7 @@ def check_post_qualifying_inputs(tables: dict, race: pd.Series, feats: pd.DataFr
 def build(season: int, rnd: int, snapshot: str) -> dict:
     tables = F.load_tables()
     race, completed = race_row(tables, season, rnd)
-    cols = SHIPPED if snapshot == F.POST else PRE_WEEKEND_COLS
+    cols = COLS_FOR[snapshot]
 
     # A race that has not run has no weekend in data/processed. Its qualifying
     # and practice are read from the fetched session data instead, onto
@@ -272,6 +304,11 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
     if snapshot == F.POST and not completed:
         try:
             tables = UP.augment(tables, race)
+        except UP.MissingWeekendData as e:
+            raise SystemExit(f"{season} round {rnd}: {e} Refusing.") from e
+    if snapshot == F.PRACTICE and not completed:
+        try:
+            tables = UP.augment_practice(tables, race)
         except UP.MissingWeekendData as e:
             raise SystemExit(f"{season} round {rnd}: {e} Refusing.") from e
 
@@ -288,6 +325,8 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
         raise SystemExit(f"{missing} drivers have no team_entity_id; refusing to publish")
     if snapshot == F.POST:
         check_post_qualifying_inputs(tables, race, feats)
+    if snapshot == F.PRACTICE:
+        check_after_practice_inputs(feats)
 
     history = M.dataset(snapshot)
     train = history[history["order"] < int(race["order"])]
@@ -317,7 +356,7 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
     x = feats[[c for c in cols if c in feats.columns]].astype(float)
     # The pre-weekend model's factors come from its own coefficients; the
     # post-qualifying model keeps the method it shipped with.
-    factors = model_factors(train, feats, list(cols)) if snapshot == F.PRE else None
+    factors = model_factors(train, feats, list(cols)) if snapshot != F.POST else None
     n = len(ids)
     win = round_to_total(dist[:, 0], 1.0)
     podium = round_to_total(dist[:, :3].sum(axis=1), min(3.0, n))
@@ -346,13 +385,21 @@ def build(season: int, rnd: int, snapshot: str) -> dict:
         "race_name": str(race["name"]),
         "snapshot": snapshot,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "model_version": MODEL_VERSION if snapshot == F.POST else PRE_MODEL_VERSION,
+        "model_version": VERSION_FOR[snapshot],
         "model_features": list(cols),
         "model_note": (
             "Shipped specification, validated at this snapshot. The DNF "
             "probability is a separate logistic on the same features and was "
             "not part of that validation."
             if snapshot == F.POST else
+            "Selected for this snapshot in MODEL_REPORT.md §10: the pre-weekend "
+            "inputs plus this weekend's practice before qualifying, measured "
+            "within the drivers who ran in FP2 or FP3 (FP1 on a sprint weekend). "
+            "Better than the same inputs without practice in sample and on the "
+            "2026 holdout, and not shown to beat championship order. The DNF "
+            "probability is a separate logistic on the same features and was "
+            "not validated."
+            if snapshot == F.PRACTICE else
             "Selected for this snapshot in MODEL_REPORT.md §9: driver and team "
             "form and recent qualifying, from races before this one only. Better "
             "than the previous pre-weekend model in sample and on the 2026 "
@@ -386,7 +433,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--season", type=int, required=True)
     ap.add_argument("--round", type=int, required=True)
-    ap.add_argument("--snapshot", choices=[F.PRE, F.POST], default=F.PRE)
+    ap.add_argument("--snapshot", choices=[F.PRE, F.PRACTICE, F.POST], default=F.PRE)
     ap.add_argument("--revise", action="store_true",
                     help="publish a new revision of an existing prediction")
     ap.add_argument("--reason", help="why the revision exists; required with --revise")

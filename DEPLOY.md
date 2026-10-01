@@ -215,14 +215,21 @@ everything and points to that sitemap.
   which is FP1 on every current weekend format. Publication
   means the prediction file is **committed and pushed**; the commit is the
   proof of when it was public.
+- **After-practice** is published after the last practice before the
+  weekend's first qualifying session, and before that session starts. That is
+  FP3 then qualifying on a normal weekend, and FP1 then sprint qualifying on a
+  sprint weekend.
 - **Post-qualifying** is published after qualifying and before the race
   starts.
 - **Scoring** happens after the result is in Jolpica. `fetch_jolpica.py` treats
   a race as finished four hours after its scheduled start, and results within
   30 days are re-fetched in case they are amended.
 - `predict.py` refuses to overwrite a prediction, and refuses to write anything
-  after its deadline: a first prediction or a revision. The deadline is the
-  first session for pre-weekend and the race start for post-qualifying.
+  after its deadline: a first prediction or a revision. The deadlines are:
+  - pre-weekend: the first session;
+  - after-practice: the first qualifying session (sprint qualifying on a sprint
+    weekend);
+  - post-qualifying: the race start.
 - `predict.py` rebuilds its cached features by itself whenever the data is newer
   than the cache. That takes about 100 seconds the first time after new data.
 - Session times for every upcoming race are in
@@ -367,7 +374,60 @@ model trains on. It is a fetcher, so it runs alone:
 ./.venv/bin/python src/fetch_fastf1.py --seasons 2026
 ```
 
-### 3. After qualifying for race N+1: post-qualifying prediction
+### 3. After the last practice for race N+1: after-practice prediction
+
+Between the end of the last practice before qualifying and the start of
+qualifying. That is FP3 then qualifying on a normal weekend, and FP1 then
+sprint qualifying on a sprint weekend. The race has not run, so its practice
+is read from the fetched session data (`UP.augment_practice` in
+`src/upcoming.py`). The field is the drivers who ran in FP2 or FP3, or in FP1
+on a sprint weekend (MODEL_REPORT §10). Nothing about qualifying is read.
+
+`fetch_fastf1.py` will not load a session until 90 minutes after it started,
+so it is not cached half-written. Then fetch the weekend's practice:
+
+```bash
+./.venv/bin/python src/fetch_fastf1.py --upcoming 2026 N+1
+```
+
+Its last lines must say `fetched Practice 1(...), Practice 2(...),
+Practice 3(...)`. On a sprint weekend there is only Practice 1. Then predict:
+
+```bash
+./.venv/bin/python src/predict.py --season 2026 --round N+1 --snapshot post_practice
+```
+
+It refuses if a practice session it needs has not been fetched, or if
+practice reached too few drivers. Wait and repeat the fetch; it never fills a
+gap. Publish before qualifying starts:
+
+```bash
+git switch -c predict/2026-rN+1-practice main
+```
+
+```bash
+git add predictions/2026/<N+1>-post_practice.json
+```
+
+```bash
+git commit -m "feat: publish the 2026 round N+1 after-practice prediction"
+```
+
+```bash
+git push -u origin predict/2026-rN+1-practice
+```
+
+Then show it on the site, on the same branch, and open a PR and merge:
+
+```bash
+./.venv/bin/python src/build_site_data.py
+```
+
+```bash
+git add web/src/data/live/ && git commit -m "feat: show the round N+1 after-practice prediction" && git push
+```
+
+### 4. After qualifying for race N+1: post-qualifying prediction
 
 Between the end of qualifying and the start of the race. The race has not run,
 so its weekend is read straight from the fetched session data rather than from
@@ -430,23 +490,27 @@ Then show it on the site, on the same branch, and open a PR and merge:
 git add web/src/data/live/ && git commit -m "feat: show the round N+1 post-qualifying prediction" && git push
 ```
 
-### This weekend: R15, Azerbaijan
+### This weekend: R16, Bahrain Grand Prix in Malaysia (Sepang)
 
-All times UTC, from the schedule in `web/src/data/live/reference.json`.
+All times are UTC, from the schedule in `web/src/data/live/reference.json`.
 
 | Session | Starts |
 |---|---|
-| Practice 1 | Thu 24 Sep, 08:30 |
-| Practice 2 | Thu 24 Sep, 12:00 |
-| Practice 3 | Fri 25 Sep, 08:30 |
-| Qualifying | Fri 25 Sep, 12:00 |
-| Race | Sat 26 Sep, 11:00 |
+| Practice 1 | Fri 02 Oct, 04:30 |
+| Practice 2 | Fri 02 Oct, 08:00 |
+| Practice 3 | Sat 03 Oct, 04:30 |
+| Qualifying | Sat 03 Oct, 08:00 |
+| Race | Sun 04 Oct, 07:00 |
 
-- **Post-qualifying:** from Fri 25 Sep, 13:30 until Sat 26 Sep, 11:00. Run
-  section 3 with `N+1` = `15`: the files are
-  `predictions/2026/15-post_qualifying.json` and branch
-  `predict/2026-r15-post`.
-- **Scoring:** Sat 26 Sep, from 15:00, once Jolpica has the result. Run section
-  1 with `N` = `15`: score with `--round 15` on branch `score/2026-r15`. Both
-  R15 snapshots are scored, and each gets its first row on the track record.
-- **Deploy** stays on hold until the scoring is merged.
+- **Pre-weekend:** before Fri 02 Oct, 04:30. Run section 2 with `N+1` = `16`.
+  This is the first pre-weekend prediction from `pre-form-quali-v1`
+  (MODEL_REPORT §9).
+- **After-practice:** from Sat 03 Oct, 06:00 until 08:00. Run section 3 with
+  `N+1` = `16`. This needs the after-practice change to have been merged
+  first.
+- **Post-qualifying:** from Sat 03 Oct, 09:30 until Sun 04 Oct, 07:00. Run
+  section 4 with `N+1` = `16`.
+- **Scoring:** after the race, once Jolpica has the result. Run section 1 with
+  `N` = `16`.
+- **R17, Singapore, is a sprint weekend.** The after-practice prediction is
+  published after FP1, and its deadline is sprint qualifying.

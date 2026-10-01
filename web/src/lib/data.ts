@@ -130,14 +130,15 @@ export function circuitById(ref: Reference): Map<number, Circuit> {
 
 /** Both snapshots for one race, newest generation first within each. */
 export function predictionsForRace(all: Prediction[], raceId: number): Prediction[] {
-  const rank = (p: Prediction) => (p.snapshot === "post_qualifying" ? 0 : 1);
+  const order = ["post_qualifying", "post_practice", "pre_weekend"];
+  const rank = (p: Prediction) => order.indexOf(p.snapshot);
   return all.filter((p) => p.race_id === raceId).sort((a, b) => rank(a) - rank(b));
 }
 
-/** The snapshot a page should show by default: post-qualifying when it exists. */
+/** The snapshot a page should show by default: the latest one published. */
 export function preferredSnapshot(all: Prediction[], raceId: number): Prediction | undefined {
   const forRace = predictionsForRace(all, raceId);
-  return forRace.find((p) => p.snapshot === "post_qualifying") ?? forRace[0];
+  return forRace[0];
 }
 
 /** Completed races, most recent first. */

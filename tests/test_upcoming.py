@@ -295,3 +295,47 @@ def test_r15_is_never_predicted_from_a_carried_over_field():
     drivers, _ = _maps()
     assert {d["driverId"] for d in pred["drivers"]} == {
         drivers[r["Driver"]["driverId"]] for r in quali["QualifyingResults"]}
+
+
+# ------------------------------------------------- the after-practice path (§10)
+def _strip_and_write(tables: dict, race: pd.Series, tmp_path: Path, drop_sessions=()) -> dict:
+    """Treat a run race as upcoming: its laps leave the tables and go, as the
+    fetcher would write them, into an upcoming directory."""
+    import fetch_fastf1 as FF
+
+    rid, season, rnd = int(race["raceId"]), int(race["year"]), int(race["round"])
+    laps = tables["laps"][tables["laps"]["raceId"] == rid]
+    laps = laps[~laps["session"].isin(list(drop_sessions))]
+    d = UP.weekend_dir(season, rnd, tmp_path)
+    d.mkdir(parents=True)
+    FF.upcoming_frame([laps], season, rnd).to_csv(d / "laps.csv", index=False)
+    stripped = dict(tables)
+    stripped["laps"] = tables["laps"][tables["laps"]["raceId"] != rid]
+    return stripped
+
+
+@needs_data
+@pytest.mark.parametrize("rnd", [12, 14])
+def test_after_practice_upcoming_path_reproduces_training(tmp_path, rnd):
+    """R12 is a sprint weekend, R14 a normal one. Rebuilt through the upcoming
+    path from the real laps, every after-practice input must match what
+    training saw -- including on the sprint weekend, where only FP1 counts."""
+    tables = F.load_tables()
+    races = tables["races"]
+    race = races[(races["year"] == 2026) & (races["round"] == rnd)].iloc[0]
+    stripped = _strip_and_write(tables, race, tmp_path)
+    aug = UP.augment_practice(stripped, race, upcoming_dir=tmp_path)
+
+    want = F.build_race(tables, race, F.PRACTICE).sort_values("driverId").reset_index(drop=True)
+    got = F.build_race(aug, race, F.PRACTICE).sort_values("driverId").reset_index(drop=True)
+    pd.testing.assert_frame_equal(want, got, check_dtype=False)
+
+
+@needs_data
+def test_after_practice_refuses_a_weekend_missing_fp3(tmp_path):
+    tables = F.load_tables()
+    races = tables["races"]
+    race = races[(races["year"] == 2026) & (races["round"] == 14)].iloc[0]
+    stripped = _strip_and_write(tables, race, tmp_path, drop_sessions=("Practice 3",))
+    with pytest.raises(UP.MissingWeekendData, match="Practice 3"):
+        UP.augment_practice(stripped, race, upcoming_dir=tmp_path)

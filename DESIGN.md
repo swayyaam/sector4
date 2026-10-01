@@ -356,7 +356,7 @@ One color is allowed to interrupt: an electric blue accent (`{colors.accent}` �
 - **Tight leading up top.** Display and heading-1 sit at line-height 1.0; headings never breathe more than 1.25. Body text opens up to 1.38–1.43.
 - **Zero letter-spacing everywhere.** The grotesque is trusted at its natural fit; no tracking adjustments at any size.
 - **Sentence case with terminal periods.** Headlines read as declarative sentences: "Race predictions, scored in public." — the period is part of the voice.
-- **Plain words for fans.** Write "chance", not "probability". Write "score, lower is better", not "log loss". Write "simple rule", not "baseline". Name the two predictions "before practice" and "after qualifying", never "snapshot". A percentage can carry a count beside it ("about 7 in 10"). A technical term appears only where it is needed, and is explained where it appears: on the methodology page, or in the track record's key.
+- **Plain words for fans.** Write "chance", not "probability". Write "score, lower is better", not "log loss". Write "simple rule", not "baseline". Name the predictions "before practice", "after practice" and "after qualifying", never "snapshot". A percentage can carry a count beside it ("about 7 in 10"). A technical term appears only where it is needed, and is explained where it appears: on the methodology page, or in the track record's key.
 
 ### Note on Font Substitutes
 

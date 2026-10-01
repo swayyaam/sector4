@@ -347,3 +347,46 @@ def test_the_pre_weekend_frame_carries_the_new_inputs():
     for c in ("driver_quali_pos_mean_3", "team_quali_pos_mean_3"):
         assert c in df.columns
         assert df[c].notna().mean() > 0.95, f"{c} is mostly empty"
+
+
+# ----------------------------------------------------- the after-practice model
+def test_the_shipped_after_practice_inputs_are_the_frozen_selection():
+    """MODEL_REPORT §10 froze Q3. What ships must be exactly that set."""
+    import after_practice_selection as A
+    import predict as P
+
+    assert P.PRACTICE_COLS == A.CANDIDATES["Q3"]
+    assert all(c in P.FACTOR_LABELS for c in P.PRACTICE_COLS)
+
+
+@needs_data
+def test_an_after_practice_prediction_is_built_and_scored(tmp_path, monkeypatch):
+    """R14 end to end: built from the after-practice field, stamped an hour
+    before R14's real after-practice deadline, scored against championship
+    order."""
+    from datetime import timedelta
+
+    import predict as P
+    import revisions as REV
+    import score_race as S
+
+    pred = P.build(2026, 14, "post_practice")
+    assert pred["model_version"] == P.PRACTICE_MODEL_VERSION
+    assert pred["model_features"] == P.PRACTICE_COLS
+    cutoff = REV.deadline(2026, 14, "post_practice")
+    pred["generated_at"] = (cutoff - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    monkeypatch.setattr(P, "OUT", tmp_path)
+    monkeypatch.setattr(S, "OUT", tmp_path)
+    monkeypatch.setattr(S, "LEDGER", tmp_path / "track_record.json")
+    monkeypatch.setattr(S, "RESULTS_DIR", tmp_path / "results")
+    path = P.path_for(2026, 14, "post_practice")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(pred, indent=2))
+
+    monkeypatch.setattr(sys, "argv", ["score_race.py", "--season", "2026", "--round", "14"])
+    assert S.main() == 0
+    entry = json.loads((tmp_path / "track_record.json").read_text())["races"][0]
+    assert entry["snapshot"] == "post_practice"
+    assert entry["baseline"]["name"] == "championship order"
+    assert entry["model_version"] == P.PRACTICE_MODEL_VERSION
