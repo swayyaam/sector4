@@ -4,6 +4,7 @@ import { loadDataset, logLossSummary, raceById, predictionsForRace } from "../li
 import { logLoss, score } from "../lib/format";
 import {
   BASELINE_FOR,
+  BASELINE_PLAIN,
   SCORED_SUMMARY_MINIMUM,
   SERIES,
   SNAPSHOT_LABEL,
@@ -64,10 +65,10 @@ function series(snapshot: Snapshot) {
     undefinedNote:
       ll.undefined === 0
         ? ""
-        : `${ll.undefined === 1 ? "One race has" : `${ll.undefined} races have`} no defined log ` +
-          `loss, because the snapshot gave the winner no probability, so both means leave ` +
+        : `${ll.undefined === 1 ? "One race has" : `${ll.undefined} races have`} no score, ` +
+          "because the prediction gave the winner no chance at all, so both averages leave " +
           `${ll.undefined === 1 ? "it" : "them"} out. ${ll.undefined === 1 ? "It still counts" : "They still count"} ` +
-          `as a missed winner and as a race the model did not beat the baseline.`,
+          "as a missed winner and as a race where we did not beat the rule.",
     // What a uniform pick over the same field would score: the floor, printed
     // because a log loss on its own says nothing about whether this is any good.
     uniformLogLoss: meanField > 1 ? Math.log(meanField) : 0,
@@ -79,9 +80,11 @@ const totalScored = allSeries.reduce((a, s) => a + s.races, 0);
 
 const BLURB: Record<Snapshot, string> = {
   post_qualifying:
-    "Published after qualifying, so it sees the qualifying order and this weekend's practice pace. Scored beside qualifying order.",
+    "Published after qualifying, so it knows where everyone starts and how quick they were in practice. Compared with a simple rule: " +
+    `${BASELINE_PLAIN.post_qualifying}.`,
   pre_weekend:
-    "Published before any car runs. It cannot see qualifying or practice, so it uses two features and is scored beside championship order: judging it against qualifying order would score it on information it does not have.",
+    "Published before the first practice session, so it only knows the championship standings. Compared with a simple rule that knows the same: " +
+    `${BASELINE_PLAIN.pre_weekend}. Judging it against qualifying would be unfair: qualifying has not happened yet.`,
 };
 ---
 
@@ -99,9 +102,9 @@ const BLURB: Record<Snapshot, string> = {
     <p class="eyebrow">Track record</p>
     <h1>Every prediction, including the misses.</h1>
     <p class="lead">
-      Each race is scored against the snapshot published before it started. Nothing is recalculated
-      afterwards and no race is left out. The baseline's score for the same race sits beside the
-      model's, so you can judge whether the model adds anything.
+      Each race is scored using the prediction we published before it started. Nothing is
+      recalculated afterwards and no race is left out. Next to every score is the score of a simple
+      rule on the same race, so you can judge whether the model adds anything.
     </p>
   </section>
 
@@ -120,12 +123,13 @@ const BLURB: Record<Snapshot, string> = {
         </p>
         <ul class="coming">
           <li class="rise" style="--i:0">
-            <strong>A row per race.</strong> Whether the winner was called, how many podium places
-            were, log loss and Brier score, and the baseline's log loss on the same race.
+            <strong>A row per race.</strong> Whether we picked the winner, how many podium places we
+            got right, our score and the simple rule's score on the same race.
           </li>
           <li class="rise" style="--i:1">
-            <strong>Two separate series.</strong> Post-qualifying and pre-weekend are different
-            models against different baselines. They are never averaged together.
+            <strong>Two separate tables.</strong> The before-practice and after-qualifying
+            predictions know different things, so each has its own table. They are never averaged
+            together.
           </li>
           <li class="rise" style="--i:2">
             <strong>Season figures after four.</strong> Winner calls, podium places, average log
@@ -133,6 +137,46 @@ const BLURB: Record<Snapshot, string> = {
           </li>
         </ul>
       </div>
+    </section>
+  )}
+
+  {totalScored > 0 && (
+    <section class="wrap band" aria-labelledby="key-h">
+      <details class="key disclosure">
+        <summary id="key-h">How to read these tables</summary>
+        <dl class="defs">
+          <div>
+            <dt>Winner</dt>
+            <dd>Picked if the driver we gave the best chance of winning did win.</dd>
+          </div>
+          <div>
+            <dt>Podium</dt>
+            <dd>How many of our three podium favourites finished in the top three.</dd>
+          </div>
+          <div>
+            <dt>Score</dt>
+            <dd>
+              Based on the chance we gave the driver who actually won. Lower is better: giving the
+              winner 100% would score 0, and a confident miss scores badly. Statisticians call this
+              log loss.
+            </dd>
+          </div>
+          <div>
+            <dt>Rule and Beat rule</dt>
+            <dd>
+              The same score for a simple rule that knew what the prediction knew. If we cannot beat
+              the rule, the model is not adding much.
+            </dd>
+          </div>
+          <div>
+            <dt>Brier</dt>
+            <dd>
+              A second score that looks at every driver's chance, not just the winner's. From 0 to
+              2, lower is better.
+            </dd>
+          </div>
+        </dl>
+      </details>
     </section>
   )}
 
@@ -152,36 +196,35 @@ const BLURB: Record<Snapshot, string> = {
         <>
           <dl class="figures summary">
             <div class="rise" style="--i:0">
-              <dt>Winner called</dt>
+              <dt>Winners picked</dt>
               <dd class="num">
                 {s.wins} of {s.races}
               </dd>
             </div>
             <div class="rise" style="--i:1">
-              <dt>Podium places</dt>
+              <dt>Podium picks right</dt>
               <dd class="num">
                 {s.podiums} of {s.races * 3}
               </dd>
             </div>
             <div class="rise" style="--i:2">
-              <dt>Model, mean log loss</dt>
+              <dt>Our average score</dt>
               <dd class="num">{s.meanLogLoss === null ? "—" : score(s.meanLogLoss)}</dd>
             </div>
             <div class="rise" style="--i:3">
-              <dt>Baseline, mean log loss</dt>
+              <dt>Simple rule's average</dt>
               <dd class="num">{s.meanBaseline === null ? "—" : score(s.meanBaseline)}</dd>
             </div>
             <div class="rise" style="--i:4">
-              <dt>Races the model beat it</dt>
+              <dt>Races we beat the rule</dt>
               <dd class="num">
                 {s.modelBetter} of {s.baselineRaces}
               </dd>
             </div>
           </dl>
           <p class="note">
-            The baseline is {BASELINE_FOR[s.snapshot]}. A uniform pick over the same field would
-            score {score(s.uniformLogLoss)}. Lower is better, and beating that is the floor rather
-            than the goal. {s.undefinedNote}{" "}
+            Lower is better. Picking a driver at random would score {score(s.uniformLogLoss)}, so
+            beating that is the very least a prediction should do. {s.undefinedNote}{" "}
             <a href="/methodology/#scoring">How the scores are computed</a>.
           </p>
         </>
@@ -189,8 +232,8 @@ const BLURB: Record<Snapshot, string> = {
         <p class="notice">
           <span class="badge badge-ink">Season</span>
           <span>
-            Season figures appear once four races are scored in this snapshot.{" "}
-            {s.races === 0 ? "None so far." : `${s.races} so far.`} The baseline is{" "}
+            Season figures appear once four races are scored.{" "}
+            {s.races === 0 ? "None so far." : `${s.races} so far.`} The simple rule here is{" "}
             {BASELINE_FOR[s.snapshot]}.
           </span>
         </p>
@@ -199,8 +242,8 @@ const BLURB: Record<Snapshot, string> = {
       <div class="scroller">
         <table class="table record">
           <caption class="sr-only">
-            {SNAPSHOT_LABEL[s.snapshot]} predictions, most recent first, with the{" "}
-            {BASELINE_FOR[s.snapshot]} baseline's score for the same race.
+            {SNAPSHOT_LABEL[s.snapshot]} predictions, most recent first, with the score of the{" "}
+            {BASELINE_FOR[s.snapshot]} rule on the same race.
           </caption>
           <thead>
             <tr>
@@ -211,12 +254,12 @@ const BLURB: Record<Snapshot, string> = {
                 Podium
               </th>
               <th scope="col" class="n">
-                Log loss
+                Score
               </th>
               <th scope="col" class="n">
-                Baseline
+                Rule
               </th>
-              <th scope="col">Beat it</th>
+              <th scope="col">Beat rule</th>
               <th scope="col" class="n">
                 Brier
               </th>
@@ -242,7 +285,7 @@ const BLURB: Record<Snapshot, string> = {
                       <a href={`/races/${race.season}/${race.slug}/`}>{race.name}</a>
                       <span class="season num">{race.season}</span>
                     </th>
-                    <td>{r.winner_hit ? "Called" : "Missed"}</td>
+                    <td>{r.winner_hit ? "Picked" : "Missed"}</td>
                     <td class="n num">{r.podium_hits} of 3</td>
                     <td class="n num">{logLoss(r.log_loss)}</td>
                     <td class="n num dim">{r.baseline ? score(r.baseline.log_loss) : "—"}</td>
@@ -263,8 +306,8 @@ const BLURB: Record<Snapshot, string> = {
       </div>
       {s.undefinedLogLoss > 0 && (
         <p class="note footnote">
-          Not defined: the snapshot gave that race's winner no probability, so it has no log loss.
-          The race page says why.
+          No score: the prediction gave that race's winner no chance at all, so there is nothing to
+          score. The race page explains.
         </p>
       )}
     </section>
@@ -315,9 +358,9 @@ const BLURB: Record<Snapshot, string> = {
 
   <section class="wrap band">
     <p class="note">
-      Scores are computed from the stored probabilities, not from the rounded figures shown here.
-      The two snapshots are never pooled: they are different models measured against different
-      baselines, and an average across them would describe neither.
+      Scores use the exact chances we published, not the rounded figures shown on the site. The two
+      predictions are never averaged together: they know different things and are compared with
+      different rules, so an average would describe neither.
     </p>
     <!-- prettier-ignore -->
     <p class="note">Data version <span class="num">{meta.data_version}</span>, built <time datetime={meta.generated_at} data-local>{formatUtc(meta.generated_at)}</time>.</p>

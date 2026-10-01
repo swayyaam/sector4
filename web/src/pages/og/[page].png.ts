@@ -13,12 +13,12 @@ const CARDS: Record<string, Omit<CardSpec, "isMock">> = {
   "track-record": {
     eyebrow: "Track record",
     title: "Every prediction, including the misses.",
-    subtitle: "Log loss, Brier score and podium hits for each race, scored against the result.",
+    subtitle: "Winners picked, podium picks and a score for every race, next to a simple rule's.",
   },
   methodology: {
     eyebrow: "Methodology",
     title: "How the numbers are made.",
-    subtitle: "The data, the snapshots, the scoring rules, and what the model cannot see.",
+    subtitle: "The data, the two predictions, how they are scored, and what the model cannot see.",
   },
   credits: {
     eyebrow: "Credits",
