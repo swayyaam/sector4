@@ -328,11 +328,17 @@ def practice_sessions(tables: dict[str, pd.DataFrame], race: pd.Series) -> tuple
     """The practice sessions that run before the weekend's first qualifying session.
 
     FP1 alone on a sprint weekend: in 2021-23 Friday qualifying followed it, and
-    since 2024 sprint qualifying does. All three otherwise. Read from the FastF1
-    session list, because the races table's fp2 column holds sprint qualifying
-    on the 2024 sprint weekends. A sprint weekend that has not reached its
-    sprint yet has only FP1 to read, which gives the same answer.
+    since 2024 sprint qualifying does. All three otherwise. Whether a weekend is
+    a sprint weekend comes from its sprint_date. The fp2 column is not used,
+    because it holds sprint qualifying on the 2024 sprint weekends.
     """
+    # The format is in the calendar before the weekend starts, so it is read
+    # from the schedule, not from sprint sessions that run after the deadline.
+    if "sprint_date" in race.index:
+        return ("Practice 1",) if pd.notna(race["sprint_date"]) else \
+            ("Practice 1", "Practice 2", "Practice 3")
+    # A race the table does not carry yet: its sessions so far. Before a sprint
+    # weekend's sprint there is only FP1 to read, which gives the same answer.
     laps = tables["laps"]
     here = laps[laps["raceId"] == race["raceId"]] if len(laps) else laps
     if len(here) and here["session"].isin(SPRINT_SESSIONS).any():

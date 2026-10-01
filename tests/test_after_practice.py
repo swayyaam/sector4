@@ -75,3 +75,13 @@ def test_the_after_practice_inputs_extend_the_pre_weekend_set():
     assert pre < practice
     assert not any(c.startswith("quali_") for c in practice), "qualifying leaked in"
     assert "practice_best_lap_gap_ms" in practice
+
+
+def test_a_sprint_weekend_is_known_from_the_schedule_alone():
+    """The format is in the calendar before the weekend. With the schedule
+    saying sprint, FP1 is the only session even before any sprint has run."""
+    t = _tables([(2, "Practice 1", 1), (2, "Practice 2", 1)])
+    t["races"]["sprint_date"] = [None, "2024-05-04"]
+    assert F.practice_sessions(t, _race(t)) == ("Practice 1",)
+    t["races"]["sprint_date"] = [None, None]
+    assert F.practice_sessions(t, _race(t)) == ("Practice 1", "Practice 2", "Practice 3")
