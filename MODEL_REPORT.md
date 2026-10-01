@@ -366,3 +366,181 @@ Ranked by what the diagnostics suggest, not by what sounds interesting:
 4. **Nothing involving more features of the kind already tried.** Circuit
    history, tyre and relative form were all measured, and all three made the
    model worse.
+
+---
+
+## 9. The pre-weekend model
+
+Everything above selects the **post-qualifying** model. The pre-weekend
+snapshot was never selected on its own. It shipped as whatever the
+post-qualifying specification reduces to once qualifying and practice are
+removed: a logistic regression on `driver_standing_points` and
+`driver_vs_team_points_share_5`. This section selects it properly.
+
+### Protocol — fixed before any result was seen
+
+Committed on its own, before the selection script was run, so the history
+shows the procedure came first.
+
+**Data.** The pre-weekend feature frame (`F.build(..., snapshot="pre_weekend")`),
+targets from `results.csv`, walk-forward exactly as in §1: every race is
+predicted by a model fitted only on races strictly before it.
+
+**Two new inputs, computed from prior races only.** Neither existing group
+reads qualifying, and qualifying is the cleanest read on a car's pace that
+exists before a weekend starts. Both of the new inputs use only races
+strictly before the one being predicted:
+
+- `driver_quali_pos_mean_3`: the driver's mean qualifying position over
+  their last three races.
+- `team_quali_pos_mean_3`: the team entity's best qualifying position at
+  each of its last three races, averaged.
+
+They are computed inside the selection script. They are added to
+`src/features.py` only if a candidate that uses them is chosen to ship, so
+nothing in §§1–8 changes until then.
+
+**Candidates.** All are the same regularised logistic regression (`Slim`,
+C = 0.5, median imputation, standardisation fitted per fold), with no tuning:
+
+| Id | Inputs | Count |
+|---|---|---:|
+| P0 | incumbent: driver points, driver's share of team points | 2 |
+| P1 | standings: driver and team standing position and points | 4 |
+| P2 | P1 + the two recent-qualifying inputs | 6 |
+| P3 | driver form and team form groups (§B of `features.py`) | 11 |
+| P4 | P3 + the two recent-qualifying inputs | 13 |
+| P5 | every pre-weekend feature + the two recent-qualifying inputs | 25 |
+
+**Two training windows.** Rows from 2018 (the current frame) and rows from
+2014, the start of the hybrid era. The second follows §8's second point: none
+of these inputs needs FastF1, so more seasons are available. Both windows use
+the same points system. Twelve runs in all.
+
+**Selection window: 2019–2025 only.** The walk-forward is run on a frame
+truncated at the end of 2025, so no 2026 row is ever predicted during
+selection.
+
+**The bar.** Championship order (§1, `baselines.py`), scored on exactly the
+same races.
+
+**Selection rule.**
+1. Primary metric: mean race-level win log loss over 2019–2025.
+2. The candidate with the lowest mean is selected. Accuracy is the brief for
+   this snapshot, so there is no tie-break towards fewer inputs. The report
+   states whether its margin over P0 and over the bar is significant (paired
+   race bootstrap, 95%).
+3. **Calibration guard:** if the selected candidate's win ECE on 2019–2025 is
+   more than twice P0's, stop and report instead of freezing.
+
+**Holdout: 2026, scored once.** The selected specification is frozen,
+including window, inputs and estimator. Then it, P0 and the bar are scored on
+every completed 2026 race at the time of freezing.
+
+Two caveats are stated now, not discovered later:
+- Part C printed pre-weekend scores for the three full-feature model families
+  pooled over 2019–2026. No pre-weekend decision was made from them, and they
+  are not opened here.
+- P0's live R15 result has been seen. It lost to championship order, 2.2568
+  against 1.5893.
+
+**What the result allows.**
+- Recommend shipping the selected model if its holdout log loss is no worse
+  than P0's.
+- Otherwise, recommend keeping P0.
+- Either way, the site may say the pre-weekend model beats championship order
+  only if the holdout paired interval excludes zero.
+- Shipping is a separate decision, made after review.
+
+### Selection — 2019–2025
+
+Run with `python src/pre_weekend_selection.py select`, after the protocol and
+the script were committed. There were 151 races in every run, and the bar was
+scored on 152. Paired comparisons use the races both sides scored.
+
+**Bar, championship order: 1.7920** [1.6711, 1.9234].
+
+| Run | Inputs | Log loss | Winner | Podium | ECE (win) | vs bar | vs P0-2018 |
+|---|---:|---:|---:|---:|---:|---|---|
+| **P4-2018** | 13 | **1.5170** | 49.7% | 57.8% | 0.0086 | −0.2656 [−0.3699, −0.1545] | −0.4969 [−0.6168, −0.3725] |
+| P4-2014 | 13 | 1.5219 | 49.0% | 58.9% | 0.0065 | −0.2607 [−0.3692, −0.1502] | −0.4920 [−0.6161, −0.3623] |
+| P3-2014 | 11 | 1.5320 | 51.0% | 57.4% | 0.0087 | −0.2506 [−0.3530, −0.1424] | −0.4819 [−0.6072, −0.3531] |
+| P3-2018 | 11 | 1.5339 | 51.0% | 56.7% | 0.0089 | −0.2488 [−0.3530, −0.1376] | −0.4800 [−0.6021, −0.3538] |
+| P5-2014 | 25 | 1.5608 | 49.0% | 58.3% | 0.0084 | −0.2218 [−0.3442, −0.0929] | −0.4531 [−0.5913, −0.3088] |
+| P5-2018 | 25 | 1.5696 | 51.0% | 57.8% | 0.0103 | −0.2131 [−0.3342, −0.0849] | −0.4443 [−0.5829, −0.3019] |
+| P2-2018 | 6 | 1.5911 | 44.4% | 58.5% | 0.0062 | −0.1915 [−0.2762, −0.0984] | −0.4227 [−0.5213, −0.3173] |
+| P2-2014 | 6 | 1.5994 | 43.0% | 58.3% | 0.0017 | −0.1832 [−0.2857, −0.0739] | −0.4145 [−0.5279, −0.2903] |
+| P1-2014 | 4 | 1.6863 | 48.0% | 57.8% | 0.0111 | −0.0963 [−0.1686, −0.0095] | −0.3275 [−0.4454, −0.1984] |
+| P1-2018 | 4 | 1.6875 | 48.0% | 56.9% | 0.0123 | −0.0951 [−0.1601, −0.0212] | −0.3263 [−0.4306, −0.2116] |
+| P0-2014 | 2 | 1.9994 | 45.7% | 55.8% | 0.0105 | +0.2168 [+0.1323, +0.3027] | −0.0145 [−0.0225, −0.0063] |
+| *P0-2018, incumbent* | 2 | *2.0139* | 46.4% | 53.4% | 0.0103 | +0.2312 [+0.1423, +0.3195] | — |
+
+Every interval in the table is significant at 95%.
+
+(P3 is the "Driver form" and "Team form" groups in `features.py`. The
+protocol's "§B" was a loose reference to them.)
+
+**The model that shipped was worse than championship order.** In sample,
+over seven seasons, P0 scored 0.23 worse than the bar, and the interval
+excludes zero. The live R15 result (2.2568 against 1.5893) was not bad luck;
+it was this.
+
+**What helps.**
+- Form beats standings alone: P3 against P1 is −0.15.
+- The two recent-qualifying inputs help wherever they are added: P1 to P2 is
+  −0.10, and P3 to P4 is −0.02.
+- Everything (P5) is worse than form plus qualifying (P4), the same pattern
+  §4 found for the post-qualifying model.
+- The extra 2014–2017 seasons make little difference. Within each input set
+  the two windows are at most 0.015 apart, in both directions. Only P0's
+  gap, 0.0145 in favour of 2014, is significant, and P0 is the weakest set.
+
+**Selected and frozen: P4-2018.**
+- Inputs: the six driver-form inputs, the five team-form inputs,
+  `driver_quali_pos_mean_3` and `team_quali_pos_mean_3`.
+- Estimator: the same `Slim` logistic regression, C = 0.5.
+- Training rows: from 2018.
+- Calibration guard: ECE 0.0086 against P0's 0.0103, so not tripped.
+
+This entry was committed before the holdout was run.
+
+### Holdout — 2026, scored once
+
+Run with `python src/pre_weekend_selection.py holdout P4-2018`, after the
+freeze was committed. It covered all 15 completed 2026 races, R1 to R15. The
+script refuses a second run.
+
+| Model | Log loss | 95% CI | vs bar | Winner | Podium | ECE (win) |
+|---|---:|---|---|---:|---:|---:|
+| *Bar: championship order* | *1.8007* | [1.4569, 2.2030] | — | — | — | — |
+| **P4-2018 — selected** | 1.8983 | [1.4632, 2.3937] | +0.0976 [−0.1335, +0.3445], **indistinguishable** | 33.3% | 44.4% | 0.0286 |
+| P0-2018 — incumbent | 2.3951 | [2.1527, 2.6400] | +0.5945 [+0.3344, +0.8491], **worse** | 40.0% | 40.0% | 0.0179 |
+
+P4-2018 against the incumbent: **−0.4968 [−0.8309, −0.1570], better.**
+
+**What this says.**
+- **The incumbent is worse than championship order out of sample too.** On
+  2026 it was 0.59 worse than the simple rule, and the interval is well clear
+  of zero. The pre-weekend predictions published so far have been worse than
+  ranking drivers by the standings.
+- **The selected model is much better than the incumbent:** half a unit of log
+  loss, significant on fifteen races.
+- **It does not beat championship order on 2026.** The point estimate is 0.10
+  worse, and the interval spans zero on both sides. In sample it was 0.27
+  better. 2026 is a regulation reset, which hurts any model that learns from
+  earlier seasons more than it hurts a rule that only reads this season's
+  table. And fifteen races is very little; the bar's own interval spans 1.46
+  to 2.20.
+- **Calibration is weaker out of sample:** win ECE 0.0286 against 0.0086 in
+  sample. On fifteen races this is noisy, but it is reported, not explained
+  away.
+
+**Under the protocol:**
+- The selected model's holdout log loss (1.8983) is no worse than the
+  incumbent's (2.3951), so the recommendation is to **ship P4-2018 in place of
+  the incumbent.**
+- The site **may not** say the pre-weekend model beats championship order.
+- Shipping needs the two recent-qualifying inputs added to `src/features.py`,
+  under the same cut tests as every other feature, and the site's description
+  of the before-practice prediction rewritten to match. That is a separate
+  change, made after review.
