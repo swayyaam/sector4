@@ -34,7 +34,7 @@ MINIMAL_SHARE = ["quali_position", "practice_best_lap_gap_ms",
 
 
 def subset(snapshot: str, keep_groups: set[str]) -> list[str]:
-    avail = set(F.features_for(snapshot))
+    avail = set(F.features_for(snapshot, original_only=True))
     return [f.name for f in F.FEATURES if f.name in avail and f.group in keep_groups]
 
 
@@ -47,13 +47,13 @@ def candidates(snapshot: str) -> list:
     out.append(m)
     m = D.SplineQuali(subset(snapshot, core)); m.name = "spline + 19 (no relative form)"
     out.append(m)
-    m = D.LgbmRegularised(list(F.features_for(snapshot))); m.name = "lightgbm regularised (33)"
+    m = D.LgbmRegularised(list(F.features_for(snapshot, original_only=True))); m.name = "lightgbm regularised (33)"
     out.append(m)
     m = D.SplineQuali(list(MINIMAL)); m.name = "minimal 4 (significant only)"
     out.append(m)
     m = D.SplineQuali(list(MINIMAL_SHARE)); m.name = "minimal 4, share not team points"
     out.append(m)
-    m = D.SplineQuali(list(F.features_for(snapshot))); m.name = "spline + 33 (everything)"
+    m = D.SplineQuali(list(F.features_for(snapshot, original_only=True))); m.name = "spline + 33 (everything)"
     out.append(m)
     return out
 

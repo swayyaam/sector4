@@ -29,7 +29,7 @@ SCORING_TARGETS = ("win", "podium")
 
 
 def groups(snapshot: str) -> dict[str, list[str]]:
-    avail = set(F.features_for(snapshot))
+    avail = set(F.features_for(snapshot, original_only=True))
     out: dict[str, list[str]] = {}
     for f in F.FEATURES:
         if f.name in avail:
@@ -169,7 +169,7 @@ def run_incremental(df: pd.DataFrame, snapshot: str, bar: pd.DataFrame) -> pd.Da
 
 
 def run_quali_shape(df: pd.DataFrame, snapshot: str, bar: pd.DataFrame) -> pd.DataFrame:
-    cols = list(F.features_for(snapshot))
+    cols = list(F.features_for(snapshot, original_only=True))
     rows = []
     for model in (Slim(cols), OneHotQuali(cols), SplineQuali(cols),
                   Slim(["quali_position"]), OneHotQuali(["quali_position"]),
@@ -192,7 +192,7 @@ def run_overfit_check(df: pd.DataFrame, snapshot: str) -> pd.DataFrame:
     import lightgbm as lgb
     from sklearn.metrics import log_loss as sk_log_loss
 
-    cols = list(F.features_for(snapshot))
+    cols = list(F.features_for(snapshot, original_only=True))
     race_ids = df.loc[df["year"] >= M.EVAL_FROM, "raceId"].drop_duplicates().tolist()
     picks = race_ids[::12]
     rows = []
@@ -234,7 +234,7 @@ def coefficients(df: pd.DataFrame, snapshot: str, target: str = "win") -> pd.Dat
     from sklearn.linear_model import LogisticRegression
     from sklearn.preprocessing import StandardScaler
 
-    cols = list(F.features_for(snapshot))
+    cols = list(F.features_for(snapshot, original_only=True))
     x = SimpleImputer(strategy="median").fit_transform(df[cols].astype(float))
     x = StandardScaler().fit_transform(x)
     y = df[target].to_numpy()
