@@ -969,3 +969,44 @@ back to the site, labelled tested, only if:
 
 Otherwise the column stays hidden for that model. Shipping is a separate
 decision, made after review.
+
+### Selection — 2019–2025
+
+Run with `python src/points_finish.py select` after the protocol and the
+script were committed. It covered 152 races per model. The difference is
+the candidate minus the rule in log loss.
+
+| Model | Candidate | Log loss | Brier | ECE | vs rule |
+|---|---|---:|---:|---:|---|
+| before practice | *rule* | *0.5598* | — | *0.0523* | — |
+| | reference (§11) | 0.6848 | 0.1858 | 0.1088 | +0.1251 [+0.0802, +0.1749] |
+| | **T1 direct** | **0.5210** | 0.1725 | 0.0171 | −0.0388 [−0.0502, −0.0267] |
+| | T2 summed | 0.5338 | 0.1729 | 0.0193 | −0.0260 [−0.0438, −0.0057] |
+| | T3 retirements | 0.5283 | 0.1749 | 0.0456 | −0.0314 [−0.0485, −0.0132] |
+| after practice | *rule* | *0.5602* | — | *0.0548* | — |
+| | reference (§11) | 0.6645 | 0.1815 | 0.0993 | +0.1043 [+0.0585, +0.1539] |
+| | **T1 direct** | **0.5212** | 0.1711 | 0.0310 | −0.0390 [−0.0535, −0.0229] |
+| | T2 summed | 0.5293 | 0.1703 | 0.0317 | −0.0309 [−0.0503, −0.0059] |
+| | T3 retirements | 0.5241 | 0.1719 | 0.0380 | −0.0361 [−0.0557, −0.0144] |
+| after qualifying | *rule* | *0.5158* | — | *0.0603* | — |
+| | reference (§11) | 0.5985 | 0.1682 | 0.0833 | +0.0826 [+0.0451, +0.1232] |
+| | **T1 direct** | **0.4903** | 0.1588 | 0.0336 | −0.0256 [−0.0360, −0.0144] |
+| | T2 summed | 0.4918 | 0.1581 | 0.0314 | −0.0240 [−0.0364, −0.0082] |
+| | T3 retirements | 0.5061 | 0.1621 | 0.0401 | −0.0098 [−0.0266, +0.0090], not significant |
+
+Except where marked, every interval is significant at 95%.
+
+**What it says.**
+- **Modelling the target directly fixes it.** T1 beats the rule for all three
+  models, and is better calibrated than the rule itself. The reference was
+  0.08–0.13 worse than the rule; T1 is 0.03–0.04 better.
+- **Adding retirements to the simulation helps (T3), but less.** Before
+  qualifying it beats the rule. After qualifying it does not.
+- **Rescaling to the points places (T2) is close to T1 and never better on
+  log loss.**
+
+**Selected and frozen: T1 for all three models.** Each is the model's own
+estimator fitted on the top-ten target. The calibration guard is not tripped:
+T1's ECE is 0.017–0.034, below the rule's 0.052–0.060.
+
+This entry was committed before the holdout was run.
