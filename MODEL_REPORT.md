@@ -451,3 +451,54 @@ Two caveats are stated now, not discovered later:
 - Either way, the site may say the pre-weekend model beats championship order
   only if the holdout paired interval excludes zero.
 - Shipping is a separate decision, made after review.
+
+### Selection — 2019–2025
+
+Run with `python src/pre_weekend_selection.py select`, after the protocol and
+the script were committed. There were 151 races in every run, and the bar was
+scored on 152. Paired comparisons use the races both sides scored.
+
+**Bar, championship order: 1.7920** [1.6711, 1.9234].
+
+| Run | Inputs | Log loss | Winner | Podium | ECE (win) | vs bar | vs P0-2018 |
+|---|---:|---:|---:|---:|---:|---|---|
+| **P4-2018** | 13 | **1.5170** | 49.7% | 57.8% | 0.0086 | −0.2656 [−0.3699, −0.1545] | −0.4969 [−0.6168, −0.3725] |
+| P4-2014 | 13 | 1.5219 | 49.0% | 58.9% | 0.0065 | −0.2607 [−0.3692, −0.1502] | −0.4920 [−0.6161, −0.3623] |
+| P3-2014 | 11 | 1.5320 | 51.0% | 57.4% | 0.0087 | −0.2506 [−0.3530, −0.1424] | −0.4819 [−0.6072, −0.3531] |
+| P3-2018 | 11 | 1.5339 | 51.0% | 56.7% | 0.0089 | −0.2488 [−0.3530, −0.1376] | −0.4800 [−0.6021, −0.3538] |
+| P5-2014 | 25 | 1.5608 | 49.0% | 58.3% | 0.0084 | −0.2218 [−0.3442, −0.0929] | −0.4531 [−0.5913, −0.3088] |
+| P5-2018 | 25 | 1.5696 | 51.0% | 57.8% | 0.0103 | −0.2131 [−0.3342, −0.0849] | −0.4443 [−0.5829, −0.3019] |
+| P2-2018 | 6 | 1.5911 | 44.4% | 58.5% | 0.0062 | −0.1915 [−0.2762, −0.0984] | −0.4227 [−0.5213, −0.3173] |
+| P2-2014 | 6 | 1.5994 | 43.0% | 58.3% | 0.0017 | −0.1832 [−0.2857, −0.0739] | −0.4145 [−0.5279, −0.2903] |
+| P1-2014 | 4 | 1.6863 | 48.0% | 57.8% | 0.0111 | −0.0963 [−0.1686, −0.0095] | −0.3275 [−0.4454, −0.1984] |
+| P1-2018 | 4 | 1.6875 | 48.0% | 56.9% | 0.0123 | −0.0951 [−0.1601, −0.0212] | −0.3263 [−0.4306, −0.2116] |
+| P0-2014 | 2 | 1.9994 | 45.7% | 55.8% | 0.0105 | +0.2168 [+0.1323, +0.3027] | −0.0145 [−0.0225, −0.0063] |
+| *P0-2018, incumbent* | 2 | *2.0139* | 46.4% | 53.4% | 0.0103 | +0.2312 [+0.1423, +0.3195] | — |
+
+Every interval in the table is significant at 95%.
+
+(P3 is the "Driver form" and "Team form" groups in `features.py`. The
+protocol's "§B" was a loose reference to them.)
+
+**The model that shipped was worse than championship order.** In sample,
+over seven seasons, P0 scored 0.23 worse than the bar, and the interval
+excludes zero. The live R15 result (2.2568 against 1.5893) was not bad luck;
+it was this.
+
+**What helps.**
+- Form beats standings alone: P3 against P1 is −0.15.
+- The two recent-qualifying inputs help wherever they are added: P1 to P2 is
+  −0.10, and P3 to P4 is −0.02.
+- Everything (P5) is worse than form plus qualifying (P4), the same pattern
+  §4 found for the post-qualifying model.
+- The extra 2014–2017 seasons make no material difference. Within each input
+  set the two windows sit inside 0.01 of each other, in both directions.
+
+**Selected and frozen: P4-2018.**
+- Inputs: the six driver-form inputs, the five team-form inputs,
+  `driver_quali_pos_mean_3` and `team_quali_pos_mean_3`.
+- Estimator: the same `Slim` logistic regression, C = 0.5.
+- Training rows: from 2018.
+- Calibration guard: ECE 0.0086 against P0's 0.0103, so not tripped.
+
+This entry was committed before the holdout was run.
