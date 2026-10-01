@@ -53,7 +53,7 @@ export const GET: APIRoute = async ({ props }) => {
       subtitle: `${circuit.name}, ${circuit.locality}, ${circuit.country}`,
       rows,
       // A prediction shown anywhere carries its snapshot and when it was made.
-      note: `${SNAPSHOT_LABEL[snapshot.snapshot]} win probability, generated ${formatUtc(snapshot.generated_at)}`,
+      note: `${SNAPSHOT_LABEL[snapshot.snapshot]}: chance to win, made ${formatUtc(snapshot.generated_at)}`,
       isMock,
     }),
   );

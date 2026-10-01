@@ -24,7 +24,7 @@ const parts = [
 
 <!-- One line on purpose: a line break between these elements renders as a space before the commas. -->
 <!-- prettier-ignore -->
-<p class="provenance caption">Generated <time datetime={generatedAt} data-local>{formatUtc(generatedAt)}</time>, {parts.join(", ")}, {commit ? <a href={commitUrl(commit)} rel="noopener">published in <span class="num">{commit.slice(0, 7)}</span></a> : "not yet committed"}.</p>
+<p class="provenance caption">Made <time datetime={generatedAt} data-local>{formatUtc(generatedAt)}</time>, {parts.join(", ")}, {commit ? <a href={commitUrl(commit)} rel="noopener">saved in public as <span class="num">{commit.slice(0, 7)}</span></a> : "not yet saved in public"}.</p>
 
 <style>
   .provenance {

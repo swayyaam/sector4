@@ -16,8 +16,8 @@ import {
   scoredPredictions,
   teamById,
 } from "../lib/data";
-import { driverName, logLoss, percent, score, sentenceStart } from "../lib/format";
-import { SNAPSHOT_LABEL, SERIES, SCORED_SUMMARY_MINIMUM } from "../lib/snapshots";
+import { chanceInWords, driverName, logLoss, percent, score } from "../lib/format";
+import { BASELINE_FOR, SNAPSHOT_LABEL, SERIES, SCORED_SUMMARY_MINIMUM } from "../lib/snapshots";
 
 const { reference, predictions, meta } = loadDataset();
 const drivers = driverById(reference);
@@ -31,6 +31,13 @@ const nextCircuit = next ? circuits.get(next.circuit_id) : undefined;
 const nextPred = next ? preferredSnapshot(predictions, next.race_id) : undefined;
 const contenders = nextPred ? driversByWinProbability(nextPred).slice(0, 5) : [];
 const maxWin = contenders[0]?.p_win ?? 1;
+const favourite = contenders[0] ? drivers.get(contenders[0].driverId) : undefined;
+// One string, so no line break in the markup can put a space before a comma.
+const favouriteLine =
+  favourite && contenders[0]
+    ? `${driverName(favourite)} is the favourite, with ${chanceInWords(contenders[0].p_win)} ` +
+      "to win. A favourite still loses whenever that chance does not come off."
+    : "";
 
 // Scoring starts with the earliest race that has a prediction at all: every
 // race before it was run before anything was published, so there is nothing
@@ -42,6 +49,10 @@ const firstRace = firstPredicted ? races.get(firstPredicted.race_id) : undefined
 // they are summarised side by side and never averaged together.
 const scored = scoredPredictions(predictions);
 const last = scored[0];
+const scoreKey = last
+  ? "Lower scores are better. The score depends on the chance we gave the driver who won: " +
+    `giving them 100% would score 0. The simple rule here is ${BASELINE_FOR[last.snapshot]}.`
+  : "";
 const lastRace = last ? races.get(last.race_id) : undefined;
 const lastTop = last ? driversByWinProbability(last).slice(0, 3) : [];
 const actualById = new Map((last?.result?.drivers ?? []).map((d) => [d.driverId, d]));
@@ -60,12 +71,12 @@ const series = SERIES.map((snapshot) => {
       ll.undefined === 0
         ? ""
         : `Leaves out ${ll.undefined === 1 ? "one race" : `${ll.undefined} races`} with no ` +
-          "defined log loss, where the snapshot gave the winner no probability.",
+          "score, where the prediction gave the winner no chance at all.",
   };
 }).filter((s) => s.n > 0);
 const summarised = series.filter((s) => s.n >= SCORED_SUMMARY_MINIMUM);
 // One string, so no line break in the markup can put a space before a comma.
-const soFar = series.map((s) => `${SNAPSHOT_LABEL[s.snapshot].toLowerCase()} ${s.n}`).join(", ");
+const soFar = series.map((s) => `${s.n} ${SNAPSHOT_LABEL[s.snapshot].toLowerCase()}`).join(", ");
 
 const jsonLd = [
   {
@@ -98,8 +109,9 @@ const jsonLd = [
     )}
     <h1 class="display">Race predictions, scored in public.</h1>
     <p class="lead">
-      Win, podium and top-ten chances for every driver, published before the cars run and again
-      after qualifying, then graded against the result. The misses stay on the record.
+      Every driver's chance of winning, finishing on the podium and finishing in the top ten.
+      Published before practice and again after qualifying, then checked against the result. The
+      misses stay on the record.
     </p>
     <div class="actions">
       {nextRace && (
@@ -155,10 +167,11 @@ const jsonLd = [
               );
             })}
           </ol>
+          {favouriteLine && <p class="body-sm">{favouriteLine}</p>}
           {nextPred.snapshot === "pre_weekend" && (
             <p class="body-sm muted reduced">
-              Two features only: championship points and share of team points. Qualifying and
-              practice are not in it yet.
+              This early call only knows the championship standings. It gets sharper after
+              qualifying.
             </p>
           )}
           <Provenance
@@ -190,16 +203,16 @@ const jsonLd = [
         </p>
         <ul class="coming">
           <li class="rise" style="--i:0">
-            <strong>How each prediction scored.</strong> Log loss and Brier score, beside a baseline
-            that saw the same information: championship order for the pre-weekend call, qualifying
-            order for the post-qualifying one.
+            <strong>How each prediction scored.</strong> A score for how much chance it gave the
+            actual winner, next to the score of a simple rule that knew the same things: the
+            championship order before practice, the qualifying order after qualifying.
           </li>
           <li class="rise" style="--i:1">
             <strong>What it called.</strong> Whether the winner was the favourite, how many podium
             places it caught, and the predicted top three next to where they finished.
           </li>
           <li class="rise" style="--i:2">
-            <strong>The season so far.</strong> Winner calls, podium places and average log loss,
+            <strong>The season so far.</strong> Winners picked, podium places and the average score,
             once four races are scored. Fewer than that is too few to summarise.
           </li>
         </ul>
@@ -219,13 +232,13 @@ const jsonLd = [
           <div class="scroller">
             <table class="table">
               <caption class="sr-only">
-                The three drivers given the highest win probability, and where each finished.
+                Our three favourites to win, and where each finished.
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Predicted top three</th>
+                  <th scope="col">Our top three</th>
                   <th scope="col" class="n">
-                    Win
+                    Win chance
                   </th>
                   <th scope="col" class="n">
                     Finished
@@ -250,33 +263,36 @@ const jsonLd = [
               </tbody>
             </table>
           </div>
-          <dl class="figures">
-            <div>
-              <dt>Log loss</dt>
-              <dd class="num">{logLoss(last.result!.log_loss)}</dd>
-            </div>
-            {last.result!.baseline && (
+          <div class="receipt-scores">
+            <dl class="figures">
               <div>
-                <dt>{sentenceStart(last.result!.baseline.name)}</dt>
-                <dd class="num">{score(last.result!.baseline.log_loss)}</dd>
+                <dt>Our score</dt>
+                <dd class="num">{logLoss(last.result!.log_loss)}</dd>
               </div>
-            )}
-            <div>
-              <dt>Winner</dt>
-              <dd>{last.result!.winner_hit ? "Called" : "Missed"}</dd>
-            </div>
-            <div>
-              <dt>Podium places</dt>
-              <dd class="num">{last.result!.podium_hits} of 3</dd>
-            </div>
-          </dl>
+              {last.result!.baseline && (
+                <div>
+                  <dt>Simple rule</dt>
+                  <dd class="num">{score(last.result!.baseline.log_loss)}</dd>
+                </div>
+              )}
+              <div>
+                <dt>Picked the winner</dt>
+                <dd>{last.result!.winner_hit ? "Yes" : "No"}</dd>
+              </div>
+              <div>
+                <dt>Podium picks right</dt>
+                <dd class="num">{last.result!.podium_hits} of 3</dd>
+              </div>
+            </dl>
+            <p class="body-sm muted score-key">{scoreKey}</p>
+          </div>
         </div>
 
         {summarised.length === 0 ? (
           <p class="notice season-wait">
             <span class="badge badge-ink">Season</span>
             <span>
-              Season figures appear once four races are scored in a snapshot. So far: {soFar}.
+              Season figures appear once four races are scored for each prediction. So far: {soFar}.
             </span>
           </p>
         ) : (
@@ -289,7 +305,7 @@ const jsonLd = [
                   <dd class="num">{s.n}</dd>
                 </div>
                 <div>
-                  <dt>Winner called</dt>
+                  <dt>Winners picked</dt>
                   <dd class="num">
                     {s.wins} of {s.n}
                   </dd>
@@ -301,7 +317,7 @@ const jsonLd = [
                   </dd>
                 </div>
                 <div>
-                  <dt>Average log loss</dt>
+                  <dt>Average score</dt>
                   <dd class="num">{s.logLoss === null ? "—" : score(s.logLoss)}</dd>
                 </div>
               </dl>
@@ -325,24 +341,25 @@ const jsonLd = [
     </div>
     <div class="cards">
       <a class="card rise" style="--i:0" href="/methodology/">
-        <h3 class="h4">Two calls per race.</h3>
+        <h3 class="h4">Two predictions per race.</h3>
         <p class="muted">
-          One before the cars run, from championship form alone. One after qualifying, when the grid
-          is known. They are scored separately and never averaged together.
+          One before practice, from the championship standings alone. One after qualifying, once we
+          know where everyone starts. Each is scored on its own, never averaged together.
         </p>
       </a>
       <a class="card rise" style="--i:1" href="/methodology/">
-        <h3 class="h4">Measured against a baseline.</h3>
+        <h3 class="h4">Compared with a simple rule.</h3>
         <p class="muted">
-          On the 2026 holdout the model was indistinguishable from simply taking qualifying order.
-          Each race is scored beside that baseline so the comparison stays in view.
+          Every race is scored next to a rule anyone could use, such as backing drivers by where
+          they qualified. Tested on this season's first fourteen races, the model did not do clearly
+          better than that rule, and we say so.
         </p>
       </a>
       <a class="card rise" style="--i:2" href="/track-record/">
         <h3 class="h4">Nothing is rewritten.</h3>
         <p class="muted">
-          Predictions are committed before the session. A correction is a new revision beside the
-          original, and only one published in time is ever scored.
+          Every prediction is saved in public before the session starts. A correction is added
+          beside the original, never over it, and only one published in time is ever scored.
         </p>
       </a>
     </div>
@@ -528,6 +545,11 @@ const jsonLd = [
     .receipt .figures {
       grid-template-columns: 1fr 1fr;
     }
+  }
+  .receipt-scores {
+    display: grid;
+    gap: var(--space-sm);
+    align-content: start;
   }
   .season {
     display: grid;

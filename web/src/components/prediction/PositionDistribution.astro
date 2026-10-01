@@ -44,9 +44,9 @@ const n = rows[0]?.position_distribution.length ?? 0;
           ))}
         </span>
         <p class="sum">
-          Most likely <span class="num">P{s.mode}</span>. At least eight in ten simulated finishes
-          between <span class="num">P{s.low}</span> and <span class="num">P{s.high}</span>; expected{" "}
-          <span class="num">{position(r.expected_position)}</span>.
+          Most likely <span class="num">P{s.mode}</span>. In at least 8 of 10 simulated races,
+          finishes between <span class="num">P{s.low}</span> and <span class="num">P{s.high}</span>.
+          Average <span class="num">{position(r.expected_position)}</span>.
         </p>
       </li>
     );
